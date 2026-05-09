@@ -1,4 +1,4 @@
-const FROM = `"Global OMS" <${process.env.SMTP_FROM || "team@global-dubai.com"}>`;
+const FROM = `"Global Management Consultants" <${process.env.SMTP_FROM || "team@global-dubai.com"}>`;
 const BASE_URL = process.env.NEXTAUTH_URL || "https://outplacement-tracker-production.up.railway.app";
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
@@ -30,11 +30,11 @@ export async function sendPasswordResetEmail(
 ): Promise<void> {
   await sendEmail(
     to,
-    "Reset your Global OMS password",
+    "Reset Your Password",
     `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:36px;border-radius:12px;">
       <div style="margin-bottom:24px;">
-        <span style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0.5px;">Global OMS</span>
+        <span style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0.5px;">Global Management Consultants</span>
       </div>
       <h2 style="color:#a78bfa;margin:0 0 8px;">Password Reset Request</h2>
       <p style="color:#94a3b8;margin:0 0 20px;">Hi ${name},</p>
@@ -56,11 +56,11 @@ export async function sendWelcomeEmail(
 ): Promise<void> {
   await sendEmail(
     to,
-    "Welcome to Global OMS — Your account is ready",
+    "Welcome to Global Management Consultants — Your account is ready",
     `
     <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:36px;border-radius:12px;">
       <div style="margin-bottom:24px;">
-        <span style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0.5px;">Global OMS</span>
+        <span style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0.5px;">Global Management Consultants</span>
       </div>
       <h2 style="color:#a78bfa;margin:0 0 8px;">Welcome aboard, ${name}! 👋</h2>
       <p style="color:#94a3b8;margin:0 0 20px;">Your account on the <strong style="color:#e2e8f0;">Global Outplacement Management System</strong> has been created and is ready to use.</p>
