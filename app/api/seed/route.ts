@@ -8,7 +8,15 @@ import { supabase } from "@/lib/supabase";
 
 const SEED_SECRET = "seed-global-2026";
 
+export async function GET(req: NextRequest) {
+  return runSeed(req);
+}
+
 export async function POST(req: NextRequest) {
+  return runSeed(req);
+}
+
+async function runSeed(req: NextRequest) {
   const secret = req.nextUrl.searchParams.get("secret");
   if (secret !== SEED_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
