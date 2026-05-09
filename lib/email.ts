@@ -63,7 +63,7 @@ export async function sendWelcomeEmail(
         <span style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0.5px;">Global Management Consultants</span>
       </div>
       <h2 style="color:#a78bfa;margin:0 0 8px;">Welcome aboard, ${name}! 👋</h2>
-      <p style="color:#94a3b8;margin:0 0 20px;">Your account on the <strong style="color:#e2e8f0;">Global Outplacement Management System</strong> has been created and is ready to use.</p>
+      <p style="color:#94a3b8;margin:0 0 20px;">Your account on the <strong style="color:#a78bfa;">Global Management Consultants</strong> platform has been created and is ready to use.</p>
       <div style="background:#1e293b;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
         <p style="color:#94a3b8;font-size:13px;margin:0 0 4px;">Signing in with:</p>
         <p style="color:#e2e8f0;font-weight:600;margin:0;">${to}</p>
