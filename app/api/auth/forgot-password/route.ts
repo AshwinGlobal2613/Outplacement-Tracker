@@ -25,7 +25,10 @@ export async function POST(req: NextRequest) {
   const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3001";
   const resetUrl = `${baseUrl}/reset-password?token=${token}`;
 
-  await sendPasswordResetEmail(email, user.name, resetUrl);
+  // Fire-and-forget — respond immediately, email delivers in background
+  sendPasswordResetEmail(email, user.name, resetUrl).catch((err) =>
+    console.error("[reset-email]", err)
+  );
 
   return NextResponse.json({ message: "If that email exists, a reset link has been sent." });
 }
