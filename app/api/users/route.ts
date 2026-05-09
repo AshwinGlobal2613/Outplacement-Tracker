@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import { authOptions } from "@/lib/auth";
 import { createUser, getUserByEmail, getUsers } from "@/lib/db";
+import { sendWelcomeEmail } from "@/lib/email";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -39,6 +40,11 @@ export async function POST(req: NextRequest) {
     disabled: false,
     createdAt: new Date().toISOString(),
   });
+
+  // Send welcome email (non-blocking — don't fail registration if email fails)
+  sendWelcomeEmail(email, name).catch((err) =>
+    console.error("[welcome-email]", err)
+  );
 
   const { password: _, ...safe } = user;
   return NextResponse.json(safe, { status: 201 });
