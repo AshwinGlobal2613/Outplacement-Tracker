@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Zap, Eye, EyeOff, CheckCircle } from "lucide-react";
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -99,10 +99,7 @@ export default function LoginPage() {
             <label className="text-sm font-medium text-foreground" htmlFor="password">
               Password
             </label>
-            <Link
-              href="/forgot-password"
-              className="text-xs text-primary hover:underline"
-            >
+            <Link href="/forgot-password" className="text-xs text-primary hover:underline">
               Forgot password?
             </Link>
           </div>
@@ -148,25 +145,25 @@ export default function LoginPage() {
         <p className="text-xs font-medium text-muted-foreground mb-1.5">Default admin credentials</p>
         <p className="text-xs text-muted-foreground">
           <span className="text-foreground/70">Email:</span>{" "}
-          <button
-            type="button"
-            onClick={() => setEmail("ashwin@global-dubai.com")}
-            className="text-primary hover:underline cursor-pointer"
-          >
+          <button type="button" onClick={() => setEmail("ashwin@global-dubai.com")} className="text-primary hover:underline cursor-pointer">
             ashwin@global-dubai.com
           </button>
         </p>
         <p className="text-xs text-muted-foreground mt-0.5">
           <span className="text-foreground/70">Password:</span>{" "}
-          <button
-            type="button"
-            onClick={() => setPassword("Global206")}
-            className="text-primary hover:underline cursor-pointer"
-          >
+          <button type="button" onClick={() => setPassword("Global206")} className="text-primary hover:underline cursor-pointer">
             Global206 (click to fill)
           </button>
         </p>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="w-full h-32 flex items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+      <LoginContent />
+    </Suspense>
   );
 }
