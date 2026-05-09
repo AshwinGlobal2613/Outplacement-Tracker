@@ -11,7 +11,7 @@ import {
 } from "@/lib/db";
 
 export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
-  const candidate = getCandidateById(params.id);
+  const candidate = await getCandidateById(params.id);
   if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(candidate);
 }
@@ -21,10 +21,10 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const updated = updateCandidate(params.id, { ...body, updatedBy: session.user.id });
+  const updated = await updateCandidate(params.id, { ...body, updatedBy: session.user.id });
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  addActivityLog({
+  await addActivityLog({
     id: `log_${uuidv4().slice(0, 8)}`,
     userId: session.user.id,
     userName: session.user.name || "Unknown",
@@ -35,7 +35,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     createdAt: new Date().toISOString(),
   });
 
-  createNotificationsForAllUsers(
+  await createNotificationsForAllUsers(
     session.user.id,
     `${session.user.name} updated candidate: ${updated.candidateName}`,
     `/outplacement/candidates/${updated.id}`
@@ -48,12 +48,12 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const candidate = getCandidateById(params.id);
+  const candidate = await getCandidateById(params.id);
   if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  deleteCandidate(params.id);
+  await deleteCandidate(params.id);
 
-  addActivityLog({
+  await addActivityLog({
     id: `log_${uuidv4().slice(0, 8)}`,
     userId: session.user.id,
     userName: session.user.name || "Unknown",

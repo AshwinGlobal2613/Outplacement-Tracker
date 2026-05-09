@@ -6,7 +6,7 @@ import { getTransitions, createTransition, addActivityLog } from "@/lib/db";
 import { Transition } from "@/lib/types";
 
 export async function GET() {
-  return NextResponse.json(getTransitions());
+  return NextResponse.json(await getTransitions());
 }
 
 export async function POST(req: NextRequest) {
@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
   const transition: Transition = { id: `trans_${uuidv4().slice(0, 8)}`, ...body };
-  createTransition(transition);
-  addActivityLog({
+  await createTransition(transition);
+  await addActivityLog({
     id: `log_${uuidv4().slice(0, 8)}`,
     userId: session.user.id,
     userName: session.user.name || "Unknown",

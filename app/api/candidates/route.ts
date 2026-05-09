@@ -11,7 +11,7 @@ import {
 import { Candidate } from "@/lib/types";
 
 export async function GET() {
-  const candidates = getCandidates();
+  const candidates = await getCandidates();
   return NextResponse.json(candidates);
 }
 
@@ -63,9 +63,9 @@ export async function POST(req: NextRequest) {
     updatedBy: session.user.id,
   };
 
-  createCandidate(candidate);
+  await createCandidate(candidate);
 
-  addActivityLog({
+  await addActivityLog({
     id: `log_${uuidv4().slice(0, 8)}`,
     userId: session.user.id,
     userName: session.user.name || "Unknown",
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest) {
     createdAt: now,
   });
 
-  createNotificationsForAllUsers(
+  await createNotificationsForAllUsers(
     session.user.id,
     `${session.user.name} added new candidate: ${candidate.candidateName}`,
     `/outplacement/candidates/${candidate.id}`

@@ -10,7 +10,7 @@ export async function GET() {
   if (!session || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const users = getUsers().map(({ password: _, ...u }) => u);
+  const users = (await getUsers()).map(({ password: _, ...u }) => u);
   return NextResponse.json(users);
 }
 
@@ -24,12 +24,12 @@ export async function POST(req: NextRequest) {
   if (password.length < 8) {
     return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
   }
-  if (getUserByEmail(email)) {
+  if (await getUserByEmail(email)) {
     return NextResponse.json({ error: "Email already registered" }, { status: 409 });
   }
 
   const hashed = await bcrypt.hash(password, 10);
-  const user = createUser({
+  const user = await createUser({
     id: `usr_${uuidv4().slice(0, 8)}`,
     name,
     email,

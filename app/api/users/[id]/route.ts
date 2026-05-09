@@ -9,7 +9,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!session || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const user = getUserById(params.id);
+  const user = await getUserById(params.id);
   if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
   const { password: _pw, ...safe } = user;
   return NextResponse.json(safe);
@@ -30,12 +30,11 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (body.role !== undefined) updates.role = body.role;
   if (body.disabled !== undefined) updates.disabled = body.disabled;
 
-  // Only hash password if provided
   if (body.password && body.password.length >= 8) {
     updates.password = await bcrypt.hash(body.password, 10);
   }
 
-  const updated = updateUser(params.id, updates);
+  const updated = await updateUser(params.id, updates);
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { password: _p2, ...safe } = updated;
@@ -47,11 +46,10 @@ export async function DELETE(_req2: NextRequest, { params }: { params: { id: str
   if (!session || session.user.role !== "admin") {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  // Prevent deleting yourself
   if (params.id === session.user.id) {
     return NextResponse.json({ error: "Cannot delete your own account" }, { status: 400 });
   }
-  const success = deleteUser(params.id);
+  const success = await deleteUser(params.id);
   if (!success) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json({ success: true });
 }

@@ -6,7 +6,7 @@ import { getHeadhunters, createHeadhunter, addActivityLog } from "@/lib/db";
 import { Headhunter } from "@/lib/types";
 
 export async function GET() {
-  return NextResponse.json(getHeadhunters());
+  return NextResponse.json(await getHeadhunters());
 }
 
 export async function POST(req: NextRequest) {
@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
   const hh: Headhunter = { id: `hh_${uuidv4().slice(0, 8)}`, ...body };
-  createHeadhunter(hh);
-  addActivityLog({
+  await createHeadhunter(hh);
+  await addActivityLog({
     id: `log_${uuidv4().slice(0, 8)}`,
     userId: session.user.id,
     userName: session.user.name || "Unknown",

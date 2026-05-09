@@ -9,7 +9,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const candidate = getCandidateById(params.id);
+  const candidate = await getCandidateById(params.id);
   if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json();
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   };
 
   const activities = [...(candidate.activities ?? []), activity];
-  const updated = updateCandidate(params.id, { activities });
+  const updated = await updateCandidate(params.id, { activities });
   return NextResponse.json(updated, { status: 201 });
 }
 
@@ -32,11 +32,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const candidate = getCandidateById(params.id);
+  const candidate = await getCandidateById(params.id);
   if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { activityId } = await req.json();
   const activities = (candidate.activities ?? []).filter((a) => a.id !== activityId);
-  const updated = updateCandidate(params.id, { activities });
+  const updated = await updateCandidate(params.id, { activities });
   return NextResponse.json(updated);
 }

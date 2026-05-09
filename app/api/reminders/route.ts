@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getCandidates } from "@/lib/db";
@@ -10,7 +10,7 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const candidates = getCandidates();
+  const candidates = await getCandidates();
 
   const pending = candidates.filter(
     (c) =>
@@ -21,7 +21,7 @@ export async function POST() {
   );
 
   if (pending.length === 0) {
-    return NextResponse.json({ message: "No pending actions â€” no emails sent." });
+    return NextResponse.json({ message: "No pending actions — no emails sent." });
   }
 
   const adminEmail = process.env.REMINDER_TO_EMAIL;
@@ -64,7 +64,7 @@ export async function POST() {
 
   const html = `
     <div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:24px;border-radius:12px;">
-      <h2 style="color:#a78bfa;margin-bottom:4px;">Global OMS â€” Pending Action Reminders</h2>
+      <h2 style="color:#a78bfa;margin-bottom:4px;">Global OMS — Pending Action Reminders</h2>
       <p style="color:#94a3b8;margin-bottom:24px;">The following active candidates have outstanding actions requiring attention:</p>
       <table style="width:100%;border-collapse:collapse;font-size:14px;">
         <thead>

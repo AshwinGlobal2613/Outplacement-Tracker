@@ -6,7 +6,7 @@ import { getCompanies, createCompany, addActivityLog } from "@/lib/db";
 import { Company } from "@/lib/types";
 
 export async function GET() {
-  return NextResponse.json(getCompanies());
+  return NextResponse.json(await getCompanies());
 }
 
 export async function POST(req: NextRequest) {
@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const body = await req.json();
   const company: Company = { id: `comp_${uuidv4().slice(0, 8)}`, ...body };
-  createCompany(company);
-  addActivityLog({
+  await createCompany(company);
+  await addActivityLog({
     id: `log_${uuidv4().slice(0, 8)}`,
     userId: session.user.id,
     userName: session.user.name || "Unknown",

@@ -7,6 +7,6 @@ export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (session.user.role !== "admin") return NextResponse.json({ error: "Forbidden — admin only" }, { status: 403 });
-  const log = getActivityLog().slice(0, 50);
+  const log = (await getActivityLog()).slice(0, 50);
   return NextResponse.json(log);
 }
