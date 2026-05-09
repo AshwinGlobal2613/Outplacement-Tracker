@@ -140,22 +140,6 @@ function LoginContent() {
         </Link>
       </p>
 
-      {/* Dev hint */}
-      <div className="rounded-lg border border-border/50 bg-card/40 px-4 py-3">
-        <p className="text-xs font-medium text-muted-foreground mb-1.5">Default admin credentials</p>
-        <p className="text-xs text-muted-foreground">
-          <span className="text-foreground/70">Email:</span>{" "}
-          <button type="button" onClick={() => setEmail("ashwin@global-dubai.com")} className="text-primary hover:underline cursor-pointer">
-            ashwin@global-dubai.com
-          </button>
-        </p>
-        <p className="text-xs text-muted-foreground mt-0.5">
-          <span className="text-foreground/70">Password:</span>{" "}
-          <button type="button" onClick={() => setPassword("Global206")} className="text-primary hover:underline cursor-pointer">
-            Global206 (click to fill)
-          </button>
-        </p>
-      </div>
     </div>
   );
 }
