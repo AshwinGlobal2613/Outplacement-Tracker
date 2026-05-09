@@ -12,6 +12,7 @@ import {
   ShieldOff,
   UserX,
   UserCheck,
+  Trash2,
   X,
   Eye,
   EyeOff,
@@ -207,6 +208,7 @@ export default function AdminUsersPage() {
   const [editUser, setEditUser] = useState<ModalUser | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
@@ -229,6 +231,14 @@ export default function AdminUsersPage() {
       body: JSON.stringify({ disabled: !user.disabled }),
     });
     setActionLoading(null);
+    loadUsers();
+  }
+
+  async function permanentlyDelete(userId: string) {
+    setActionLoading(userId + "-delete");
+    await fetch(`/api/users/${userId}`, { method: "DELETE" });
+    setActionLoading(null);
+    setConfirmDeleteId(null);
     loadUsers();
   }
 
@@ -391,7 +401,7 @@ export default function AdminUsersPage() {
                   const initials = user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
                   const isCurrentUser = user.id === session?.user?.id;
                   return (
-                    <tr key={user.id} className={`hover:bg-sidebar-accent/40 transition-colors ${user.disabled ? "opacity-60" : ""}`}>
+                    <tr key={user.id} onMouseLeave={() => setConfirmDeleteId(null)} className={`hover:bg-sidebar-accent/40 transition-colors ${user.disabled ? "opacity-60" : ""}`}>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
@@ -472,6 +482,27 @@ export default function AdminUsersPage() {
                                 : <UserX className="h-3.5 w-3.5" />
                               }
                             </button>
+                          )}
+                          {/* Permanent delete — only for disabled accounts */}
+                          {!isCurrentUser && user.disabled && (
+                            confirmDeleteId === user.id ? (
+                              <button
+                                onClick={() => permanentlyDelete(user.id)}
+                                disabled={actionLoading === user.id + "-delete"}
+                                title="Confirm permanent delete"
+                                className="rounded-md px-2 py-1 text-xs font-semibold bg-rose-600 text-white hover:bg-rose-700 transition-colors disabled:opacity-40"
+                              >
+                                {actionLoading === user.id + "-delete" ? "…" : "Confirm"}
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => setConfirmDeleteId(user.id)}
+                                title="Permanently delete user"
+                                className="rounded-md p-1.5 text-muted-foreground hover:bg-rose-500/15 hover:text-rose-400 transition-colors"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )
                           )}
                           {isCurrentUser && (
                             <span className="text-xs text-muted-foreground/50 px-1">(you)</span>
