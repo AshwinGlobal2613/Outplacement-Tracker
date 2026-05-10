@@ -101,6 +101,12 @@ function CandidatesContent() {
 
   useEffect(() => { load(); }, []);
 
+  // Sync active tab whenever the URL ?tab param changes (e.g. back-button navigation)
+  useEffect(() => {
+    const tab = searchParams.get("tab") as CandidateStatus | null;
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
+
   const counts = Object.fromEntries(
     tabs.map((t) => [t.key, candidates.filter((c) => c.status === t.key).length])
   ) as Record<CandidateStatus, number>;
