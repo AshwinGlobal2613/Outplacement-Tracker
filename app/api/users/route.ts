@@ -4,7 +4,14 @@ import bcrypt from "bcryptjs";
 import { v4 as uuidv4 } from "uuid";
 import { authOptions } from "@/lib/auth";
 import { createUser, getUserByEmail, getUsers } from "@/lib/db";
-import { sendWelcomeEmail } from "@/lib/email";
+import { sendInviteEmail } from "@/lib/email";
+
+function generateTempPassword(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#";
+  let pwd = "";
+  for (let i = 0; i < 10; i++) pwd += chars[Math.floor(Math.random() * chars.length)];
+  return pwd;
+}
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -16,20 +23,35 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json();
-  const { name, email, password, phone = "", role = "team_member" } = body;
+  const session = await getServerSession(authOptions);
+  const isAdminInvite = session?.user?.role === "admin";
 
-  if (!name || !email || !password) {
+  const body = await req.json();
+  const { name, email, phone = "", role = "team_member" } = body;
+
+  if (!name || !email) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
-  }
-  if (password.length < 8) {
-    return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
   }
   if (await getUserByEmail(email)) {
     return NextResponse.json({ error: "Email already registered" }, { status: 409 });
   }
 
-  const hashed = await bcrypt.hash(password, 10);
+  // Admin invites: auto-generate temp password and force change on first login
+  // Self-registration: use provided password
+  let plainPassword: string;
+  let mustChangePassword = false;
+
+  if (isAdminInvite) {
+    plainPassword = generateTempPassword();
+    mustChangePassword = true;
+  } else {
+    plainPassword = body.password ?? "";
+    if (!plainPassword || plainPassword.length < 8) {
+      return NextResponse.json({ error: "Password must be at least 8 characters" }, { status: 400 });
+    }
+  }
+
+  const hashed = await bcrypt.hash(plainPassword, 10);
   const user = await createUser({
     id: `usr_${uuidv4().slice(0, 8)}`,
     name,
@@ -38,13 +60,15 @@ export async function POST(req: NextRequest) {
     password: hashed,
     role,
     disabled: false,
+    mustChangePassword,
     createdAt: new Date().toISOString(),
   });
 
-  // Send welcome email (non-blocking — don't fail registration if email fails)
-  sendWelcomeEmail(email, name).catch((err) =>
-    console.error("[welcome-email]", err)
-  );
+  if (isAdminInvite) {
+    sendInviteEmail(email, name, plainPassword).catch((err) =>
+      console.error("[invite-email]", err)
+    );
+  }
 
   const { password: _, ...safe } = user;
   return NextResponse.json(safe, { status: 201 });

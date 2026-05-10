@@ -22,6 +22,7 @@ function toUser(r: Record<string, unknown>): User {
     password: r.password as string,
     role: r.role as User["role"],
     disabled: r.disabled as boolean,
+    mustChangePassword: (r.must_change_password as boolean) ?? false,
     createdAt: r.created_at as string,
     lastLoginAt: (r.last_login_at as string) ?? undefined,
   };
@@ -181,6 +182,7 @@ export async function createUser(user: User): Promise<User> {
       password: user.password,
       role: user.role,
       disabled: user.disabled,
+      must_change_password: user.mustChangePassword ?? false,
       created_at: user.createdAt,
       last_login_at: user.lastLoginAt ?? null,
     })
@@ -198,6 +200,7 @@ export async function updateUser(id: string, updates: Partial<User>): Promise<Us
   if (updates.password !== undefined) dbUpdates.password = updates.password;
   if (updates.role !== undefined) dbUpdates.role = updates.role;
   if (updates.disabled !== undefined) dbUpdates.disabled = updates.disabled;
+  if (updates.mustChangePassword !== undefined) dbUpdates.must_change_password = updates.mustChangePassword;
   if (updates.lastLoginAt !== undefined) dbUpdates.last_login_at = updates.lastLoginAt;
 
   const { data, error } = await supabase

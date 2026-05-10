@@ -8,6 +8,7 @@ export interface User {
   password: string;
   role: UserRole;
   disabled: boolean;
+  mustChangePassword?: boolean;
   createdAt: string;
   lastLoginAt?: string;
 }

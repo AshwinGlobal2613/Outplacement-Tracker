@@ -59,12 +59,12 @@ function UserModal({
   async function handleSave() {
     setError("");
     if (!name.trim() || !email.trim()) { setError("Name and email are required."); return; }
-    if (isNew && (!password || password.length < 8)) { setError("Password must be at least 8 characters."); return; }
+    // For new users, password is auto-generated — only validate if editing
     if (!isNew && password && password.length < 8) { setError("New password must be at least 8 characters."); return; }
 
     setLoading(true);
     const body: Record<string, unknown> = { name, email, phone, role };
-    if (password) body.password = password;
+    if (!isNew && password) body.password = password;
 
     const url = isNew ? "/api/users" : `/api/users/${user!.id}`;
     const method = isNew ? "POST" : "PUT";
@@ -149,28 +149,34 @@ function UserModal({
             </select>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-sm font-medium text-foreground">
-              {isNew ? "Password *" : "New Password"}
-              {!isNew && <span className="text-xs font-normal text-muted-foreground ml-1">(leave blank to keep current)</span>}
-            </label>
-            <div className="relative">
-              <input
-                type={showPw ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={isNew ? "Min. 8 characters" : "Leave blank to keep current"}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPw(!showPw)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+          {isNew ? (
+            <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
+              🔑 A secure temporary password will be <strong className="text-foreground">auto-generated and emailed</strong> to this member. They&apos;ll be asked to set a new password on first login.
             </div>
-          </div>
+          ) : (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                New Password
+                <span className="text-xs font-normal text-muted-foreground ml-1">(leave blank to keep current)</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showPw ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Leave blank to keep current"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw(!showPw)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-3 border-t border-border px-6 py-4">

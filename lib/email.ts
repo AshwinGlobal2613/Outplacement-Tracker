@@ -50,6 +50,39 @@ export async function sendPasswordResetEmail(
   );
 }
 
+export async function sendInviteEmail(
+  to: string,
+  name: string,
+  tempPassword: string
+): Promise<void> {
+  await sendEmail(
+    to,
+    "You've been invited to Global Management Consultants OMS",
+    `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:36px;border-radius:12px;">
+      <div style="margin-bottom:24px;">
+        <span style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0.5px;">Global Management Consultants</span>
+      </div>
+      <h2 style="color:#a78bfa;margin:0 0 8px;">You're invited! 🎉</h2>
+      <p style="color:#94a3b8;margin:0 0 20px;">Hi ${name}, an admin has created an account for you on the <strong style="color:#e2e8f0;">Global Management Consultants OMS</strong>.</p>
+      <p style="color:#94a3b8;margin:0 0 16px;">Use the temporary password below to sign in. You'll be asked to set a new password immediately after logging in.</p>
+      <div style="background:#1e293b;border-radius:8px;padding:16px 20px;margin:0 0 24px;text-align:center;">
+        <p style="color:#94a3b8;font-size:12px;margin:0 0 6px;text-transform:uppercase;letter-spacing:1px;">Temporary Password</p>
+        <p style="color:#a78bfa;font-size:22px;font-weight:700;font-family:monospace;margin:0;letter-spacing:2px;">${tempPassword}</p>
+      </div>
+      <div style="background:#1e293b;border-radius:8px;padding:14px 20px;margin:0 0 24px;">
+        <p style="color:#94a3b8;font-size:13px;margin:0 0 4px;">Signing in with:</p>
+        <p style="color:#e2e8f0;font-weight:600;margin:0;">${to}</p>
+      </div>
+      <a href="${BASE_URL}/login" style="display:inline-block;background:#7c3aed;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:24px;">
+        Sign In Now
+      </a>
+      <hr style="border:none;border-top:1px solid #1e293b;margin:0 0 16px;" />
+      <p style="color:#475569;font-size:12px;margin:0;">This password is temporary and will expire after your first login. If you weren't expecting this, contact your administrator.</p>
+    </div>`
+  );
+}
+
 export async function sendWelcomeEmail(
   to: string,
   name: string
