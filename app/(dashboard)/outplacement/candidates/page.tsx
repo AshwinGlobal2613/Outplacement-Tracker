@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import { Plus, Search, ExternalLink, CheckCircle2, XCircle, Clock, UserCheck, Send } from "lucide-react";
@@ -80,12 +81,15 @@ const tabs: { key: CandidateStatus; label: string; icon: React.ElementType; colo
   { key: "declined", label: "Declined", icon: XCircle, color: "text-rose-400" },
 ];
 
-export default function CandidatesPage() {
+function CandidatesContent() {
+  const searchParams = useSearchParams();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState<CandidateStatus>("referred");
+  const [activeTab, setActiveTab] = useState<CandidateStatus>(
+    (searchParams.get("tab") as CandidateStatus) ?? "active"
+  );
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
 
@@ -201,6 +205,14 @@ export default function CandidatesPage() {
   );
 }
 
+export default function CandidatesPage() {
+  return (
+    <Suspense fallback={<div className="flex h-64 items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+      <CandidatesContent />
+    </Suspense>
+  );
+}
+
 /* ─── Referred + Candidate Reached (simple table) ─── */
 function SimpleTable({ candidates, supportColors, onRefresh }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void }) {
   if (candidates.length === 0) return <EmptyState message="No candidates in this status" />;
@@ -255,7 +267,7 @@ function SimpleTable({ candidates, supportColors, onRefresh }: { candidates: Can
                 <p className="truncate text-xs text-muted-foreground">{c.notes || "—"}</p>
               </td>
               <td className="px-4 py-3">
-                <Link href={`/outplacement/candidates/${c.id}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                   <ExternalLink className="h-4 w-4" />
                 </Link>
               </td>
@@ -332,7 +344,7 @@ function ActiveTable({ candidates, supportColors, onRefresh }: { candidates: Can
                   {c.endDate ? new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
                 </td>
                 <td className="px-4 py-3">
-                  <Link href={`/outplacement/candidates/${c.id}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                     <ExternalLink className="h-4 w-4" />
                   </Link>
                 </td>
@@ -404,7 +416,7 @@ function CompletedTable({ candidates, onRefresh }: { candidates: Candidate[]; on
                     : <span className="text-xs text-muted-foreground">Pending</span>}
                 </td>
                 <td className="px-4 py-3">
-                  <Link href={`/outplacement/candidates/${c.id}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                     <ExternalLink className="h-4 w-4" />
                   </Link>
                 </td>
@@ -459,7 +471,7 @@ function DeclinedTable({ candidates, onRefresh }: { candidates: Candidate[]; onR
               </td>
               <td className="px-4 py-3 text-xs text-muted-foreground max-w-xs truncate">{c.notes || "—"}</td>
               <td className="px-4 py-3">
-                <Link href={`/outplacement/candidates/${c.id}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                   <ExternalLink className="h-4 w-4" />
                 </Link>
               </td>

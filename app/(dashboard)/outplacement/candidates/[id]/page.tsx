@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -43,8 +43,11 @@ const progressSteps = [
   { key: "networkingPersonalBranding", label: "Networking & Personal Branding" },
 ];
 
-export default function CandidateDetailPage({ params }: { params: { id: string } }) {
+function CandidateDetailContent({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const backTab = searchParams.get("from") ?? "active";
+  const backHref = `/outplacement/candidates?tab=${backTab}`;
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const [candidate, setCandidate] = useState<Candidate | null>(null);
@@ -54,7 +57,7 @@ export default function CandidateDetailPage({ params }: { params: { id: string }
 
   async function load() {
     const res = await fetch(`/api/candidates/${params.id}`);
-    if (!res.ok) { router.push("/outplacement/candidates"); return; }
+    if (!res.ok) { router.push(backHref); return; }
     setCandidate(await res.json());
     setLoading(false);
   }
@@ -65,7 +68,7 @@ export default function CandidateDetailPage({ params }: { params: { id: string }
     if (!confirm(`Delete ${candidate?.candidateName}? This cannot be undone.`)) return;
     setDeleting(true);
     await fetch(`/api/candidates/${params.id}`, { method: "DELETE" });
-    router.push("/outplacement/candidates");
+    router.push(backHref);
   }
 
   async function toggleProgress(key: string) {
@@ -119,7 +122,7 @@ export default function CandidateDetailPage({ params }: { params: { id: string }
   return (
     <div className="flex flex-col gap-6 p-6">
       <div className="flex items-start gap-4">
-        <Link href="/outplacement/candidates" className="mt-1 text-muted-foreground hover:text-foreground transition-colors">
+        <Link href={backHref} className="mt-1 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
         <div className="flex-1">
@@ -403,6 +406,14 @@ function InfoRow({ label, value }: { label: string; value: string }) {
       <dt className="text-xs text-muted-foreground">{label}</dt>
       <dd className="text-sm font-medium text-foreground">{value || "—"}</dd>
     </div>
+  );
+}
+
+export default function CandidateDetailPage({ params }: { params: { id: string } }) {
+  return (
+    <Suspense fallback={<div className="flex h-64 items-center justify-center"><div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>}>
+      <CandidateDetailContent params={params} />
+    </Suspense>
   );
 }
 
