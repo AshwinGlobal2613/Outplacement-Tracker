@@ -13,6 +13,8 @@ import {
   UserX,
   UserCheck,
   Trash2,
+  Clock,
+  MailCheck,
   X,
   Eye,
   EyeOff,
@@ -28,6 +30,7 @@ type User = {
   phone?: string;
   role: "admin" | "team_member";
   disabled: boolean;
+  mustChangePassword?: boolean;
   createdAt: string;
 };
 
@@ -208,7 +211,7 @@ export default function AdminUsersPage() {
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "team_member">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "disabled">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "disabled">("all");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [editUser, setEditUser] = useState<ModalUser | null>(null);
@@ -238,6 +241,12 @@ export default function AdminUsersPage() {
     });
     setActionLoading(null);
     loadUsers();
+  }
+
+  async function resendInvite(userId: string) {
+    setActionLoading(userId + "-resend");
+    await fetch(`/api/users/${userId}/resend-invite`, { method: "POST" });
+    setActionLoading(null);
   }
 
   async function permanentlyDelete(userId: string) {
@@ -271,7 +280,8 @@ export default function AdminUsersPage() {
       u.email.toLowerCase().includes(search.toLowerCase())
     );
     if (roleFilter !== "all") list = list.filter((u) => u.role === roleFilter);
-    if (statusFilter === "active") list = list.filter((u) => !u.disabled);
+    if (statusFilter === "active") list = list.filter((u) => !u.disabled && !u.mustChangePassword);
+    if (statusFilter === "pending") list = list.filter((u) => !u.disabled && u.mustChangePassword);
     if (statusFilter === "disabled") list = list.filter((u) => u.disabled);
     list.sort((a, b) => {
       const av = (a[sortKey] ?? "") as string;
@@ -295,7 +305,8 @@ export default function AdminUsersPage() {
   }
 
   const adminCount = users.filter((u) => u.role === "admin").length;
-  const activeCount = users.filter((u) => !u.disabled).length;
+  const pendingCount = users.filter((u) => !u.disabled && u.mustChangePassword).length;
+  const activeCount = users.filter((u) => !u.disabled && !u.mustChangePassword).length;
   const disabledCount = users.filter((u) => u.disabled).length;
 
   return (
@@ -321,8 +332,8 @@ export default function AdminUsersPage() {
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: "Total Members", value: users.length, color: "text-primary" },
-          { label: "Admins", value: adminCount, color: "text-violet-400" },
           { label: "Active", value: activeCount, color: "text-emerald-400" },
+          { label: "Pending Invite", value: pendingCount, color: "text-amber-400" },
           { label: "Disabled", value: disabledCount, color: "text-rose-400" },
         ].map((s) => (
           <div key={s.label} className="rounded-lg border border-border bg-card px-4 py-3">
@@ -359,6 +370,7 @@ export default function AdminUsersPage() {
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
+          <option value="pending">Pending Invite</option>
           <option value="disabled">Disabled</option>
         </select>
       </div>
@@ -438,14 +450,22 @@ export default function AdminUsersPage() {
                         })}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          user.disabled
-                            ? "bg-rose-500/15 text-rose-400"
-                            : "bg-emerald-500/15 text-emerald-400"
-                        }`}>
-                          {user.disabled ? <UserX className="h-3 w-3" /> : <Check className="h-3 w-3" />}
-                          {user.disabled ? "Disabled" : "Active"}
-                        </span>
+                        {user.disabled ? (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-rose-500/15 text-rose-400">
+                            <UserX className="h-3 w-3" />
+                            Disabled
+                          </span>
+                        ) : user.mustChangePassword ? (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-amber-500/15 text-amber-400">
+                            <Clock className="h-3 w-3" />
+                            Invite Pending
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-500/15 text-emerald-400">
+                            <Check className="h-3 w-3" />
+                            Active
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center justify-end gap-1">
@@ -469,6 +489,17 @@ export default function AdminUsersPage() {
                                 ? <ShieldOff className="h-3.5 w-3.5" />
                                 : <ShieldCheck className="h-3.5 w-3.5" />
                               }
+                            </button>
+                          )}
+                          {/* Resend invite — only for pending users */}
+                          {!isCurrentUser && user.mustChangePassword && !user.disabled && (
+                            <button
+                              onClick={() => resendInvite(user.id)}
+                              disabled={actionLoading === user.id + "-resend"}
+                              title="Resend invite email"
+                              className="rounded-md p-1.5 text-muted-foreground hover:bg-amber-500/15 hover:text-amber-400 transition-colors disabled:opacity-40"
+                            >
+                              <MailCheck className="h-3.5 w-3.5" />
                             </button>
                           )}
                           {/* Toggle disabled — not self */}
