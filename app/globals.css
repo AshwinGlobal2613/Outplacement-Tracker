@@ -78,3 +78,117 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* ── Global Management Consultant Website Animations ── */
+@keyframes gs-float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-22px); }
+}
+@keyframes gs-float-slow {
+  0%, 100% { transform: translateY(0px) scale(1); }
+  50% { transform: translateY(-14px) scale(1.04); }
+}
+@keyframes gs-float-alt {
+  0%, 100% { transform: translateY(0px) translateX(0px); }
+  33% { transform: translateY(-18px) translateX(10px); }
+  66% { transform: translateY(-8px) translateX(-8px); }
+}
+@keyframes gs-rotate-cube {
+  from { transform: rotateX(12deg) rotateY(0deg); }
+  to   { transform: rotateX(12deg) rotateY(360deg); }
+}
+@keyframes gs-pulse-glow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50%       { opacity: 0.85; transform: scale(1.08); }
+}
+@keyframes gs-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+@keyframes gs-fade-up {
+  from { opacity: 0; transform: translateY(36px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gs-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes gs-slide-right {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes gs-counter {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes gs-scroll-line {
+  0%   { transform: scaleY(0); transform-origin: top; }
+  50%  { transform: scaleY(1); transform-origin: top; }
+  51%  { transform: scaleY(1); transform-origin: bottom; }
+  100% { transform: scaleY(0); transform-origin: bottom; }
+}
+@keyframes gs-orbit {
+  from { transform: rotate(0deg) translateX(180px) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(180px) rotate(-360deg); }
+}
+@keyframes gs-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+
+.gs-float       { animation: gs-float 7s ease-in-out infinite; }
+.gs-float-slow  { animation: gs-float-slow 9s ease-in-out infinite; }
+.gs-float-alt   { animation: gs-float-alt 11s ease-in-out infinite; }
+.gs-rotate-cube { animation: gs-rotate-cube 18s linear infinite; }
+.gs-pulse-glow  { animation: gs-pulse-glow 4s ease-in-out infinite; }
+.gs-shimmer-text {
+  background: linear-gradient(
+    90deg,
+    #fedb99 0%,
+    #ffffff 30%,
+    #fedb99 60%,
+    #ffffff 80%,
+    #fedb99 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gs-shimmer 4s linear infinite;
+}
+.gs-visible { animation: gs-fade-up 0.7s ease forwards; }
+.gs-visible-delay-1 { animation: gs-fade-up 0.7s ease 0.15s forwards; opacity: 0; }
+.gs-visible-delay-2 { animation: gs-fade-up 0.7s ease 0.3s forwards; opacity: 0; }
+.gs-visible-delay-3 { animation: gs-fade-up 0.7s ease 0.45s forwards; opacity: 0; }
+.gs-tilt-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+.gs-marquee-track { animation: gs-marquee 28s linear infinite; }
+
+/* Orbital rings */
+@keyframes gs-ring-spin-a {
+  from { transform: rotateX(72deg) rotateZ(0deg); }
+  to   { transform: rotateX(72deg) rotateZ(360deg); }
+}
+@keyframes gs-ring-spin-b {
+  from { transform: rotateX(28deg) rotateY(50deg) rotateZ(0deg); }
+  to   { transform: rotateX(28deg) rotateY(50deg) rotateZ(-360deg); }
+}
+@keyframes gs-ring-spin-c {
+  from { transform: rotateX(52deg) rotateY(-35deg) rotateZ(0deg); }
+  to   { transform: rotateX(52deg) rotateY(-35deg) rotateZ(360deg); }
+}
+@keyframes gs-sphere-breathe {
+  0%,100% { transform: translate(-50%,-50%) scale(1);    box-shadow: 0 0 40px 8px rgba(190,55,88,0.55), 0 0 80px rgba(190,55,88,0.25), inset 0 0 20px rgba(255,255,255,0.12); }
+  50%      { transform: translate(-50%,-50%) scale(1.1); box-shadow: 0 0 60px 14px rgba(254,86,86,0.65), 0 0 120px rgba(190,55,88,0.35), inset 0 0 28px rgba(255,255,255,0.18); }
+}
+@keyframes gs-orb-glow-a {
+  0%,100% { box-shadow: 0 0 10px 3px rgba(190,55,88,0.8);  }
+  50%     { box-shadow: 0 0 18px 6px rgba(254,86,86,1);     }
+}
+@keyframes gs-orb-glow-b {
+  0%,100% { box-shadow: 0 0 10px 3px rgba(254,86,86,0.8);  }
+  50%     { box-shadow: 0 0 18px 6px rgba(254,219,153,0.9); }
+}
+@keyframes gs-orbit-y {
+  from { transform: rotateY(0deg); }
+  to   { transform: rotateY(360deg); }
+}
