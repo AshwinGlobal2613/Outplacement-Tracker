@@ -42,11 +42,11 @@ export default function MyDashboardPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/candidates").then((r) => r.json()),
-      fetch("/api/activity").then((r) => r.json()),
+      fetch("/api/candidates").then((r) => r.json()).catch(() => []),
+      fetch("/api/activity").then((r) => r.json()).catch(() => []),
     ]).then(([cands, logs]) => {
-      setCandidates(cands);
-      setActivity(logs);
+      setCandidates(Array.isArray(cands) ? cands : []);
+      setActivity(Array.isArray(logs) ? logs : []);
       setLoading(false);
     });
   }, []);
@@ -134,7 +134,7 @@ export default function MyDashboardPage() {
           ) : (
             <div className="space-y-2">
               {myCandidates.slice(0, 12).map((c) => {
-                const done = Object.values(c.progress).filter(Boolean).length;
+                const done = Object.values(c.progress ?? {}).filter(Boolean).length;
                 const pct = Math.round((done / 5) * 100);
                 return (
                   <Link key={c.id} href={`/outplacement/candidates/${c.id}`}
@@ -203,7 +203,7 @@ export default function MyDashboardPage() {
                 {myActivity.map((log) => (
                   <li key={log.id} className="flex gap-3">
                     <div className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
-                      {log.userName.slice(0, 1).toUpperCase()}
+                      {(log.userName ?? "?").slice(0, 1).toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <p className="text-xs text-foreground">
