@@ -307,7 +307,7 @@ function ActiveTable({ candidates, supportColors, onRefresh }: { candidates: Can
         </thead>
         <tbody className="divide-y divide-border">
           {candidates.map((c) => {
-            const done = Object.values(c.progress).filter(Boolean).length;
+            const done = Object.values(c.progress ?? {}).filter(Boolean).length;
             const pct = Math.round((done / 5) * 100);
             return (
               <tr key={c.id} className="group transition-colors hover:bg-sidebar-accent/40">

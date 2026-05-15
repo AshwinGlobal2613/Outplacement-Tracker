@@ -121,7 +121,7 @@ export default function OutplacementOverview() {
           </div>
           <div className="space-y-2">
             {active.slice(0, 8).map((c) => {
-              const progressCount = Object.values(c.progress).filter(Boolean).length;
+              const progressCount = Object.values(c.progress ?? {}).filter(Boolean).length;
               const pct = Math.round((progressCount / 5) * 100);
               return (
                 <Link
