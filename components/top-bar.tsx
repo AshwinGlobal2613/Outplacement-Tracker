@@ -1,13 +1,22 @@
 "use client";
 
 import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { LogOut, User } from "lucide-react";
 import { NotificationBell } from "./notification-bell";
 import { useState, useRef, useEffect } from "react";
 
 export function TopBar() {
   const { data: session } = useSession();
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Redirect first-login users to set their own password
+  useEffect(() => {
+    if (session?.user?.mustChangePassword) {
+      router.replace("/change-password");
+    }
+  }, [session, router]);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
