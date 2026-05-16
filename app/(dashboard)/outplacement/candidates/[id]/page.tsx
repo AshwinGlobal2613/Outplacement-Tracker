@@ -6,9 +6,9 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
   Pencil, Trash2, ExternalLink, MessageCircle, CheckCircle2,
-  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X,
+  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag,
 } from "lucide-react";
-import { Candidate, CandidateActivity, ActivityType } from "@/lib/types";
+import { Candidate, CandidateActivity, ActivityType, CustomMilestone } from "@/lib/types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CandidateModal } from "@/components/outplacement/candidate-modal";
@@ -76,18 +76,38 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
     router.push(backHref);
   }
 
-  async function toggleProgress(key: string) {
+  async function saveProgress(progress: Candidate["progress"]) {
     if (!candidate) return;
-    const updated = {
-      ...candidate,
-      progress: { ...candidate.progress, [key]: !candidate.progress[key as keyof typeof candidate.progress] },
-    };
+    const updated = { ...candidate, progress };
     await fetch(`/api/candidates/${params.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated),
     });
     setCandidate(updated);
+  }
+
+  function toggleProgress(key: string) {
+    if (!candidate) return;
+    saveProgress({ ...candidate.progress, [key]: !candidate.progress[key as keyof typeof candidate.progress] });
+  }
+
+  function addCustomMilestone(label: string) {
+    if (!candidate) return;
+    const custom = [...(candidate.progress.custom ?? []), { id: `cm_${Date.now()}`, label, done: false }];
+    saveProgress({ ...candidate.progress, custom });
+  }
+
+  function toggleCustomMilestone(id: string) {
+    if (!candidate) return;
+    const custom = (candidate.progress.custom ?? []).map((m) => m.id === id ? { ...m, done: !m.done } : m);
+    saveProgress({ ...candidate.progress, custom });
+  }
+
+  function removeCustomMilestone(id: string) {
+    if (!candidate) return;
+    const custom = (candidate.progress.custom ?? []).filter((m) => m.id !== id);
+    saveProgress({ ...candidate.progress, custom });
   }
 
   async function addActivity(act: Omit<CandidateActivity, "id" | "createdAt" | "createdBy">) {
@@ -117,8 +137,12 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
   }
   if (!candidate) return null;
 
-  const progressCount = Object.values(candidate.progress ?? {}).filter(Boolean).length;
-  const pct = Math.round((progressCount / 5) * 100);
+  const customMilestones: CustomMilestone[] = candidate.progress.custom ?? [];
+  const standardDone = progressSteps.filter((s) => candidate.progress[s.key as keyof typeof candidate.progress]).length;
+  const customDone = customMilestones.filter((m) => m.done).length;
+  const progressCount = standardDone + customDone;
+  const totalMilestones = 5 + customMilestones.length;
+  const pct = totalMilestones > 0 ? Math.round((progressCount / totalMilestones) * 100) : 0;
   const activities = candidate.activities ?? [];
   const jobCount = activities.filter((a) => a.type === "job").length;
   const eventCount = activities.filter((a) => a.type === "event").length;
@@ -168,7 +192,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
               <InfoRow label="Duration" value={candidate.duration} />
               <InfoRow label="Date Started" value={candidate.dateStarted ? new Date(candidate.dateStarted).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—"} />
               <InfoRow label="End Date" value={candidate.endDate ? new Date(candidate.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—"} />
-              <InfoRow label="Sessions Done" value={`${progressCount} / 5`} />
+              <InfoRow label="Sessions Done" value={`${progressCount} / ${totalMilestones}`} />
               {candidate.oldPlacement && <InfoRow label="From" value={candidate.oldPlacement} />}
               {candidate.newPlacement && <InfoRow label="Target / New" value={candidate.newPlacement} />}
               {candidate.position && <InfoRow label="Position" value={candidate.position} />}
@@ -177,34 +201,17 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
           </div>
 
           {/* Program Milestones */}
-          <div className="rounded-xl border border-border bg-card p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="font-semibold text-foreground">Program Milestones</h2>
-              <span className="text-sm text-muted-foreground">{progressCount}/5 complete · {pct}%</span>
-            </div>
-            <div className="mb-4 h-2 overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${pct}%` }} />
-            </div>
-            <div className="space-y-2">
-              {progressSteps.map((step, i) => {
-                const done = candidate.progress[step.key as keyof typeof candidate.progress];
-                return (
-                  <button key={step.key} onClick={() => toggleProgress(step.key)}
-                    className="flex w-full items-center gap-3 rounded-lg border border-border px-4 py-3 text-left transition-colors hover:bg-sidebar-accent">
-                    <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                      done ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground")}>
-                      {i + 1}
-                    </div>
-                    {done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
-                    <span className={cn("text-sm font-medium", done ? "text-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
-                      {step.label}
-                    </span>
-                    <span className="ml-auto text-xs text-muted-foreground">{done ? "Complete" : "Pending"}</span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <MilestonesPanel
+            candidate={candidate}
+            progressCount={progressCount}
+            totalMilestones={totalMilestones}
+            pct={pct}
+            customMilestones={customMilestones}
+            onToggleStandard={toggleProgress}
+            onAddCustom={addCustomMilestone}
+            onToggleCustom={toggleCustomMilestone}
+            onRemoveCustom={removeCustomMilestone}
+          />
 
           {/* Notes */}
           {candidate.notes && (
@@ -270,6 +277,116 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
       {showEdit && (
         <CandidateModal candidate={candidate} isAdmin={isAdmin} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load(); }} />
       )}
+    </div>
+  );
+}
+
+/* ─── Milestones Panel ─── */
+function MilestonesPanel({
+  candidate, progressCount, totalMilestones, pct, customMilestones,
+  onToggleStandard, onAddCustom, onToggleCustom, onRemoveCustom,
+}: {
+  candidate: Candidate;
+  progressCount: number;
+  totalMilestones: number;
+  pct: number;
+  customMilestones: CustomMilestone[];
+  onToggleStandard: (key: string) => void;
+  onAddCustom: (label: string) => void;
+  onToggleCustom: (id: string) => void;
+  onRemoveCustom: (id: string) => void;
+}) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+
+  function handleAdd() {
+    const trimmed = newLabel.trim();
+    if (!trimmed) return;
+    onAddCustom(trimmed);
+    setNewLabel("");
+    setShowAdd(false);
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-semibold text-foreground">Program Milestones</h2>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">{progressCount}/{totalMilestones} complete · {pct}%</span>
+          <button onClick={() => setShowAdd((v) => !v)}
+            className="flex items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground transition-colors">
+            <Plus className="h-3.5 w-3.5" /> Add
+          </button>
+        </div>
+      </div>
+
+      <div className="mb-4 h-2 overflow-hidden rounded-full bg-muted">
+        <div className="h-full rounded-full bg-primary transition-all duration-500" style={{ width: `${pct}%` }} />
+      </div>
+
+      <div className="space-y-2">
+        {/* Fixed milestones */}
+        {progressSteps.map((step, i) => {
+          const done = candidate.progress[step.key as keyof typeof candidate.progress];
+          return (
+            <button key={step.key} onClick={() => onToggleStandard(step.key)}
+              className="flex w-full items-center gap-3 rounded-lg border border-border px-4 py-3 text-left transition-colors hover:bg-sidebar-accent">
+              <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                done ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground")}>
+                {i + 1}
+              </div>
+              {done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
+              <span className={cn("text-sm font-medium", done ? "text-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
+                {step.label}
+              </span>
+              <span className="ml-auto text-xs text-muted-foreground">{done ? "Complete" : "Pending"}</span>
+            </button>
+          );
+        })}
+
+        {/* Custom milestones */}
+        {customMilestones.map((m, i) => (
+          <div key={m.id} className="flex w-full items-center gap-3 rounded-lg border border-dashed border-border px-4 py-3 transition-colors hover:bg-sidebar-accent group">
+            <button onClick={() => onToggleCustom(m.id)} className="flex flex-1 items-center gap-3 text-left">
+              <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                m.done ? "bg-emerald-500/20 text-emerald-400" : "bg-violet-500/10 text-violet-400")}>
+                <Flag className="h-3.5 w-3.5" />
+              </div>
+              {m.done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
+              <span className={cn("text-sm font-medium", m.done ? "text-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
+                {m.label}
+              </span>
+              <span className="ml-auto text-xs text-muted-foreground">{m.done ? "Complete" : "Pending"}</span>
+            </button>
+            <button onClick={() => onRemoveCustom(m.id)}
+              className="ml-2 shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-all">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+
+        {/* Add custom form */}
+        {showAdd && (
+          <div className="flex items-center gap-2 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-4 py-3">
+            <Flag className="h-4 w-4 shrink-0 text-primary/60" />
+            <input
+              autoFocus
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAdd(); if (e.key === "Escape") setShowAdd(false); }}
+              placeholder="Milestone name…"
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground focus:outline-none"
+            />
+            <button onClick={handleAdd} disabled={!newLabel.trim()}
+              className="rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-40 transition-opacity">
+              Add
+            </button>
+            <button onClick={() => { setShowAdd(false); setNewLabel(""); }} className="text-muted-foreground hover:text-foreground transition-colors">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

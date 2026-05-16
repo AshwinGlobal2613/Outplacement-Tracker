@@ -24,12 +24,19 @@ export interface PasswordResetToken {
 export type SupportLevel = "Low" | "Low-Mid" | "Mid" | "Mid-High" | "High";
 export type CandidateStatus = "referred" | "active" | "candidate_reached" | "completed" | "declined";
 
+export interface CustomMilestone {
+  id: string;
+  label: string;
+  done: boolean;
+}
+
 export interface CandidateProgress {
   introductorySession: boolean;
   cvSessions: boolean;
   linkedinProfile: boolean;
   profiling: boolean;
   networkingPersonalBranding: boolean;
+  custom?: CustomMilestone[];
 }
 
 export type DiscDoneStatus = "Done" | "Not Done";
