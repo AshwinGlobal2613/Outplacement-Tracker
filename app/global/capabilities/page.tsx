@@ -1,37 +1,38 @@
-'use client'
+﻿'use client'
 
 import { useState, useEffect, useRef } from 'react'
 import {
   Menu, X, ArrowRight, Globe2, Linkedin,
   TrendingUp, Users, Zap, Award, Check,
 } from 'lucide-react'
+import GlobalFooter from '../_components/GlobalFooter'
 
-/* ─────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Custom SVG icons (Three C's)
-───────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-/* Capacity — three people, solid fill, verified badge */
+/* Capacity â€” three people, solid fill, verified badge */
 function CapacityIcon({ size = 28, color = 'currentColor' }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 88" fill={color}>
-      {/* Left person — head */}
+      {/* Left person â€” head */}
       <circle cx="19" cy="26" r="12" />
-      {/* Left person — body */}
+      {/* Left person â€” body */}
       <path d="M0 62 Q1 44 19 44 Q28 44 33 51 L33 62 Z" />
 
-      {/* Right person — head */}
+      {/* Right person â€” head */}
       <circle cx="81" cy="26" r="12" />
-      {/* Right person — body */}
+      {/* Right person â€” body */}
       <path d="M100 62 Q99 44 81 44 Q72 44 67 51 L67 62 Z" />
 
-      {/* Centre person — head (larger, in front) */}
+      {/* Centre person â€” head (larger, in front) */}
       <circle cx="50" cy="21" r="16" />
-      {/* Centre person — body */}
+      {/* Centre person â€” body */}
       <path d="M18 64 Q18 46 50 46 Q82 46 82 64 Z" />
 
       {/* Badge circle */}
       <circle cx="50" cy="73" r="17" />
-      {/* Checkmark — white cutout */}
+      {/* Checkmark â€” white cutout */}
       <path
         d="M41 73 L47.5 80 L62 64"
         stroke="white" strokeWidth="5"
@@ -42,13 +43,13 @@ function CapacityIcon({ size = 28, color = 'currentColor' }: { size?: number; co
   )
 }
 
-/* Creativity — paint palette + diagonal brush, outline */
+/* Creativity â€” paint palette + diagonal brush, outline */
 function CreativityIcon({ size = 28, color = 'currentColor' }: { size?: number; color?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 100 100" fill="none"
       stroke={color} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
       {/*
-        Palette: organic kidney/palette shape — wide lower-left,
+        Palette: organic kidney/palette shape â€” wide lower-left,
         concave notch on upper-right where thumb hole sits.
       */}
       <path d="
@@ -62,26 +63,26 @@ function CreativityIcon({ size = 28, color = 'currentColor' }: { size?: number; 
         C 6  44, 12 26, 26 18
         C 33 13, 40 15, 46 14 Z
       " />
-      {/* Thumb hole — upper right area */}
+      {/* Thumb hole â€” upper right area */}
       <circle cx="67" cy="31" r="7.5" />
       {/* Three paint colour circles on left face */}
       <circle cx="34" cy="42" r="6" />
       <circle cx="44" cy="57" r="6" />
       <circle cx="34" cy="66" r="6" />
-      {/* Brush handle — diagonal lower-left → upper-right */}
+      {/* Brush handle â€” diagonal lower-left â†’ upper-right */}
       <line x1="12" y1="92" x2="74" y2="18" />
-      {/* Ferrule — thick band near tip */}
+      {/* Ferrule â€” thick band near tip */}
       <path d="M69 23 L77 13" strokeWidth="6.5" strokeLinecap="round" />
-      {/* Bristle tip — small filled triangle */}
+      {/* Bristle tip â€” small filled triangle */}
       <path d="M74 18 L82 8 L76 14 Z" fill={color} stroke="none" />
     </svg>
   )
 }
 
-/* Capability — raised fist inside hub-and-spoke ring, outline */
+/* Capability â€” raised fist inside hub-and-spoke ring, outline */
 function CapabilityIcon({ size = 28, color = 'currentColor' }: { size?: number; color?: string }) {
   const cx = 50, cy = 46, r = 25
-  // 7 evenly-spaced spokes (-90° = top, clockwise)
+  // 7 evenly-spaced spokes (-90Â° = top, clockwise)
   const angles = Array.from({ length: 7 }, (_, i) => -90 + i * (360 / 7))
   const spokes = angles.map(deg => {
     const rad = (deg * Math.PI) / 180
@@ -110,7 +111,7 @@ function CapabilityIcon({ size = 28, color = 'currentColor' }: { size?: number; 
         </g>
       ))}
 
-      {/* ── Raised fist ── */}
+      {/* â”€â”€ Raised fist â”€â”€ */}
       {/*
         Single closed outline: 4 knuckle bumps across the top,
         straight sides, curved palm at bottom.
@@ -125,7 +126,7 @@ function CapabilityIcon({ size = 28, color = 'currentColor' }: { size?: number; 
         Q 69 60 51 62
         Q 33 60 33 46 Z
       " />
-      {/* Thumb — protrudes left */}
+      {/* Thumb â€” protrudes left */}
       <path d="M 33 50 Q 28 48 26 52 Q 25 57 28 60 Q 31 62 33 60" />
       {/* Knuckle dividers (finger crease lines) */}
       <line x1="43" y1="34" x2="43" y2="46" />
@@ -135,9 +136,9 @@ function CapabilityIcon({ size = 28, color = 'currentColor' }: { size?: number; 
   )
 }
 
-/* ─────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Brand tokens
-───────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const C = {
   dark:  '#0d0a12',
   dark2: '#1a1225',
@@ -149,9 +150,9 @@ const C = {
   white: '#f5f3f7',
 }
 
-/* ─────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Data
-───────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 const THREE_CS = [
   {
     title: 'Capacity',
@@ -214,7 +215,7 @@ const SERVICES = [
       'B2B Matchmaking & Channel Management',
       'Marketing & Branding',
       'CX3: Customer Experience, Expectation, Excellence',
-      'And more…',
+      'And moreâ€¦',
     ],
     accent: C.gold,
     glow: 'rgba(254,219,153,0.12)',
@@ -225,8 +226,8 @@ const SERVICES = [
     tagline: 'Authorized Partners of powerful profiling tools; used by millions of people across the world.',
     desc: 'Using tools backed by science and research, Everything DiSC and the Five Behaviors are culture catalysts. They come with actionable insights where any individual, team, or organization is given the tools and knowledge to shape their workforce for the better.',
     items: [
-      'Everything DiSC® — Individual profiling across leadership, management, sales, and EQ, with comparisons and online tools',
-      'The Five Behaviors® — Team profiling and diagnostics, built with Patrick Lencioni, author of the Five Dysfunctions of a Team',
+      'Everything DiSCÂ® â€” Individual profiling across leadership, management, sales, and EQ, with comparisons and online tools',
+      'The Five BehaviorsÂ® â€” Team profiling and diagnostics, built with Patrick Lencioni, author of the Five Dysfunctions of a Team',
     ],
     accent: C.mauve,
     glow: 'rgba(156,136,155,0.18)',
@@ -234,6 +235,7 @@ const SERVICES = [
       '/partners/ED_AuthorizedPartner_Badge_WhiteBlue@2x.png',
       '/partners/5B_Badge_AuthorizedPartnerRedWhite@2x.png',
     ],
+    href: '/global/assessments',
   },
 ]
 
@@ -304,9 +306,9 @@ const CLIENTS: { industry: string; clients: string[] }[] = [
   },
 ]
 
-/* ─────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Nav
-───────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Nav() {
   const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
@@ -322,7 +324,7 @@ function Nav() {
     { label: 'Capabilities', href: '/global/capabilities' },
     { label: 'About Us',     href: '/global/about-us' },
     { label: 'Assessments',  href: '/global/assessments' },
-    { label: 'Contact',      href: '/global#contact' },
+    { label: 'Contact',      href: '/global/contact' },
   ]
   const active = 'Capabilities'
 
@@ -337,20 +339,8 @@ function Nav() {
     }}>
       <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 72 }}>
         {/* Logo */}
-        <a href="/global" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 8,
-            background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: `0 0 16px rgba(190,55,88,0.5)`,
-          }}>
-            <Globe2 size={18} color="#fff" />
-          </div>
-          <span style={{
-            fontWeight: 800, fontSize: 20, letterSpacing: 3,
-            background: `linear-gradient(90deg, ${C.white}, ${C.gold})`,
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>GLOBAL</span>
+        <a href="/global" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+          <img src="/2021%20Logo%20-%20White%20Text.png" alt="Global Management Consultant" style={{ height: 90, objectFit: 'contain' }} />
         </a>
 
         {/* Desktop links */}
@@ -377,7 +367,7 @@ function Nav() {
             )
           })}
           <a
-            href="/global#contact"
+            href="/global/contact"
             style={{
               padding: '10px 24px', borderRadius: 50,
               background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
@@ -431,9 +421,9 @@ function Nav() {
   )
 }
 
-/* ─────────────────────────────────────────────
-   Hero — Grow With Us
-───────────────────────────────────────────── */
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+   Hero â€” Grow With Us
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function Hero() {
   return (
     <section style={{
@@ -541,9 +531,9 @@ function Hero() {
   )
 }
 
-/* ─────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Service card
-───────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function ServiceCard({ s, index }: { s: typeof SERVICES[number]; index: number }) {
   const [hov, setHov] = useState(false)
   const isEven = index % 2 === 0
@@ -682,7 +672,7 @@ function ServiceCard({ s, index }: { s: typeof SERVICES[number]; index: number }
       {/* CTA */}
       <div style={{ marginTop: 'auto' }}>
         <a
-          href="/global#contact"
+          href={s.href ?? '/global/contact'}
           style={{
             display: 'inline-flex', alignItems: 'center', gap: 8,
             padding: '11px 24px', borderRadius: 50,
@@ -703,9 +693,9 @@ function ServiceCard({ s, index }: { s: typeof SERVICES[number]; index: number }
   )
 }
 
-/* ─────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    What We Do
-───────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function WhatWeDo() {
   return (
     <section style={{ padding: '100px 5%', background: C.dark }}>
@@ -734,7 +724,7 @@ function WhatWeDo() {
           </p>
         </div>
 
-        {/* 2×2 grid */}
+        {/* 2Ã—2 grid */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(480px, 1fr))',
@@ -749,9 +739,9 @@ function WhatWeDo() {
   )
 }
 
-/* ─────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Our Clients
-───────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 function OurClients() {
   const sectionRef = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
@@ -927,99 +917,13 @@ function IndustryCard({
   )
 }
 
-/* ─────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Footer
-───────────────────────────────────────────── */
-function Footer() {
-  return (
-    <footer style={{
-      padding: '52px 5% 32px',
-      background: '#080610',
-      borderTop: '1px solid rgba(156,136,155,0.12)',
-    }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 24, marginBottom: 48 }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 8,
-              background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Globe2 size={18} color="#fff" />
-            </div>
-            <span style={{
-              fontWeight: 800, fontSize: 18, letterSpacing: 3,
-              background: `linear-gradient(90deg, ${C.white}, ${C.gold})`,
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            }}>GLOBAL</span>
-          </div>
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
-          {/* Links */}
-          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-            {[
-              { label: 'Home', href: '/global' },
-              { label: 'Capabilities', href: '/global/capabilities' },
-              { label: 'About Us', href: '/global/about-us' },
-              { label: 'Assessments', href: '/global/assessments' },
-              { label: 'Contact', href: '/global#contact' },
-            ].map(({ label, href }) => (
-              <a key={label} href={href} style={{
-                color: C.mauve, fontSize: 13, textDecoration: 'none', fontWeight: 500,
-                transition: 'color 0.2s',
-              }}
-                onMouseEnter={e => (e.currentTarget.style.color = C.white)}
-                onMouseLeave={e => (e.currentTarget.style.color = C.mauve)}
-              >
-                {label}
-              </a>
-            ))}
-          </div>
-
-          {/* Social */}
-          <div style={{ display: 'flex', gap: 12 }}>
-            <a href="#" style={{
-              width: 38, height: 38, borderRadius: 10,
-              background: 'rgba(51,42,63,0.6)',
-              border: '1px solid rgba(156,136,155,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              color: C.mauve, textDecoration: 'none',
-              transition: 'border-color 0.2s, color 0.2s',
-            }}
-              onMouseEnter={e => {
-                e.currentTarget.style.borderColor = C.rose
-                e.currentTarget.style.color = C.white
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.borderColor = 'rgba(156,136,155,0.2)'
-                e.currentTarget.style.color = C.mauve
-              }}
-            >
-              <Linkedin size={16} />
-            </a>
-          </div>
-        </div>
-
-        <div style={{
-          borderTop: '1px solid rgba(156,136,155,0.1)',
-          paddingTop: 24,
-          display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-        }}>
-          <p style={{ color: C.mauve, fontSize: 13, margin: 0, opacity: 0.6 }}>
-            © {new Date().getFullYear()} Global Management Consultant. All rights reserved.
-          </p>
-          <p style={{ color: C.mauve, fontSize: 13, margin: 0, opacity: 0.6 }}>
-            The Business Design Company
-          </p>
-        </div>
-      </div>
-    </footer>
-  )
-}
-
-/* ─────────────────────────────────────────────
+/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
    Page
-───────────────────────────────────────────── */
+â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 export default function CapabilitiesPage() {
   return (
     <main style={{
@@ -1032,7 +936,10 @@ export default function CapabilitiesPage() {
       <Hero />
       <WhatWeDo />
       <OurClients />
-      <Footer />
+      <GlobalFooter />
     </main>
   )
 }
+
+
+

@@ -10,6 +10,7 @@ export function TopBar() {
   const { data: session } = useSession();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
   // Redirect first-login users to set their own password
   useEffect(() => {
@@ -17,7 +18,6 @@ export function TopBar() {
       router.replace("/change-password");
     }
   }, [session, router]);
-  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handle(e: MouseEvent) {

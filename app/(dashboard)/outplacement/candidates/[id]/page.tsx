@@ -56,9 +56,14 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
   const [deleting, setDeleting] = useState(false);
 
   async function load() {
-    const res = await fetch(`/api/candidates/${params.id}`);
-    if (!res.ok) { router.push(backHref); return; }
-    setCandidate(await res.json());
+    try {
+      const res = await fetch(`/api/candidates/${params.id}`);
+      if (!res.ok) { router.push(backHref); return; }
+      setCandidate(await res.json());
+    } catch {
+      router.push(backHref);
+      return;
+    }
     setLoading(false);
   }
 
@@ -112,7 +117,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
   }
   if (!candidate) return null;
 
-  const progressCount = Object.values(candidate.progress).filter(Boolean).length;
+  const progressCount = Object.values(candidate.progress ?? {}).filter(Boolean).length;
   const pct = Math.round((progressCount / 5) * 100);
   const activities = candidate.activities ?? [];
   const jobCount = activities.filter((a) => a.type === "job").length;

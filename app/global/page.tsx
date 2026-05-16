@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import {
@@ -16,6 +16,7 @@ import {
   ChevronRight,
   Quote,
 } from 'lucide-react'
+import GlobalFooter from './_components/GlobalFooter'
 
 /* ─────────────────────────────────────────────
    Brand tokens
@@ -73,13 +74,15 @@ const LEADERS = [
     bio: 'A seasoned Managing Partner with cross-functional expertise, a sustainability advocate, and a psychologist. She progressed from Junior Consultant to driving business verticals, caring for clients, and fostering community success.',
     image: '/team/shayan.jpg',
     imagePosition: '50% 5%',
+    linkedin: 'https://www.linkedin.com/in/shayanazhar?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3B2BTBIFA5RJmcQuaUKmoWkw%3D%3D',
   },
   {
     name: 'Saira Akbar',
     title: 'Founder',
-    bio: 'A seasoned leader with cross-functional expertise, a sustainability advocate, and a psychologist. She progressed from Junior Consultant to driving business verticals, caring for clients, and fostering community success.',
+    bio: 'Saira is a visionary and transformative leader with a global perspective who can help businesses overcome challenges and succeed. She is also a skilled leadership developer and a trusted advisor.',
     image: '/team/saira.jpg',
     imagePosition: '50% 5%',
+    linkedin: 'https://www.linkedin.com/in/sairaakbar?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3BDrfNfV5%2FSAyTnBg32RYjUA%3D%3D',
   },
   {
     name: 'Mahreen Qazi',
@@ -87,6 +90,7 @@ const LEADERS = [
     bio: 'A skilled leader with a passion for business growth. She builds strong relationships, fosters collaboration, and drives results — a creative thinker and problem solver for complex challenges.',
     image: '/team/mahreen.jpg',
     imagePosition: '50% 5%',
+    linkedin: 'https://www.linkedin.com/in/mahreenqazi?lipi=urn%3Ali%3Apage%3Ad_flagship3_profile_view_base_contact_details%3B3pyjF1lgQT6ssHT2BNSK2Q%3D%3D',
   },
 ]
 
@@ -212,7 +216,7 @@ function Navbar() {
     { label: 'Capabilities', href: '/global/capabilities' },
     { label: 'About Us',     href: '/global/about-us' },
     { label: 'Assessments',  href: '/global/assessments' },
-    { label: 'Contact',      href: '#contact' },
+    { label: 'Contact',      href: '/global/contact' },
   ]
   const active = 'Home'
 
@@ -229,20 +233,8 @@ function Navbar() {
     >
       <div style={{ maxWidth: 1280, margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 72 }}>
         {/* Logo */}
-        <a href="/global" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
-            width: 36, height: 36, borderRadius: 8,
-            background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: `0 0 16px rgba(190,55,88,0.5)`,
-          }}>
-            <Globe2 size={18} color="#fff" />
-          </div>
-          <span style={{
-            fontWeight: 800, fontSize: 20, letterSpacing: 3,
-            background: `linear-gradient(90deg, ${C.white}, ${C.gold})`,
-            WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-          }}>GLOBAL</span>
+        <a href="/global" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center' }}>
+          <img src="/2021%20Logo%20-%20White%20Text.png" alt="Global Management Consultant" style={{ height: 90, objectFit: 'contain' }} />
         </a>
 
         {/* Desktop links */}
@@ -269,7 +261,7 @@ function Navbar() {
             )
           })}
           <a
-            href="#contact"
+            href="/global/contact"
             style={{
               padding: '10px 24px', borderRadius: 50,
               background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
@@ -500,7 +492,7 @@ function HeroSection() {
 
             <div data-reveal data-delay="0.3" style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
               <a
-                href="#contact"
+                href="/global/contact"
                 style={{
                   display: 'inline-flex', alignItems: 'center', gap: 8,
                   padding: '14px 32px', borderRadius: 50,
@@ -520,27 +512,6 @@ function HeroSection() {
                 }}
               >
                 START YOUR JOURNEY <ArrowRight size={16} />
-              </a>
-              <a
-                href="#team"
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  padding: '14px 32px', borderRadius: 50,
-                  border: `1px solid rgba(156,136,155,0.4)`,
-                  color: C.white, fontWeight: 600, fontSize: 14,
-                  textDecoration: 'none', letterSpacing: 1,
-                  transition: 'border-color 0.2s, color 0.2s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = C.rose
-                  e.currentTarget.style.color = C.rose
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'rgba(156,136,155,0.4)'
-                  e.currentTarget.style.color = C.white
-                }}
-              >
-                MEET THE TEAM
               </a>
             </div>
           </div>
@@ -787,7 +758,7 @@ function LeaderCard({ leader, delay }: { leader: typeof LEADERS[number]; delay: 
             width: '100%', height: '100%',
             objectFit: 'cover',
             objectPosition: leader.imagePosition,
-            filter: 'grayscale(100%) contrast(1.08) brightness(0.92)',
+            filter: 'contrast(1.05) brightness(0.95)',
             transform: hovered ? 'scale(1.06)' : 'scale(1)',
             transition: 'transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.3s ease',
             opacity: imgError ? 0 : 1,
@@ -870,13 +841,42 @@ function LeaderCard({ leader, delay }: { leader: typeof LEADERS[number]; delay: 
 
         {/* Bio */}
         <p style={{
-          color: C.mauve, fontSize: 13.5, lineHeight: 1.8, margin: 0,
+          color: C.mauve, fontSize: 13.5, lineHeight: 1.8, margin: '0 0 20px',
           opacity: hovered ? 1 : 0,
           transform: hovered ? 'translateY(0)' : 'translateY(16px)',
           transition: 'opacity 0.4s ease 0.22s, transform 0.4s ease 0.22s',
         }}>
           {leader.bio}
         </p>
+
+        {/* LinkedIn */}
+        <a
+          href={leader.linkedin}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={e => e.stopPropagation()}
+          style={{
+            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+            width: 36, height: 36, borderRadius: 8,
+            background: 'rgba(156,136,155,0.15)',
+            border: '1px solid rgba(156,136,155,0.25)',
+            color: C.mauve,
+            textDecoration: 'none',
+            opacity: hovered ? 1 : 0,
+            transform: hovered ? 'translateY(0)' : 'translateY(16px)',
+            transition: 'opacity 0.4s ease 0.3s, transform 0.4s ease 0.3s, background 0.2s, border-color 0.2s',
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.background = 'rgba(190,55,88,0.2)'
+            e.currentTarget.style.borderColor = 'rgba(190,55,88,0.5)'
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.background = 'rgba(156,136,155,0.15)'
+            e.currentTarget.style.borderColor = 'rgba(156,136,155,0.25)'
+          }}
+        >
+          <Linkedin size={16} />
+        </a>
       </div>
     </div>
   )
@@ -1124,30 +1124,12 @@ function TestimonialsSection() {
           }}>
             "{t.quote}"
           </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <div style={{ textAlign: 'center' }}>
             <div style={{
-              height: 70, maxWidth: 198, flexShrink: 0,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '8px 14px',
-              background: 'rgba(255,255,255,0.18)',
-              backdropFilter: 'blur(12px)',
-              borderRadius: 10,
-              border: '1px solid rgba(255,255,255,0.22)',
-            }}>
-              <img
-                src={t.logo}
-                alt={t.company}
-                style={{
-                  height: '100%', width: 'auto',
-                  maxWidth: 198,
-                  objectFit: 'contain',
-                  display: 'block',
-                }}
-              />
-            </div>
-            <div>
-              <div style={{ color: C.white, fontWeight: 700, fontSize: 15 }}>{t.company}</div>
-            </div>
+              fontWeight: 800, fontSize: 23,
+              background: 'linear-gradient(135deg, #BE3758, #FE5656)',
+              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+            }}>{t.company}</div>
           </div>
         </div>
 
@@ -1218,191 +1200,135 @@ function TestimonialsSection() {
 }
 
 /* ─────────────────────────────────────────────
-   CTA / Contact Section
+   Accelerate Section
 ───────────────────────────────────────────── */
-function CTASection() {
-  const [name, setName] = useState('')
-  const [email, setEmail] = useState('')
-  const [message, setMessage] = useState('')
-  const [sent, setSent] = useState(false)
-  const [sending, setSending] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!name || !email || !message) return
-    setSending(true)
-    // Build mailto link
-    const subject = encodeURIComponent(`Website Enquiry from ${name}`)
-    const body = encodeURIComponent(`Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`)
-    window.location.href = `mailto:team@global-dubai.com?subject=${subject}&body=${body}`
-    setTimeout(() => {
-      setSending(false)
-      setSent(true)
-    }, 1000)
-  }
-
-  const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '14px 18px', borderRadius: 12,
-    background: 'rgba(51,42,63,0.6)', backdropFilter: 'blur(12px)',
-    border: '1px solid rgba(156,136,155,0.25)',
-    color: C.white, fontSize: 15, outline: 'none',
-    transition: 'border-color 0.2s',
-    boxSizing: 'border-box',
-  }
-
+function AccelerateSection() {
   return (
-    <section
-      id="contact"
-      style={{
-        padding: '100px 5%',
-        background: `linear-gradient(135deg, ${C.dark2} 0%, ${C.dark} 50%, rgba(190,55,88,0.05) 100%)`,
-        position: 'relative', overflow: 'hidden',
-      }}
-    >
-      {/* Large glow behind */}
+    <section style={{
+      padding: '120px 5%',
+      position: 'relative',
+      overflow: 'hidden',
+      background: `linear-gradient(135deg, ${C.dark2} 0%, ${C.dark} 60%, rgba(190,55,88,0.04) 100%)`,
+    }}>
+      {/* Background glow orbs */}
       <div style={{
         position: 'absolute', top: '50%', left: '50%',
-        transform: 'translate(-50%,-50%)',
-        width: 700, height: 400, borderRadius: '50%',
-        background: 'radial-gradient(ellipse, rgba(190,55,88,0.12), transparent 70%)',
+        transform: 'translate(-50%, -50%)',
+        width: 900, height: 500, borderRadius: '50%',
+        background: `radial-gradient(ellipse, rgba(190,55,88,0.13) 0%, transparent 65%)`,
+        filter: 'blur(40px)', pointerEvents: 'none',
+      }} />
+      <div style={{
+        position: 'absolute', top: '-20%', right: '-10%',
+        width: 500, height: 500, borderRadius: '50%',
+        background: `radial-gradient(ellipse, rgba(254,86,86,0.07) 0%, transparent 65%)`,
         filter: 'blur(60px)', pointerEvents: 'none',
       }} />
 
-      <div style={{ maxWidth: 1280, margin: '0 auto', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', gap: 80, flexWrap: 'wrap', alignItems: 'center' }}>
-          {/* Left */}
-          <div style={{ flex: '1 1 380px' }}>
-            <p data-reveal style={{ color: C.rose, fontSize: 12, fontWeight: 700, letterSpacing: 4, marginBottom: 12 }}>
-              GET IN TOUCH
-            </p>
-            <h2 data-reveal data-delay="0.1" style={{
-              fontSize: 'clamp(32px,4vw,54px)', fontWeight: 900,
-              color: C.white, margin: '0 0 16px', letterSpacing: -1, lineHeight: 1.1,
-            }}>
-              Ready to accelerate your success?
-            </h2>
-            <h3 data-reveal data-delay="0.2" style={{
-              fontSize: 'clamp(18px,2vw,26px)', fontWeight: 600,
-              color: C.gold, margin: '0 0 24px',
-            }}>
-              Leap towards outcomes
-            </h3>
-            <p data-reveal data-delay="0.3" style={{ color: C.mauve, fontSize: 15, lineHeight: 1.8, maxWidth: 420 }}>
-              Find out why over <strong style={{ color: C.white }}>85% of our customers</strong> come back to work with us or refer us to their friends and colleagues.
-            </p>
-            <div data-reveal data-delay="0.4" style={{ marginTop: 40, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {[
-                { Icon: Mail, label: 'team@global-dubai.com' },
-                { Icon: MapPin, label: 'Dubai, United Arab Emirates' },
-                { Icon: Globe2, label: 'global-dubai.com' },
-              ].map(({ Icon, label }) => (
-                <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div style={{
-                    width: 38, height: 38, borderRadius: 10, flexShrink: 0,
-                    background: 'rgba(190,55,88,0.15)',
-                    border: '1px solid rgba(190,55,88,0.3)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <Icon size={16} color={C.rose} />
-                  </div>
-                  <span style={{ color: C.mauve, fontSize: 14 }}>{label}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* Top border line */}
+      <div style={{
+        position: 'absolute', top: 0, left: 0, right: 0, height: 1,
+        background: `linear-gradient(90deg, transparent, rgba(190,55,88,0.5), transparent)`,
+      }} />
 
-          {/* Right: contact form */}
-          <div data-reveal data-delay="0.2" style={{ flex: '1 1 380px' }}>
-            {sent ? (
-              <div style={{
-                padding: '52px 40px', textAlign: 'center',
-                background: C.card, backdropFilter: 'blur(20px)',
-                border: `1px solid rgba(190,55,88,0.3)`, borderRadius: 24,
-              }}>
-                <div style={{
-                  width: 72, height: 72, borderRadius: '50%', margin: '0 auto 20px',
-                  background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 32,
-                }}>✓</div>
-                <h3 style={{ color: C.white, fontSize: 22, fontWeight: 700, marginBottom: 12 }}>
-                  Message sent!
-                </h3>
-                <p style={{ color: C.mauve, lineHeight: 1.7 }}>
-                  Thank you for reaching out. We'll be in touch shortly at {email}.
-                </p>
-              </div>
-            ) : (
-              <form
-                onSubmit={handleSubmit}
-                style={{
-                  background: C.card, backdropFilter: 'blur(20px)',
-                  border: '1px solid rgba(156,136,155,0.2)',
-                  borderRadius: 24, padding: '40px 36px',
-                  display: 'flex', flexDirection: 'column', gap: 18,
-                }}
-              >
-                <h3 style={{ color: C.white, fontSize: 20, fontWeight: 700, margin: '0 0 4px' }}>
-                  Send us a message
-                </h3>
-                <input
-                  style={inputStyle}
-                  placeholder="Your name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  onFocus={e => (e.target.style.borderColor = C.rose)}
-                  onBlur={e => (e.target.style.borderColor = 'rgba(156,136,155,0.25)')}
-                  required
-                />
-                <input
-                  style={inputStyle}
-                  type="email"
-                  placeholder="Email address"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  onFocus={e => (e.target.style.borderColor = C.rose)}
-                  onBlur={e => (e.target.style.borderColor = 'rgba(156,136,155,0.25)')}
-                  required
-                />
-                <textarea
-                  style={{ ...inputStyle, minHeight: 120, resize: 'vertical', fontFamily: 'inherit' }}
-                  placeholder="Tell us about your project or goals..."
-                  value={message}
-                  onChange={e => setMessage(e.target.value)}
-                  onFocus={e => (e.target.style.borderColor = C.rose)}
-                  onBlur={e => (e.target.style.borderColor = 'rgba(156,136,155,0.25)')}
-                  required
-                />
-                <button
-                  type="submit"
-                  disabled={sending}
-                  style={{
-                    padding: '15px 28px', borderRadius: 50, border: 'none',
-                    background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
-                    color: '#fff', fontWeight: 700, fontSize: 14,
-                    letterSpacing: 1, cursor: sending ? 'not-allowed' : 'pointer',
-                    opacity: sending ? 0.7 : 1,
-                    boxShadow: `0 8px 30px rgba(190,55,88,0.4)`,
-                    transition: 'transform 0.2s, box-shadow 0.2s',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                  }}
-                  onMouseEnter={e => {
-                    if (!sending) {
-                      ;(e.currentTarget as HTMLElement).style.transform = 'translateY(-2px)'
-                      ;(e.currentTarget as HTMLElement).style.boxShadow = `0 12px 40px rgba(190,55,88,0.55)`
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    ;(e.currentTarget as HTMLElement).style.transform = 'translateY(0)'
-                    ;(e.currentTarget as HTMLElement).style.boxShadow = `0 8px 30px rgba(190,55,88,0.4)`
-                  }}
-                >
-                  {sending ? 'SENDING...' : 'SEND MESSAGE'} {!sending && <ArrowRight size={16} />}
-                </button>
-              </form>
-            )}
-          </div>
+      <div style={{ maxWidth: 900, margin: '0 auto', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+
+        {/* Eyebrow */}
+        <div data-reveal style={{
+          display: 'inline-flex', alignItems: 'center', gap: 10,
+          padding: '8px 20px', borderRadius: 50, marginBottom: 36,
+          background: 'rgba(190,55,88,0.1)',
+          border: '1px solid rgba(190,55,88,0.3)',
+        }}>
+          <div style={{ width: 6, height: 6, borderRadius: '50%', background: C.rose }} />
+          <span style={{ color: C.rose, fontSize: 11, fontWeight: 700, letterSpacing: 3 }}>
+            YOUR NEXT STEP
+          </span>
         </div>
+
+        {/* Headline */}
+        <h2 data-reveal data-delay="0.1" style={{
+          fontSize: 'clamp(38px, 5.5vw, 72px)',
+          fontWeight: 900,
+          lineHeight: 1.08,
+          letterSpacing: -2,
+          margin: '0 0 28px',
+          color: C.white,
+        }}>
+          Ready to accelerate{' '}
+          <span style={{
+            background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}>
+            your success?
+          </span>
+        </h2>
+
+        {/* Sub-headline */}
+        <h3 data-reveal data-delay="0.18" style={{
+          fontSize: 'clamp(18px, 2.2vw, 26px)',
+          fontWeight: 600,
+          color: C.gold,
+          margin: '0 0 24px',
+          letterSpacing: 0,
+        }}>
+          Leap towards outcomes
+        </h3>
+
+        {/* Body */}
+        <p data-reveal data-delay="0.26" style={{
+          fontSize: 'clamp(15px, 1.6vw, 18px)',
+          color: C.mauve,
+          lineHeight: 1.85,
+          maxWidth: 620,
+          margin: '0 auto 52px',
+        }}>
+          Find out why over{' '}
+          <strong style={{ color: C.white, fontWeight: 700 }}>85% of our customers</strong>{' '}
+          come back to work with us or refer us to their friends and colleagues.
+        </p>
+
+        {/* CTA button */}
+        <div data-reveal data-delay="0.34" style={{ display: 'flex', justifyContent: 'center', gap: 16, flexWrap: 'wrap' }}>
+          <a
+            href="/global/contact"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 10,
+              padding: '18px 48px', borderRadius: 50,
+              background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
+              color: '#fff', fontWeight: 800, fontSize: 15,
+              textDecoration: 'none', letterSpacing: 1,
+              boxShadow: `0 12px 48px rgba(190,55,88,0.45)`,
+              transition: 'transform 0.25s, box-shadow 0.25s',
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.transform = 'translateY(-4px)'
+              e.currentTarget.style.boxShadow = `0 20px 60px rgba(190,55,88,0.65)`
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.transform = 'translateY(0)'
+              e.currentTarget.style.boxShadow = `0 12px 48px rgba(190,55,88,0.45)`
+            }}
+          >
+            GET IN TOUCH <ArrowRight size={18} />
+          </a>
+        </div>
+
+        {/* Decorative divider below */}
+        <div data-reveal data-delay="0.4" style={{
+          display: 'flex', alignItems: 'center', gap: 16,
+          marginTop: 64, justifyContent: 'center',
+        }}>
+          <div style={{ height: 1, width: 80, background: `linear-gradient(90deg, transparent, rgba(156,136,155,0.3))` }} />
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[C.rose, C.coral, C.gold].map((col, i) => (
+              <div key={i} style={{ width: 6, height: 6, borderRadius: '50%', background: col, opacity: 0.7 }} />
+            ))}
+          </div>
+          <div style={{ height: 1, width: 80, background: `linear-gradient(90deg, rgba(156,136,155,0.3), transparent)` }} />
+        </div>
+
       </div>
     </section>
   )
@@ -1411,87 +1337,6 @@ function CTASection() {
 /* ─────────────────────────────────────────────
    Footer
 ───────────────────────────────────────────── */
-function Footer() {
-  return (
-    <footer style={{
-      padding: '52px 5% 32px',
-      background: '#080610',
-      borderTop: '1px solid rgba(156,136,155,0.12)',
-    }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 24, marginBottom: 48 }}>
-          {/* Logo */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 8,
-              background: `linear-gradient(135deg, ${C.rose}, ${C.coral})`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Globe2 size={18} color="#fff" />
-            </div>
-            <span style={{
-              fontWeight: 800, fontSize: 18, letterSpacing: 3,
-              background: `linear-gradient(90deg, ${C.white}, ${C.gold})`,
-              WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-            }}>GLOBAL</span>
-          </div>
-
-          {/* Links */}
-          <div style={{ display: 'flex', gap: 32, flexWrap: 'wrap' }}>
-            {['Services', 'Team', 'Partners', 'Testimonials', 'Contact'].map(l => (
-              <a key={l} href={`#${l.toLowerCase()}`} style={{
-                color: C.mauve, fontSize: 13, textDecoration: 'none', fontWeight: 500,
-                transition: 'color 0.2s',
-              }}
-                onMouseEnter={e => (e.currentTarget.style.color = C.white)}
-                onMouseLeave={e => (e.currentTarget.style.color = C.mauve)}
-              >
-                {l}
-              </a>
-            ))}
-          </div>
-
-          {/* Social */}
-          <div style={{ display: 'flex', gap: 12 }}>
-            {[Linkedin].map((Icon, i) => (
-              <a key={i} href="#" style={{
-                width: 38, height: 38, borderRadius: 10,
-                background: 'rgba(51,42,63,0.6)',
-                border: '1px solid rgba(156,136,155,0.2)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: C.mauve, transition: 'border-color 0.2s, color 0.2s',
-              }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = C.rose
-                  e.currentTarget.style.color = C.white
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = 'rgba(156,136,155,0.2)'
-                  e.currentTarget.style.color = C.mauve
-                }}
-              >
-                <Icon size={16} />
-              </a>
-            ))}
-          </div>
-        </div>
-
-        <div style={{
-          borderTop: '1px solid rgba(156,136,155,0.1)',
-          paddingTop: 24,
-          display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-        }}>
-          <p style={{ color: C.mauve, fontSize: 13, margin: 0, opacity: 0.6 }}>
-            © {new Date().getFullYear()} Global Management Consultant. All rights reserved.
-          </p>
-          <p style={{ color: C.mauve, fontSize: 13, margin: 0, opacity: 0.6 }}>
-            The Business Design Company
-          </p>
-        </div>
-      </div>
-    </footer>
-  )
-}
 
 /* ─────────────────────────────────────────────
    Page root
@@ -1507,8 +1352,10 @@ export default function GlobalHomePage() {
       <LeadersSection />
       <PartnersSection />
       <TestimonialsSection />
-      <CTASection />
-      <Footer />
+      <AccelerateSection />
+      <GlobalFooter />
     </main>
   )
 }
+
+

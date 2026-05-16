@@ -94,8 +94,13 @@ function CandidatesContent() {
   const [showModal, setShowModal] = useState(false);
 
   async function load() {
-    const res = await fetch("/api/candidates");
-    setCandidates(await res.json());
+    try {
+      const res = await fetch("/api/candidates");
+      const data = await res.json();
+      setCandidates(Array.isArray(data) ? data : []);
+    } catch {
+      setCandidates([]);
+    }
     setLoading(false);
   }
 
@@ -191,13 +196,13 @@ function CandidatesContent() {
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : activeTab === "active" ? (
-        <ActiveTable candidates={filtered} supportColors={supportColors} onRefresh={load} />
+        <ActiveTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab} />
       ) : activeTab === "completed" ? (
-        <CompletedTable candidates={filtered} onRefresh={load} />
+        <CompletedTable candidates={filtered} onRefresh={load} activeTab={activeTab} />
       ) : activeTab === "declined" ? (
-        <DeclinedTable candidates={filtered} onRefresh={load} />
+        <DeclinedTable candidates={filtered} onRefresh={load} activeTab={activeTab} />
       ) : (
-        <SimpleTable candidates={filtered} supportColors={supportColors} onRefresh={load} />
+        <SimpleTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab} />
       )}
 
       {showModal && (
@@ -220,7 +225,7 @@ export default function CandidatesPage() {
 }
 
 /* ─── Referred + Candidate Reached (simple table) ─── */
-function SimpleTable({ candidates, supportColors, onRefresh }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void }) {
+function SimpleTable({ candidates, supportColors, onRefresh, activeTab }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string }) {
   if (candidates.length === 0) return <EmptyState message="No candidates in this status" />;
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -286,7 +291,7 @@ function SimpleTable({ candidates, supportColors, onRefresh }: { candidates: Can
 }
 
 /* ─── Active candidates table ─── */
-function ActiveTable({ candidates, supportColors, onRefresh }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void }) {
+function ActiveTable({ candidates, supportColors, onRefresh, activeTab }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string }) {
   if (candidates.length === 0) return <EmptyState message="No active candidates" />;
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
@@ -364,7 +369,7 @@ function ActiveTable({ candidates, supportColors, onRefresh }: { candidates: Can
 }
 
 /* ─── Completed candidates table ─── */
-function CompletedTable({ candidates, onRefresh }: { candidates: Candidate[]; onRefresh: () => void }) {
+function CompletedTable({ candidates, onRefresh, activeTab }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string }) {
   const placed = candidates.filter((c) => c.jobStatus === "Y").length;
   if (candidates.length === 0) return <EmptyState message="No completed candidates yet" />;
   return (
@@ -436,7 +441,7 @@ function CompletedTable({ candidates, onRefresh }: { candidates: Candidate[]; on
 }
 
 /* ─── Declined candidates table ─── */
-function DeclinedTable({ candidates, onRefresh }: { candidates: Candidate[]; onRefresh: () => void }) {
+function DeclinedTable({ candidates, onRefresh, activeTab }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string }) {
   if (candidates.length === 0) return <EmptyState message="No declined candidates" />;
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">

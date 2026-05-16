@@ -36,20 +36,24 @@ function timeAgo(date: string) {
 
 export default function MyDashboardPage() {
   const { data: session } = useSession();
+  const isAdmin = session?.user?.role === "admin";
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [activity, setActivity] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (session === undefined) return; // wait for session to load
     Promise.all([
-      fetch("/api/candidates").then((r) => r.json()).catch(() => []),
-      fetch("/api/activity").then((r) => r.json()).catch(() => []),
+      fetch("/api/candidates").then((r) => r.ok ? r.json() : []).catch(() => []),
+      isAdmin
+        ? fetch("/api/activity").then((r) => r.ok ? r.json() : []).catch(() => [])
+        : Promise.resolve([]),
     ]).then(([cands, logs]) => {
       setCandidates(Array.isArray(cands) ? cands : []);
       setActivity(Array.isArray(logs) ? logs : []);
       setLoading(false);
     });
-  }, []);
+  }, [isAdmin, session]);
 
   const userName = session?.user?.name ?? "";
   const firstName = userName.split(" ")[0];
