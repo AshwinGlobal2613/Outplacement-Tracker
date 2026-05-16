@@ -168,7 +168,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
               <InfoRow label="Duration" value={candidate.duration} />
               <InfoRow label="Date Started" value={candidate.dateStarted ? new Date(candidate.dateStarted).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—"} />
               <InfoRow label="End Date" value={candidate.endDate ? new Date(candidate.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }) : "—"} />
-              <InfoRow label="Sessions Done" value={candidate.sessionsCompleted.toString()} />
+              <InfoRow label="Sessions Done" value={`${progressCount} / 5`} />
               {candidate.oldPlacement && <InfoRow label="From" value={candidate.oldPlacement} />}
               {candidate.newPlacement && <InfoRow label="Target / New" value={candidate.newPlacement} />}
               {candidate.position && <InfoRow label="Position" value={candidate.position} />}
