@@ -312,9 +312,9 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab }: { cand
         </thead>
         <tbody className="divide-y divide-border">
           {candidates.map((c) => {
-            const standardKeys = ["introductorySession", "cvSessions", "linkedinProfile", "profiling", "networkingPersonalBranding"];
-            const standardDone = standardKeys.filter((k) => (c.progress as Record<string, unknown>)?.[k]).length;
-            const customDone = (c.progress?.custom ?? []).filter((m) => m.done).length;
+            const p = c.progress;
+            const standardDone = [p?.introductorySession, p?.cvSessions, p?.linkedinProfile, p?.profiling, p?.networkingPersonalBranding].filter(Boolean).length;
+            const customDone = (p?.custom ?? []).filter((m) => m.done).length;
             const done = standardDone + customDone;
             const total = 5 + (c.progress?.custom?.length ?? 0);
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
