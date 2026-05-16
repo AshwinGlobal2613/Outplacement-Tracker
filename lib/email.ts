@@ -83,6 +83,45 @@ export async function sendInviteEmail(
   );
 }
 
+export async function sendCandidateAssignedEmail(
+  to: string,
+  recipientName: string,
+  role: "Lead Coach" | "Support",
+  candidateName: string,
+  candidateId: string,
+  partner: string,
+  levelOfSupport: string,
+  duration: string
+): Promise<void> {
+  const candidateUrl = `${BASE_URL}/outplacement/candidates/${candidateId}`;
+  await sendEmail(
+    to,
+    `New Candidate Assigned — ${candidateName}`,
+    `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:36px;border-radius:12px;">
+      <div style="margin-bottom:24px;">
+        <span style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0.5px;">Global Management Consultants</span>
+      </div>
+      <h2 style="color:#a78bfa;margin:0 0 8px;">New Candidate Assigned</h2>
+      <p style="color:#94a3b8;margin:0 0 20px;">Hi ${recipientName}, a new candidate has been assigned to you as <strong style="color:#e2e8f0;">${role}</strong>.</p>
+      <div style="background:#1e293b;border-radius:8px;padding:16px 20px;margin:0 0 24px;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="color:#64748b;font-size:13px;padding:5px 0;">Candidate</td><td style="color:#e2e8f0;font-weight:600;font-size:13px;padding:5px 0;">${candidateName}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:5px 0;">Partner / Client</td><td style="color:#e2e8f0;font-size:13px;padding:5px 0;">${partner}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:5px 0;">Level of Support</td><td style="color:#e2e8f0;font-size:13px;padding:5px 0;">${levelOfSupport}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:5px 0;">Programme Duration</td><td style="color:#e2e8f0;font-size:13px;padding:5px 0;">${duration}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:5px 0;">Your Role</td><td style="color:#a78bfa;font-weight:600;font-size:13px;padding:5px 0;">${role}</td></tr>
+        </table>
+      </div>
+      <a href="${candidateUrl}" style="display:inline-block;background:#7c3aed;color:#fff;padding:13px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:15px;margin-bottom:24px;">
+        View Candidate Profile
+      </a>
+      <hr style="border:none;border-top:1px solid #1e293b;margin:0 0 16px;" />
+      <p style="color:#475569;font-size:12px;margin:0;">You received this email because you were assigned to this candidate. Log in to the OMS to view full details.</p>
+    </div>`
+  );
+}
+
 export async function sendWelcomeEmail(
   to: string,
   name: string

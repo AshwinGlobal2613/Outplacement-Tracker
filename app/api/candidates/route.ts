@@ -7,8 +7,10 @@ import {
   createCandidate,
   createNotificationsForAllUsers,
   addActivityLog,
+  getUsers,
 } from "@/lib/db";
 import { Candidate } from "@/lib/types";
+import { sendCandidateAssignedEmail } from "@/lib/email";
 
 export async function GET() {
   const candidates = await getCandidates();
@@ -81,6 +83,61 @@ export async function POST(req: NextRequest) {
     `${session.user.name} added new candidate: ${candidate.candidateName}`,
     `/outplacement/candidates/${candidate.id}`
   );
+
+  // Fire-and-forget: email the assigned Lead Coach and Support
+  if (candidate.leadCoach || candidate.support) {
+    getUsers()
+      .then((users) => {
+        const emailPromises: Promise<void>[] = [];
+
+        if (candidate.leadCoach) {
+          const coach = users.find(
+            (u) => u.name.trim().toLowerCase() === candidate.leadCoach.trim().toLowerCase()
+          );
+          if (coach?.email) {
+            emailPromises.push(
+              sendCandidateAssignedEmail(
+                coach.email,
+                coach.name,
+                "Lead Coach",
+                candidate.candidateName,
+                candidate.id,
+                candidate.partner,
+                candidate.levelOfSupport,
+                candidate.duration
+              ).catch((err) =>
+                console.error("[email] Lead Coach notification failed:", err)
+              )
+            );
+          }
+        }
+
+        if (candidate.support) {
+          const support = users.find(
+            (u) => u.name.trim().toLowerCase() === candidate.support.trim().toLowerCase()
+          );
+          if (support?.email) {
+            emailPromises.push(
+              sendCandidateAssignedEmail(
+                support.email,
+                support.name,
+                "Support",
+                candidate.candidateName,
+                candidate.id,
+                candidate.partner,
+                candidate.levelOfSupport,
+                candidate.duration
+              ).catch((err) =>
+                console.error("[email] Support notification failed:", err)
+              )
+            );
+          }
+        }
+
+        return Promise.all(emailPromises);
+      })
+      .catch((err) => console.error("[email] Failed to fetch users for notifications:", err));
+  }
 
   return NextResponse.json(candidate, { status: 201 });
 }
