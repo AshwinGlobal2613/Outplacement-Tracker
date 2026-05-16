@@ -1,5 +1,3 @@
-import ChatWidget from './_components/ChatWidget'
-
 export default function GlobalSiteLayout({
   children,
 }: {
@@ -41,9 +39,6 @@ export default function GlobalSiteLayout({
       <div style={{ position: 'relative', zIndex: 1 }}>
         {children}
       </div>
-
-      {/* ── AI Chat Widget ── */}
-      <ChatWidget />
 
     </div>
   )
