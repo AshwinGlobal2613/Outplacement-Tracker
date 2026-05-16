@@ -312,8 +312,12 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab }: { cand
         </thead>
         <tbody className="divide-y divide-border">
           {candidates.map((c) => {
-            const done = Object.values(c.progress ?? {}).filter(Boolean).length;
-            const pct = Math.round((done / 5) * 100);
+            const standardKeys = ["introductorySession", "cvSessions", "linkedinProfile", "profiling", "networkingPersonalBranding"];
+            const standardDone = standardKeys.filter((k) => (c.progress as Record<string, unknown>)?.[k]).length;
+            const customDone = (c.progress?.custom ?? []).filter((m) => m.done).length;
+            const done = standardDone + customDone;
+            const total = 5 + (c.progress?.custom?.length ?? 0);
+            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
             return (
               <tr key={c.id} className="group transition-colors hover:bg-sidebar-accent/40">
                 <td className="px-4 py-3">
@@ -338,7 +342,7 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab }: { cand
                     </div>
                     <span className="text-xs text-muted-foreground">{pct}%</span>
                   </div>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">{done}/5 milestones</p>
+                  <p className="mt-0.5 text-[10px] text-muted-foreground">{done}/{total} milestones</p>
                 </td>
                 <td className="px-4 py-3 text-center text-sm text-foreground">{c.sessionsCompleted}</td>
                 <td className="px-4 py-3">
