@@ -138,8 +138,10 @@ export default function MyDashboardPage() {
           ) : (
             <div className="space-y-2">
               {myCandidates.slice(0, 12).map((c) => {
-                const done = Object.values(c.progress ?? {}).filter(Boolean).length;
-                const pct = Math.round((done / 5) * 100);
+                const p = c.progress;
+                const done = [p?.introductorySession, p?.cvSessions, p?.linkedinProfile, p?.profiling, p?.networkingPersonalBranding].filter(Boolean).length + (p?.custom ?? []).filter((m) => m.done).length;
+                const totalMilestones = 5 + (p?.custom?.length ?? 0);
+                const pct = totalMilestones > 0 ? Math.round((done / totalMilestones) * 100) : 0;
                 return (
                   <Link key={c.id} href={`/outplacement/candidates/${c.id}`}
                     className="flex items-center gap-4 rounded-lg px-3 py-2.5 transition-colors hover:bg-sidebar-accent group">
