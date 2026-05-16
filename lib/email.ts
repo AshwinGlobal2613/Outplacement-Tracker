@@ -1,5 +1,5 @@
 const FROM = `"Global Management Consultants" <${process.env.SMTP_FROM || "team@global-dubai.com"}>`;
-const BASE_URL = process.env.NEXTAUTH_URL || "https://outplacement-tracker-production.up.railway.app";
+const BASE_URL = process.env.NEXTAUTH_URL || "https://outplacement-tracker-drab.vercel.app";
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
