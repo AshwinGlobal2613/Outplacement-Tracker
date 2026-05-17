@@ -160,10 +160,10 @@ function buildGoogleCalendarLink(session: Session, candidateName: string, attend
   const startStr = `${year}${pad(month)}${pad(day)}T${pad(hours)}${pad(minutes)}00`;
   const endDate = new Date(year, month - 1, day, hours, minutes + session.duration);
   const endStr = `${endDate.getFullYear()}${pad(endDate.getMonth() + 1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
-  const description =
-    `Candidate: ${candidateName}` +
-    (session.meetingLink ? `\nMeeting Link: ${session.meetingLink}` : "") +
-    (session.notes ? `\n\nNotes: ${session.notes}` : "");
+  const description = [
+    session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
+    session.notes ? `Notes: ${session.notes}` : "",
+  ].filter(Boolean).join("\n\n");
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: `${session.title} — ${candidateName}`,
@@ -182,9 +182,10 @@ function buildICS(session: Session, candidateName: string, attendeeEmails: strin
   const startStr = `${year}${pad(month)}${pad(day)}T${pad(hours)}${pad(minutes)}00`;
   const endDate = new Date(year, month - 1, day, hours, minutes + session.duration);
   const endStr = `${endDate.getFullYear()}${pad(endDate.getMonth() + 1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
-  const description =
-    `Candidate: ${candidateName}` +
-    (session.notes ? `\\nNotes: ${session.notes}` : "");
+  const description = [
+    session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
+    session.notes ? `Notes: ${session.notes}` : "",
+  ].filter(Boolean).join("\\n\\n");
   const attendeeLines = attendeeEmails.map((e) => `ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:${e}`).join("\r\n");
   return [
     "BEGIN:VCALENDAR",

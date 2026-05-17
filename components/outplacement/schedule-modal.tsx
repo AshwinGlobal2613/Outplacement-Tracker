@@ -37,12 +37,10 @@ function formatGoogleCalendarLink(session: Session, candidate: Candidate): strin
   const endStr = `${endDate.getFullYear()}${pad(endDate.getMonth() + 1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
 
   const attendees = [candidate.email].filter(Boolean).join(",");
-  const description =
-    `Candidate: ${candidate.candidateName}` +
-    (candidate.leadCoach ? `\nLead Coach: ${candidate.leadCoach}` : "") +
-    (candidate.support ? `\nSupport: ${candidate.support}` : "") +
-    (session.meetingLink ? `\nMeeting Link: ${session.meetingLink}` : "") +
-    (session.notes ? `\n\nNotes: ${session.notes}` : "");
+  const description = [
+    session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
+    session.notes ? `Notes: ${session.notes}` : "",
+  ].filter(Boolean).join("\n\n");
 
   const params = new URLSearchParams({
     action: "TEMPLATE",

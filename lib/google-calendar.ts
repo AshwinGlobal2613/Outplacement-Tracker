@@ -35,14 +35,10 @@ export async function createCalendarEvent(
   const startDateTime = new Date(year, month - 1, day, hours, minutes);
   const endDateTime = new Date(startDateTime.getTime() + session.duration * 60 * 1000);
 
-  const description =
-    [
-      `Candidate: ${candidateName}`,
-      session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
-      session.notes ? `\nNotes: ${session.notes}` : "",
-    ]
-      .filter(Boolean)
-      .join("\n");
+  const description = [
+    session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
+    session.notes ? `Notes: ${session.notes}` : "",
+  ].filter(Boolean).join("\n\n");
 
   const event = await calendar.events.insert({
     calendarId,
