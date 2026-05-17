@@ -272,6 +272,7 @@ export async function sendSessionInviteEmail(
       attachments: [{
         filename: `${session.title.replace(/\s+/g, "_")}.ics`,
         content: icsBase64,
+        content_type: "text/calendar; method=REQUEST; charset=utf-8",
       }],
     }),
   });

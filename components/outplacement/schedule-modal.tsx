@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, CalendarDays, Clock, MapPin, Link2, FileDown, ExternalLink, Check } from "lucide-react";
+import { X, CalendarDays, Clock, MapPin, Link2, FileDown, Check, Mail } from "lucide-react";
 import { Candidate, Session } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -253,50 +253,46 @@ export function ScheduleModal({
             <div className="flex items-center gap-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3">
               <Check className="h-5 w-5 text-emerald-400 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-emerald-400">Session saved!</p>
+                <p className="text-sm font-medium text-emerald-400">Session scheduled!</p>
                 <p className="text-xs text-muted-foreground">
                   {saved.title} · {new Date(saved.date + "T" + saved.time).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} at {saved.time}
                 </p>
               </div>
             </div>
 
-            <p className="text-sm text-muted-foreground">Now add it to your calendar:</p>
-
-            <div className="space-y-3">
-              <a href={formatGoogleCalendarLink(saved, candidate)} target="_blank" rel="noopener noreferrer"
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
-                      <path d="M6 2v2M18 2v2M2 8h20M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="#4285F4" strokeWidth="1.5" strokeLinecap="round" />
-                      <path d="M8 13h2v2H8z" fill="#34A853" />
-                      <path d="M11 13h2v2h-2z" fill="#FBBC04" />
-                      <path d="M14 13h2v2h-2z" fill="#EA4335" />
-                    </svg>
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Open in Google Calendar</p>
-                    <p className="text-xs text-muted-foreground">Opens pre-filled — just click Save</p>
-                  </div>
+            {/* Who was invited */}
+            <div className="rounded-lg border border-border bg-muted/30 px-4 py-3 space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Invites sent to</p>
+              {[
+                candidate.email && { name: candidate.candidateName, role: "Candidate", email: candidate.email },
+                candidate.leadCoach && { name: candidate.leadCoach, role: "Lead Coach", email: null },
+                candidate.support && { name: candidate.support, role: "Support", email: null },
+              ].filter(Boolean).map((p: any) => (
+                <div key={p.role} className="flex items-center gap-2">
+                  <Mail className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <span className="text-sm text-foreground">{p.name}</span>
+                  <span className="text-xs text-muted-foreground">· {p.role}</span>
                 </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
-              </a>
-
-              <button onClick={() => downloadICS(generateICS(saved, candidate), `${saved.title.replace(/\s+/g, "_")}.ics`)}
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
-                    <FileDown className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-foreground">Download .ics file</p>
-                    <p className="text-xs text-muted-foreground">Works with Outlook, Apple Calendar & others</p>
-                  </div>
-                </div>
-              </button>
+              ))}
             </div>
 
-            <button onClick={onClose} className="w-full rounded-lg border border-border py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <p className="text-xs text-muted-foreground">
+              Each person received an email with a calendar invite (.ics) attached — they can accept it directly from their inbox without visiting any website.
+            </p>
+
+            {/* Optional .ics download for yourself */}
+            <button onClick={() => downloadICS(generateICS(saved, candidate), `${saved.title.replace(/\s+/g, "_")}.ics`)}
+              className="flex w-full items-center gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20 shrink-0">
+                <FileDown className="h-4 w-4 text-primary" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-foreground">Download for yourself</p>
+                <p className="text-xs text-muted-foreground">Save the .ics to add to your own calendar</p>
+              </div>
+            </button>
+
+            <button onClick={onClose} className="w-full rounded-lg bg-primary py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
               Done
             </button>
           </div>
