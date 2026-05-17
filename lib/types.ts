@@ -55,6 +55,20 @@ export interface CandidateActivity {
   createdBy: string;
 }
 
+export interface Session {
+  id: string;
+  type: string;
+  title: string;
+  date: string;       // "YYYY-MM-DD"
+  time: string;       // "HH:MM"
+  duration: number;   // minutes
+  location: string;
+  meetingLink: string;
+  notes: string;
+  createdAt: string;
+  createdBy: string;
+}
+
 export interface Candidate {
   id: string;
   status: CandidateStatus;
@@ -81,6 +95,7 @@ export interface Candidate {
   oldPlacement: string | null;
   progress: CandidateProgress;
   activities: CandidateActivity[];
+  sessions?: Session[];
   discDone: DiscDoneStatus;
   invoiceStatus: InvoiceStatus;
   costingStatus: CostingStatus;

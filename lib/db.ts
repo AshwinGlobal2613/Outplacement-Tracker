@@ -61,6 +61,7 @@ function toCandidate(r: Record<string, unknown>): Candidate {
       networkingPersonalBranding: false,
     },
     activities: (r.activities as Candidate["activities"]) ?? [],
+    sessions: (r.sessions as Candidate["sessions"]) ?? [],
     discDone: (r.disc_done as Candidate["discDone"]) ?? "Not Done",
     invoiceStatus: (r.invoice_status as Candidate["invoiceStatus"]) ?? "Not Raised",
     costingStatus: (r.costing_status as Candidate["costingStatus"]) ?? "Not Done",
@@ -310,6 +311,7 @@ export async function createCandidate(candidate: Candidate): Promise<Candidate> 
       old_placement: candidate.oldPlacement,
       progress: candidate.progress,
       activities: candidate.activities,
+      sessions: candidate.sessions ?? [],
       disc_done: candidate.discDone,
       invoice_status: candidate.invoiceStatus,
       costing_status: candidate.costingStatus,
@@ -354,6 +356,7 @@ export async function updateCandidate(
   if (updates.oldPlacement !== undefined) dbUpdates.old_placement = updates.oldPlacement;
   if (updates.progress !== undefined) dbUpdates.progress = updates.progress;
   if (updates.activities !== undefined) dbUpdates.activities = updates.activities;
+  if (updates.sessions !== undefined) dbUpdates.sessions = updates.sessions;
   if (updates.discDone !== undefined) dbUpdates.disc_done = updates.discDone;
   if (updates.invoiceStatus !== undefined) dbUpdates.invoice_status = updates.invoiceStatus;
   if (updates.costingStatus !== undefined) dbUpdates.costing_status = updates.costingStatus;

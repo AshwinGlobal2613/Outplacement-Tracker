@@ -1,0 +1,53 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { v4 as uuidv4 } from "uuid";
+import { authOptions } from "@/lib/auth";
+import { getCandidateById, updateCandidate } from "@/lib/db";
+import { Session } from "@/lib/types";
+
+export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
+  const candidate = await getCandidateById(params.id);
+  if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  return NextResponse.json(candidate.sessions ?? []);
+}
+
+export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+  const authSession = await getServerSession(authOptions);
+  if (!authSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const candidate = await getCandidateById(params.id);
+  if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const body = await req.json();
+
+  const newSession: Session = {
+    id: `sess_${uuidv4().slice(0, 8)}`,
+    type: body.type || "Session",
+    title: body.title || "Session",
+    date: body.date,
+    time: body.time,
+    duration: body.duration || 60,
+    location: body.location || "Google Meet",
+    meetingLink: body.meetingLink || "",
+    notes: body.notes || "",
+    createdAt: new Date().toISOString(),
+    createdBy: authSession.user.name || "Unknown",
+  };
+
+  const sessions = [...(candidate.sessions ?? []), newSession];
+  const updated = await updateCandidate(params.id, { sessions });
+  return NextResponse.json({ candidate: updated, session: newSession });
+}
+
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+  const authSession = await getServerSession(authOptions);
+  if (!authSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const candidate = await getCandidateById(params.id);
+  if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const { sessionId } = await req.json();
+  const sessions = (candidate.sessions ?? []).filter((s) => s.id !== sessionId);
+  const updated = await updateCandidate(params.id, { sessions });
+  return NextResponse.json(updated);
+}

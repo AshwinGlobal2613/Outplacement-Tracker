@@ -11,6 +11,7 @@ import {
   ShieldCheck,
   UserCircle2,
   LogOut,
+  CalendarDays,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -34,6 +35,7 @@ const navSections: NavSection[] = [
       { label: "Overview", href: "/outplacement", icon: LayoutDashboard },
       { label: "My Dashboard", href: "/outplacement/my-dashboard", icon: UserCircle2 },
       { label: "Candidates", href: "/outplacement/candidates", icon: Users },
+      { label: "Sessions", href: "/outplacement/sessions", icon: CalendarDays },
       { label: "Headhunters", href: "/outplacement/headhunters", icon: Search },
     ],
   },

@@ -6,9 +6,10 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
   Pencil, Trash2, ExternalLink, MessageCircle, CheckCircle2,
-  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag,
+  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin,
 } from "lucide-react";
-import { Candidate, CandidateActivity, ActivityType, CustomMilestone } from "@/lib/types";
+import { Candidate, CandidateActivity, ActivityType, CustomMilestone, Session } from "@/lib/types";
+import { ScheduleModal } from "@/components/outplacement/schedule-modal";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CandidateModal } from "@/components/outplacement/candidate-modal";
@@ -53,6 +54,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
+  const [showSchedule, setShowSchedule] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function load() {
@@ -156,6 +158,9 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
         </Link>
         <div className="flex-1">
           <PageHeader title={candidate.candidateName} description={`${candidate.clientName} · ${candidate.partner}`}>
+            <button onClick={() => setShowSchedule(true)} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
+              <CalendarDays className="h-4 w-4" /> Schedule Session
+            </button>
             <button onClick={() => setShowEdit(true)} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <Pencil className="h-4 w-4" /> Edit
             </button>
@@ -221,6 +226,20 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
             </div>
           )}
 
+          {/* Scheduled Sessions */}
+          <SessionsList
+            sessions={candidate.sessions ?? []}
+            onDelete={async (sessionId) => {
+              const res = await fetch(`/api/candidates/${params.id}/sessions`, {
+                method: "DELETE",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ sessionId }),
+              });
+              if (res.ok) load();
+            }}
+            onSchedule={() => setShowSchedule(true)}
+          />
+
           {/* Activity Tracking */}
           <ActivityTracker
             activities={activities}
@@ -277,6 +296,117 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
       {showEdit && (
         <CandidateModal candidate={candidate} isAdmin={isAdmin} onClose={() => setShowEdit(false)} onSaved={() => { setShowEdit(false); load(); }} />
       )}
+      {showSchedule && (
+        <ScheduleModal candidate={candidate} onClose={() => setShowSchedule(false)} onSaved={() => load()} />
+      )}
+    </div>
+  );
+}
+
+/* ─── Sessions List ─── */
+function SessionsList({
+  sessions, onDelete, onSchedule,
+}: {
+  sessions: Session[];
+  onDelete: (id: string) => void;
+  onSchedule: () => void;
+}) {
+  const now = new Date();
+  const upcoming = sessions.filter((s) => new Date(`${s.date}T${s.time}`) >= now).sort((a, b) => a.date.localeCompare(b.date));
+  const past = sessions.filter((s) => new Date(`${s.date}T${s.time}`) < now).sort((a, b) => b.date.localeCompare(a.date));
+
+  function formatDate(date: string, time: string) {
+    return new Date(`${date}T${time}`).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  }
+
+  function formatDuration(mins: number) {
+    if (mins < 60) return `${mins}m`;
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    return m ? `${h}h ${m}m` : `${h}h`;
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="font-semibold text-foreground">Scheduled Sessions</h2>
+        <button onClick={onSchedule}
+          className="flex items-center gap-1 rounded-lg bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground hover:opacity-90 transition-opacity">
+          <Plus className="h-3.5 w-3.5" /> Schedule
+        </button>
+      </div>
+
+      {sessions.length === 0 ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">No sessions scheduled yet.</p>
+      ) : (
+        <div className="space-y-4">
+          {upcoming.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Upcoming</p>
+              <div className="space-y-2">
+                {upcoming.map((s) => (
+                  <SessionRow key={s.id} session={s} formatDate={formatDate} formatDuration={formatDuration} onDelete={onDelete} isUpcoming />
+                ))}
+              </div>
+            </div>
+          )}
+          {past.length > 0 && (
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Past</p>
+              <div className="space-y-2">
+                {past.map((s) => (
+                  <SessionRow key={s.id} session={s} formatDate={formatDate} formatDuration={formatDuration} onDelete={onDelete} isUpcoming={false} />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SessionRow({ session, formatDate, formatDuration, onDelete, isUpcoming }: {
+  session: Session;
+  formatDate: (d: string, t: string) => string;
+  formatDuration: (m: number) => string;
+  onDelete: (id: string) => void;
+  isUpcoming: boolean;
+}) {
+  return (
+    <div className={cn(
+      "flex items-start gap-3 rounded-lg border px-4 py-3 group",
+      isUpcoming ? "border-primary/20 bg-primary/5" : "border-border bg-muted/20"
+    )}>
+      <div className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
+        isUpcoming ? "bg-primary/20" : "bg-muted")}>
+        <CalendarDays className={cn("h-4 w-4", isUpcoming ? "text-primary" : "text-muted-foreground")} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-medium text-foreground">{session.title}</p>
+          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold",
+            isUpcoming ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground")}>
+            {session.type}
+          </span>
+        </div>
+        <div className="mt-1 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
+          <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{formatDate(session.date, session.time)}</span>
+          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{session.time} · {formatDuration(session.duration)}</span>
+          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{session.location}</span>
+        </div>
+        {session.meetingLink && (
+          <a href={session.meetingLink} target="_blank" rel="noopener noreferrer"
+            className="mt-1 flex items-center gap-1 text-xs text-primary hover:underline truncate">
+            <Link2 className="h-3 w-3 shrink-0" />{session.meetingLink}
+          </a>
+        )}
+        {session.notes && <p className="mt-1 text-xs text-muted-foreground">{session.notes}</p>}
+      </div>
+      <button onClick={() => onDelete(session.id)}
+        className="ml-2 shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-all">
+        <X className="h-4 w-4" />
+      </button>
     </div>
   );
 }
