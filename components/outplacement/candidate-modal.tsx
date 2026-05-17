@@ -149,7 +149,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                 listKey="partners"
                 options={lists.partners}
                 placeholder="Challenger Grey, Intoo US…"
-                canCreate={isAdmin}
+                canCreate={true}
                 onChange={(v) => set("partner", v)}
                 onNewOption={refreshLists}
               />
@@ -160,7 +160,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                 listKey="clients"
                 options={lists.clients}
                 placeholder="Epic Games, Sprinklr…"
-                canCreate={isAdmin}
+                canCreate={true}
                 onChange={(v) => set("clientName", v)}
                 onNewOption={refreshLists}
               />
@@ -175,7 +175,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                 listKey="coaches"
                 options={lists.coaches}
                 placeholder="Saima, Ashwin…"
-                canCreate={isAdmin}
+                canCreate={true}
                 onChange={(v) => set("leadCoach", v)}
                 onNewOption={refreshLists}
               />
@@ -186,7 +186,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                 listKey="supports"
                 options={lists.supports}
                 placeholder="Celeste, Ankit…"
-                canCreate={isAdmin}
+                canCreate={true}
                 onChange={(v) => set("support", v)}
                 onNewOption={refreshLists}
               />
