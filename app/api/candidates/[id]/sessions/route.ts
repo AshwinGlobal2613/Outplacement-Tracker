@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { getCandidateById, updateCandidate, getUsers } from "@/lib/db";
 import { Session } from "@/lib/types";
 import { sendSessionInviteEmail } from "@/lib/email";
+import { createCalendarEvent, deleteCalendarEvent, isGoogleCalendarConfigured } from "@/lib/google-calendar";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const candidate = await getCandidateById(params.id);
@@ -35,10 +36,30 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     createdBy: authSession.user.name || "Unknown",
   };
 
+  // If Google Calendar is configured, create the event there first
+  // (Google handles sending invites to all attendees automatically)
+  if (isGoogleCalendarConfigured()) {
+    try {
+      const users = await getUsers();
+      const coachUser = candidate.leadCoach
+        ? users.find((u) => u.name.trim().toLowerCase() === candidate.leadCoach.trim().toLowerCase())
+        : null;
+      const supportUser = candidate.support
+        ? users.find((u) => u.name.trim().toLowerCase() === candidate.support.trim().toLowerCase())
+        : null;
+      const allEmails = [candidate.email, coachUser?.email, supportUser?.email].filter(Boolean) as string[];
+
+      const googleEventId = await createCalendarEvent(newSession, candidate.candidateName, allEmails);
+      if (googleEventId) newSession.googleEventId = googleEventId;
+    } catch (err) {
+      console.error("[google-calendar] Failed to create calendar event:", err);
+    }
+  }
+
   const sessions = [...(candidate.sessions ?? []), newSession];
   const updated = await updateCandidate(params.id, { sessions });
 
-  // Fire-and-forget: send invite emails to candidate, lead coach, and support
+  // Fire-and-forget: also send email invites (with .ics) regardless of Google Calendar
   getUsers()
     .then((users) => {
       const coachUser = candidate.leadCoach
@@ -98,6 +119,15 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { sessionId } = await req.json();
+  const sessionToDelete = (candidate.sessions ?? []).find((s) => s.id === sessionId);
+
+  // Remove from Google Calendar if event was created there
+  if (sessionToDelete?.googleEventId) {
+    deleteCalendarEvent(sessionToDelete.googleEventId).catch((err) =>
+      console.error("[google-calendar] Failed to delete calendar event:", err)
+    );
+  }
+
   const sessions = (candidate.sessions ?? []).filter((s) => s.id !== sessionId);
   const updated = await updateCandidate(params.id, { sessions });
   return NextResponse.json(updated);

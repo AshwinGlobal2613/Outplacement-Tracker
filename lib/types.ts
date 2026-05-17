@@ -67,6 +67,7 @@ export interface Session {
   notes: string;
   createdAt: string;
   createdBy: string;
+  googleEventId?: string;
 }
 
 export interface Candidate {
