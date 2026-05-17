@@ -4,8 +4,8 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
-import { Plus, Search, ExternalLink, CheckCircle2, XCircle, Clock, UserCheck, Send } from "lucide-react";
-import { Candidate, CandidateStatus } from "@/lib/types";
+import { Plus, Search, ExternalLink, CheckCircle2, XCircle, Clock, UserCheck, Send, SlidersHorizontal, X } from "lucide-react";
+import { Candidate, CandidateStatus, Lists } from "@/lib/types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CandidateModal } from "@/components/outplacement/candidate-modal";
@@ -81,12 +81,19 @@ const tabs: { key: CandidateStatus; label: string; icon: React.ElementType; colo
   { key: "declined", label: "Declined", icon: XCircle, color: "text-rose-400" },
 ];
 
+const SUPPORT_LEVELS = ["Low", "Low-Mid", "Mid", "Mid-High", "High"];
+
 function CandidatesContent() {
   const searchParams = useSearchParams();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [lists, setLists] = useState<Lists>({ partners: [], clients: [], coaches: [], supports: [] });
   const [search, setSearch] = useState("");
+  const [filterCoach, setFilterCoach] = useState("");
+  const [filterSupport, setFilterSupport] = useState("");
+  const [filterClient, setFilterClient] = useState("");
+  const [filterLevel, setFilterLevel] = useState("");
   const [activeTab, setActiveTab] = useState<CandidateStatus>(
     (searchParams.get("tab") as CandidateStatus) ?? "active"
   );
@@ -105,12 +112,26 @@ function CandidatesContent() {
   }
 
   useEffect(() => { load(); }, []);
+  useEffect(() => { fetch("/api/lists").then((r) => r.json()).then(setLists).catch(() => {}); }, []);
 
   // Sync active tab whenever the URL ?tab param changes (e.g. back-button navigation)
   useEffect(() => {
     const tab = searchParams.get("tab") as CandidateStatus | null;
     if (tab) setActiveTab(tab);
   }, [searchParams]);
+
+  // Unique clients across all candidates for the filter dropdown
+  const uniqueClients = Array.from(new Set(candidates.map((c) => c.clientName).filter(Boolean))).sort();
+
+  const activeFilterCount = [filterCoach, filterSupport, filterClient, filterLevel].filter(Boolean).length;
+
+  function clearFilters() {
+    setFilterCoach("");
+    setFilterSupport("");
+    setFilterClient("");
+    setFilterLevel("");
+    setSearch("");
+  }
 
   const counts = Object.fromEntries(
     tabs.map((t) => [t.key, candidates.filter((c) => c.status === t.key).length])
@@ -119,13 +140,15 @@ function CandidatesContent() {
   const filtered = candidates.filter((c) => {
     if (c.status !== activeTab) return false;
     const q = search.toLowerCase();
-    return (
-      !q ||
-      c.candidateName.toLowerCase().includes(q) ||
-      c.clientName.toLowerCase().includes(q) ||
-      c.partner.toLowerCase().includes(q) ||
-      c.leadCoach.toLowerCase().includes(q)
-    );
+    if (q && !c.candidateName.toLowerCase().includes(q) &&
+              !c.clientName.toLowerCase().includes(q) &&
+              !c.partner.toLowerCase().includes(q) &&
+              !c.leadCoach.toLowerCase().includes(q)) return false;
+    if (filterCoach && c.leadCoach !== filterCoach) return false;
+    if (filterSupport && c.support !== filterSupport) return false;
+    if (filterClient && c.clientName !== filterClient) return false;
+    if (filterLevel && c.levelOfSupport !== filterLevel) return false;
+    return true;
   });
 
   const currentTab = tabs.find((t) => t.key === activeTab)!;
@@ -171,14 +194,64 @@ function CandidatesContent() {
           ))}
         </div>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search candidates, clients, coaches…"
-            className="w-full rounded-lg border border-border bg-card pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
+        {/* Search + Filters */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, client, coach…"
+              className="w-56 rounded-lg border border-border bg-card pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+
+          {/* Filter dropdowns */}
+          <div className="flex items-center gap-1.5">
+            <SlidersHorizontal className="h-4 w-4 text-muted-foreground shrink-0" />
+
+            <FilterSelect
+              value={filterCoach}
+              onChange={setFilterCoach}
+              placeholder="Lead Coach"
+              options={lists.coaches}
+            />
+            <FilterSelect
+              value={filterSupport}
+              onChange={setFilterSupport}
+              placeholder="Support"
+              options={lists.supports}
+            />
+            <FilterSelect
+              value={filterClient}
+              onChange={setFilterClient}
+              placeholder="Client"
+              options={uniqueClients}
+            />
+            <FilterSelect
+              value={filterLevel}
+              onChange={setFilterLevel}
+              placeholder="Level"
+              options={SUPPORT_LEVELS}
+            />
+          </div>
+
+          {/* Clear button */}
+          {(activeFilterCount > 0 || search) && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+              Clear
+              {activeFilterCount > 0 && (
+                <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -533,5 +606,33 @@ function EmptyState({ message }: { message: string }) {
     <div className="flex h-48 items-center justify-center rounded-xl border border-dashed border-border">
       <p className="text-sm text-muted-foreground">{message}</p>
     </div>
+  );
+}
+
+function FilterSelect({
+  value, onChange, placeholder, options,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: string[];
+}) {
+  const isActive = !!value;
+  return (
+    <select
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      className={cn(
+        "rounded-lg border px-2.5 py-2 text-xs font-medium focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer",
+        isActive
+          ? "border-primary/60 bg-primary/10 text-primary"
+          : "border-border bg-card text-muted-foreground hover:text-foreground"
+      )}
+    >
+      <option value="">{placeholder}</option>
+      {options.map((o) => (
+        <option key={o} value={o} className="bg-card text-foreground">{o}</option>
+      ))}
+    </select>
   );
 }
