@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { getActivityLogForCandidate, addActivityLog, getCandidate } from "@/lib/db";
+import { getActivityLogForCandidate, addActivityLog, getCandidateById } from "@/lib/db";
 import { v4 as uuidv4 } from "uuid";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { action } = await req.json() as { action: string };
   if (!action?.trim()) return NextResponse.json({ error: "action is required" }, { status: 400 });
 
-  const candidate = await getCandidate(params.id);
+  const candidate = await getCandidateById(params.id);
   if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   await addActivityLog({
