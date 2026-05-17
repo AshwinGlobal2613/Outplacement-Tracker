@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { PageHeader } from "@/components/page-header";
-import { Users, Clock, CheckCircle2, XCircle, Send, UserCheck, Briefcase, CalendarDays, Users2, ExternalLink } from "lucide-react";
+import {
+  Users, Clock, CheckCircle2, XCircle, Send, UserCheck, Briefcase,
+  CalendarDays, Users2, ExternalLink, AlertTriangle, Bell, X,
+} from "lucide-react";
 import { Candidate, ActivityLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -34,15 +37,48 @@ function timeAgo(date: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+// Returns the most recent date of any meaningful action on a candidate
+function getLastActionDate(c: Candidate): Date {
+  const timestamps: number[] = [];
+
+  // Core update timestamp
+  if (c.updatedAt) timestamps.push(new Date(c.updatedAt).getTime());
+  if (c.createdAt) timestamps.push(new Date(c.createdAt).getTime());
+
+  // Sessions created
+  for (const s of c.sessions ?? []) {
+    if (s.createdAt) timestamps.push(new Date(s.createdAt).getTime());
+  }
+
+  // Opportunities / activities logged
+  for (const a of c.activities ?? []) {
+    if (a.createdAt) timestamps.push(new Date(a.createdAt).getTime());
+  }
+
+  return new Date(Math.max(...timestamps));
+}
+
+function daysSince(date: Date): number {
+  return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+interface StaleCandidate {
+  candidate: Candidate;
+  lastAction: Date;
+  daysInactive: number;
+  urgency: "warning" | "urgent"; // 7-13d = warning, 14+d = urgent
+}
+
 export default function MyDashboardPage() {
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [activity, setActivity] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    if (session === undefined) return; // wait for session to load
+    if (session === undefined) return;
     Promise.all([
       fetch("/api/candidates").then((r) => r.ok ? r.json() : []).catch(() => []),
       isAdmin
@@ -55,10 +91,26 @@ export default function MyDashboardPage() {
     });
   }, [isAdmin, session]);
 
+  // Load dismissed IDs from sessionStorage (resets on page close — intentional)
+  useEffect(() => {
+    try {
+      const stored = sessionStorage.getItem("dismissed-inactivity-alerts");
+      if (stored) setDismissedIds(new Set(JSON.parse(stored)));
+    } catch {}
+  }, []);
+
+  function dismiss(id: string) {
+    setDismissedIds((prev) => {
+      const next = new Set(prev);
+      next.add(id);
+      try { sessionStorage.setItem("dismissed-inactivity-alerts", JSON.stringify([...next])); } catch {}
+      return next;
+    });
+  }
+
   const userName = session?.user?.name ?? "";
   const firstName = userName.split(" ")[0];
 
-  // Match candidates where user's name appears in leadCoach or support (case-insensitive)
   const myCandidates = candidates.filter((c) => {
     const coach = c.leadCoach?.toLowerCase() ?? "";
     const support = c.support?.toLowerCase() ?? "";
@@ -66,28 +118,37 @@ export default function MyDashboardPage() {
     return coach.includes(fn) || support.includes(fn);
   });
 
-  const myReferred = myCandidates.filter((c) => c.status === "referred");
-  const myReached = myCandidates.filter((c) => c.status === "candidate_reached");
-  const myActive = myCandidates.filter((c) => c.status === "active");
-  const myCompleted = myCandidates.filter((c) => c.status === "completed");
-  const myDeclined = myCandidates.filter((c) => c.status === "declined");
+  // ── Inactivity alerts (only active / candidate_reached) ───────────────────
+  const staleAlerts: StaleCandidate[] = myCandidates
+    .filter((c) => c.status === "active" || c.status === "candidate_reached")
+    .filter((c) => !dismissedIds.has(c.id))
+    .map((c) => {
+      const lastAction = getLastActionDate(c);
+      const daysInactive = daysSince(lastAction);
+      return { candidate: c, lastAction, daysInactive, urgency: daysInactive >= 14 ? "urgent" : "warning" } as StaleCandidate;
+    })
+    .filter((s) => s.daysInactive >= 0) // ← TESTING: set back to 7 when done
+    .sort((a, b) => b.daysInactive - a.daysInactive);
+
+  // ── Stat counts ───────────────────────────────────────────────────────────
+  const myReferred   = myCandidates.filter((c) => c.status === "referred");
+  const myReached    = myCandidates.filter((c) => c.status === "candidate_reached");
+  const myActive     = myCandidates.filter((c) => c.status === "active");
+  const myCompleted  = myCandidates.filter((c) => c.status === "completed");
+  const myDeclined   = myCandidates.filter((c) => c.status === "declined");
 
   const totalActivities = myCandidates.reduce((sum, c) => sum + (c.activities?.length ?? 0), 0);
-  const jobOpps = myCandidates.reduce((sum, c) => sum + (c.activities?.filter((a) => a.type === "job").length ?? 0), 0);
-  const events = myCandidates.reduce((sum, c) => sum + (c.activities?.filter((a) => a.type === "event").length ?? 0), 0);
+  const jobOpps  = myCandidates.reduce((sum, c) => sum + (c.activities?.filter((a) => a.type === "job").length ?? 0), 0);
+  const events   = myCandidates.reduce((sum, c) => sum + (c.activities?.filter((a) => a.type === "event").length ?? 0), 0);
   const networks = myCandidates.reduce((sum, c) => sum + (c.activities?.filter((a) => a.type === "network").length ?? 0), 0);
 
   const endingSoon = myCandidates.filter((c) => {
     if (!c.endDate) return false;
     const end = new Date(c.endDate);
     const now = new Date();
-    return (
-      end.getFullYear() === now.getFullYear() &&
-      end.getMonth() === now.getMonth()
-    );
+    return end.getFullYear() === now.getFullYear() && end.getMonth() === now.getMonth();
   });
 
-  // Filter activity logs to only ones about my candidates
   const myCandidateIds = new Set(myCandidates.map((c) => c.id));
   const myActivity = activity.filter((log) => myCandidateIds.has(log.entityId)).slice(0, 10);
 
@@ -102,25 +163,32 @@ export default function MyDashboardPage() {
   return (
     <div className="flex flex-col gap-6 p-6">
       <PageHeader
-        title={`My Dashboard`}
-        description={firstName ? `Welcome back, ${firstName} — ${myCandidates.length} candidates assigned to you` : "Your personal candidate view"}
+        title="My Dashboard"
+        description={firstName
+          ? `Welcome back, ${firstName} — ${myCandidates.length} candidates assigned to you`
+          : "Your personal candidate view"}
       />
+
+      {/* ── Inactivity Alerts ── */}
+      {staleAlerts.length > 0 && (
+        <InactivityAlertPanel alerts={staleAlerts} onDismiss={dismiss} />
+      )}
 
       {/* Stat cards */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
-        <StatCard icon={Send} color="text-violet-400" label="Referred" value={myReferred.length} />
-        <StatCard icon={UserCheck} color="text-sky-400" label="Candidate Reached" value={myReached.length} />
-        <StatCard icon={Users} color="text-emerald-400" label="Active" value={myActive.length} />
-        <StatCard icon={CheckCircle2} color="text-blue-400" label="Completed" value={myCompleted.length} />
-        <StatCard icon={XCircle} color="text-rose-400" label="Declined" value={myDeclined.length} />
+        <StatCard icon={Send}         color="text-violet-400"  label="Referred"           value={myReferred.length} />
+        <StatCard icon={UserCheck}    color="text-sky-400"     label="Candidate Reached"  value={myReached.length} />
+        <StatCard icon={Users}        color="text-emerald-400" label="Active"              value={myActive.length} />
+        <StatCard icon={CheckCircle2} color="text-blue-400"    label="Completed"          value={myCompleted.length} />
+        <StatCard icon={XCircle}      color="text-rose-400"    label="Declined"           value={myDeclined.length} />
       </div>
 
       {/* Activity breakdown */}
       {totalActivities > 0 && (
         <div className="grid grid-cols-3 gap-3">
-          <MiniPill icon={Briefcase} label="Job Opportunities" value={jobOpps} color="text-amber-400 bg-amber-500/10 border-amber-500/20" />
-          <MiniPill icon={CalendarDays} label="Events" value={events} color="text-sky-400 bg-sky-500/10 border-sky-500/20" />
-          <MiniPill icon={Users2} label="Networks" value={networks} color="text-violet-400 bg-violet-500/10 border-violet-500/20" />
+          <MiniPill icon={Briefcase}  label="Job Opportunities" value={jobOpps}  color="text-amber-400 bg-amber-500/10 border-amber-500/20" />
+          <MiniPill icon={CalendarDays} label="Events"          value={events}   color="text-sky-400 bg-sky-500/10 border-sky-500/20" />
+          <MiniPill icon={Users2}     label="Networks"          value={networks} color="text-violet-400 bg-violet-500/10 border-violet-500/20" />
         </div>
       )}
 
@@ -139,13 +207,18 @@ export default function MyDashboardPage() {
             <div className="space-y-2">
               {myCandidates.slice(0, 12).map((c) => {
                 const p = c.progress;
-                const done = [p?.introductorySession, p?.cvSessions, p?.linkedinProfile, p?.profiling, p?.networkingPersonalBranding].filter(Boolean).length + (p?.custom ?? []).filter((m) => m.done).length;
+                const done = [p?.introductorySession, p?.cvSessions, p?.linkedinProfile, p?.profiling, p?.networkingPersonalBranding].filter(Boolean).length
+                  + (p?.custom ?? []).filter((m) => m.done).length;
                 const totalMilestones = 5 + (p?.custom?.length ?? 0);
                 const pct = totalMilestones > 0 ? Math.round((done / totalMilestones) * 100) : 0;
+                const isStale = staleAlerts.some((s) => s.candidate.id === c.id);
                 return (
                   <Link key={c.id} href={`/outplacement/candidates/${c.id}`}
                     className="flex items-center gap-4 rounded-lg px-3 py-2.5 transition-colors hover:bg-sidebar-accent group">
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
+                    <div className={cn(
+                      "flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold",
+                      isStale ? "bg-amber-500/20 text-amber-400" : "bg-primary/15 text-primary"
+                    )}>
                       {c.candidateName.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -154,6 +227,9 @@ export default function MyDashboardPage() {
                         <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase", statusColors[c.status])}>
                           {statusLabels[c.status] ?? c.status}
                         </span>
+                        {isStale && (
+                          <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-400" />
+                        )}
                       </div>
                       <p className="text-xs text-muted-foreground">{c.clientName} · {c.partner}</p>
                       {c.status === "active" && (
@@ -181,7 +257,7 @@ export default function MyDashboardPage() {
           )}
         </div>
 
-        {/* Right: Activity + Ending Soon */}
+        {/* Right: Ending Soon + Activity */}
         <div className="space-y-4">
           {endingSoon.length > 0 && (
             <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
@@ -203,7 +279,7 @@ export default function MyDashboardPage() {
           <div className="rounded-xl border border-border bg-card p-4">
             <h2 className="mb-3 text-sm font-semibold text-foreground">Recent Activity</h2>
             {myActivity.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">No recent activity</p>
+              <p className="py-4 text-center text-sm text-muted-foreground">No recent activity</p>
             ) : (
               <ul className="space-y-3">
                 {myActivity.map((log) => (
@@ -230,10 +306,114 @@ export default function MyDashboardPage() {
   );
 }
 
+/* ─── Inactivity Alert Panel ─── */
+function InactivityAlertPanel({
+  alerts,
+  onDismiss,
+}: {
+  alerts: StaleCandidate[];
+  onDismiss: (id: string) => void;
+}) {
+  const urgentCount  = alerts.filter((a) => a.urgency === "urgent").length;
+  const warningCount = alerts.filter((a) => a.urgency === "warning").length;
+  const hasUrgent    = urgentCount > 0;
+
+  return (
+    <div className={cn(
+      "rounded-xl border p-4",
+      hasUrgent
+        ? "border-rose-500/30 bg-rose-500/5"
+        : "border-amber-500/30 bg-amber-500/5"
+    )}>
+      {/* Panel header */}
+      <div className="mb-3 flex items-center gap-2">
+        <div className={cn(
+          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+          hasUrgent ? "bg-rose-500/20" : "bg-amber-500/20"
+        )}>
+          <Bell className={cn("h-4 w-4", hasUrgent ? "text-rose-400" : "text-amber-400")} />
+        </div>
+        <div className="flex-1">
+          <p className={cn("text-sm font-semibold", hasUrgent ? "text-rose-400" : "text-amber-400")}>
+            {alerts.length} candidate{alerts.length > 1 ? "s" : ""} need{alerts.length === 1 ? "s" : ""} attention
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {urgentCount > 0 && `${urgentCount} overdue (14+ days)`}
+            {urgentCount > 0 && warningCount > 0 && " · "}
+            {warningCount > 0 && `${warningCount} no activity (7+ days)`}
+          </p>
+        </div>
+      </div>
+
+      {/* Alert rows */}
+      <div className="space-y-2">
+        {alerts.map(({ candidate: c, lastAction, daysInactive, urgency }) => (
+          <div
+            key={c.id}
+            className={cn(
+              "flex items-center gap-3 rounded-lg border px-4 py-3",
+              urgency === "urgent"
+                ? "border-rose-500/20 bg-rose-500/10"
+                : "border-amber-500/20 bg-amber-500/10"
+            )}
+          >
+            {/* Icon */}
+            <AlertTriangle className={cn(
+              "h-4 w-4 shrink-0",
+              urgency === "urgent" ? "text-rose-400" : "text-amber-400"
+            )} />
+
+            {/* Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className="text-sm font-medium text-foreground">{c.candidateName}</p>
+                <span className={cn(
+                  "rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                  urgency === "urgent"
+                    ? "bg-rose-500/20 text-rose-400"
+                    : "bg-amber-500/20 text-amber-400"
+                )}>
+                  {daysInactive} days inactive
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {c.clientName} · Last action: {lastAction.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+              </p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex shrink-0 items-center gap-2">
+              <Link
+                href={`/outplacement/candidates/${c.id}`}
+                className={cn(
+                  "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                  urgency === "urgent"
+                    ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
+                    : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                )}
+              >
+                View
+              </Link>
+              <button
+                onClick={() => onDismiss(c.id)}
+                className="rounded-lg p-1.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                title="Dismiss for this session"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Stat Card ─── */
 function StatCard({ icon: Icon, color, label, value }: { icon: React.ElementType; color: string; label: string; value: number }) {
   return (
     <div className="rounded-xl border border-border bg-card p-4">
-      <div className="flex items-center gap-2 mb-2">
+      <div className="mb-2 flex items-center gap-2">
         <Icon className={cn("h-4 w-4", color)} />
         <p className="text-xs text-muted-foreground">{label}</p>
       </div>
@@ -242,6 +422,7 @@ function StatCard({ icon: Icon, color, label, value }: { icon: React.ElementType
   );
 }
 
+/* ─── Mini Pill ─── */
 function MiniPill({ icon: Icon, label, value, color }: { icon: React.ElementType; label: string; value: number; color: string }) {
   const [iconCls, bgCls, borderCls] = color.split(" ");
   return (
