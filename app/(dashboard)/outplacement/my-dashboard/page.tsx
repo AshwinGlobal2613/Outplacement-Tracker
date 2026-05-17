@@ -95,7 +95,7 @@ export default function MyDashboardPage() {
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem("dismissed-inactivity-alerts");
-      if (stored) setDismissedIds(new Set(JSON.parse(stored)));
+      if (stored) setDismissedIds(new Set<string>(JSON.parse(stored)));
     } catch {}
   }, []);
 
@@ -103,7 +103,7 @@ export default function MyDashboardPage() {
     setDismissedIds((prev) => {
       const next = new Set(prev);
       next.add(id);
-      try { sessionStorage.setItem("dismissed-inactivity-alerts", JSON.stringify([...next])); } catch {}
+      try { sessionStorage.setItem("dismissed-inactivity-alerts", JSON.stringify(Array.from(next))); } catch {}
       return next;
     });
   }
