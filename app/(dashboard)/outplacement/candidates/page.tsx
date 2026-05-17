@@ -136,15 +136,13 @@ function CandidatesContent() {
         title="Candidates"
         description={tabs.map((t) => `${counts[t.key]} ${t.label.toLowerCase()}`).join(" · ")}
       >
-        {isAdmin && (
-          <button
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
-          >
-            <Plus className="h-4 w-4" />
-            Add Candidate
-          </button>
-        )}
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+        >
+          <Plus className="h-4 w-4" />
+          Add Candidate
+        </button>
       </PageHeader>
 
       {/* Tabs */}
