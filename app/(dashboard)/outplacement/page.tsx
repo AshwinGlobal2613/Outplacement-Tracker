@@ -8,6 +8,7 @@ import { Users, CheckCircle2, XCircle, Activity, Clock } from "lucide-react";
 import { Candidate, ActivityLog } from "@/lib/types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { UpcomingSessionsWidget } from "@/components/outplacement/upcoming-sessions-widget";
 
 function timeAgo(date: string) {
   const diff = Date.now() - new Date(date).getTime();
@@ -111,7 +112,7 @@ export default function OutplacementOverview() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Recent Candidates */}
+        {/* Active Candidates */}
         <div className="col-span-2 rounded-xl border border-border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-semibold text-foreground">Active Candidates</h2>
@@ -166,6 +167,10 @@ export default function OutplacementOverview() {
           </div>
         </div>
 
+        {/* Upcoming Sessions */}
+        <div className="col-span-1">
+          <UpcomingSessionsWidget candidates={candidates} />
+        </div>
       </div>
 
       {/* Ending Soon */}

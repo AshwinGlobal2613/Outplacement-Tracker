@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Candidate, ActivityLog } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { UpcomingSessionsWidget } from "@/components/outplacement/upcoming-sessions-widget";
 
 const statusColors: Record<string, string> = {
   referred: "bg-violet-500/20 text-violet-400",
@@ -257,8 +258,14 @@ export default function MyDashboardPage() {
           )}
         </div>
 
-        {/* Right: Ending Soon + Activity */}
+        {/* Right: Sessions + Ending Soon + Activity */}
         <div className="space-y-4">
+          {/* Upcoming sessions — filtered to this user's candidates */}
+          <UpcomingSessionsWidget
+            candidates={myCandidates}
+            filterByCoach={firstName}
+          />
+
           {endingSoon.length > 0 && (
             <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-4">
               <h2 className="mb-3 text-sm font-semibold text-rose-400">Ending This Month</h2>
@@ -306,7 +313,7 @@ export default function MyDashboardPage() {
   );
 }
 
-/* ─── Inactivity Alert Panel ─── */
+/* ─── Inactivity Alert Panel (with re-engagement log) ─── */
 function InactivityAlertPanel({
   alerts,
   onDismiss,
@@ -318,19 +325,43 @@ function InactivityAlertPanel({
   const warningCount = alerts.filter((a) => a.urgency === "warning").length;
   const hasUrgent    = urgentCount > 0;
 
+  // Track which candidate is in "log action" mode
+  const [loggingId, setLoggingId] = useState<string | null>(null);
+  const [actionText, setActionText] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function handleLogAndDismiss(candidateId: string) {
+    if (!actionText.trim()) return;
+    setSubmitting(true);
+    try {
+      await fetch(`/api/candidates/${candidateId}/activity`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: `Re-engagement: ${actionText.trim()}` }),
+      });
+    } finally {
+      setSubmitting(false);
+      setActionText("");
+      setLoggingId(null);
+      onDismiss(candidateId);
+    }
+  }
+
+  function handleSkipAndDismiss(candidateId: string) {
+    setLoggingId(null);
+    setActionText("");
+    onDismiss(candidateId);
+  }
+
   return (
     <div className={cn(
       "rounded-xl border p-4",
-      hasUrgent
-        ? "border-rose-500/30 bg-rose-500/5"
-        : "border-amber-500/30 bg-amber-500/5"
+      hasUrgent ? "border-rose-500/30 bg-rose-500/5" : "border-amber-500/30 bg-amber-500/5"
     )}>
       {/* Panel header */}
       <div className="mb-3 flex items-center gap-2">
-        <div className={cn(
-          "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-          hasUrgent ? "bg-rose-500/20" : "bg-amber-500/20"
-        )}>
+        <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
+          hasUrgent ? "bg-rose-500/20" : "bg-amber-500/20")}>
           <Bell className={cn("h-4 w-4", hasUrgent ? "text-rose-400" : "text-amber-400")} />
         </div>
         <div className="flex-1">
@@ -348,60 +379,75 @@ function InactivityAlertPanel({
       {/* Alert rows */}
       <div className="space-y-2">
         {alerts.map(({ candidate: c, lastAction, daysInactive, urgency }) => (
-          <div
-            key={c.id}
-            className={cn(
-              "flex items-center gap-3 rounded-lg border px-4 py-3",
-              urgency === "urgent"
-                ? "border-rose-500/20 bg-rose-500/10"
-                : "border-amber-500/20 bg-amber-500/10"
-            )}
-          >
-            {/* Icon */}
-            <AlertTriangle className={cn(
-              "h-4 w-4 shrink-0",
-              urgency === "urgent" ? "text-rose-400" : "text-amber-400"
-            )} />
+          <div key={c.id} className={cn(
+            "rounded-lg border",
+            urgency === "urgent" ? "border-rose-500/20 bg-rose-500/10" : "border-amber-500/20 bg-amber-500/10"
+          )}>
+            {/* Main row */}
+            <div className="flex items-center gap-3 px-4 py-3">
+              <AlertTriangle className={cn("h-4 w-4 shrink-0",
+                urgency === "urgent" ? "text-rose-400" : "text-amber-400")} />
 
-            {/* Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="text-sm font-medium text-foreground">{c.candidateName}</p>
-                <span className={cn(
-                  "rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                  urgency === "urgent"
-                    ? "bg-rose-500/20 text-rose-400"
-                    : "bg-amber-500/20 text-amber-400"
-                )}>
-                  {daysInactive} days inactive
-                </span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium text-foreground">{c.candidateName}</p>
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold",
+                    urgency === "urgent" ? "bg-rose-500/20 text-rose-400" : "bg-amber-500/20 text-amber-400")}>
+                    {daysInactive} days inactive
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {c.clientName} · Last action: {lastAction.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {c.clientName} · Last action: {lastAction.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-              </p>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <Link href={`/outplacement/candidates/${c.id}`}
+                  className={cn("rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                    urgency === "urgent"
+                      ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
+                      : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30")}>
+                  View
+                </Link>
+                <button
+                  onClick={() => { setLoggingId(c.id); setActionText(""); }}
+                  className="rounded-lg p-1.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
+                  title="Dismiss — log action"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
             </div>
 
-            {/* Actions */}
-            <div className="flex shrink-0 items-center gap-2">
-              <Link
-                href={`/outplacement/candidates/${c.id}`}
-                className={cn(
-                  "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
-                  urgency === "urgent"
-                    ? "bg-rose-500/20 text-rose-400 hover:bg-rose-500/30"
-                    : "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-                )}
-              >
-                View
-              </Link>
-              <button
-                onClick={() => onDismiss(c.id)}
-                className="rounded-lg p-1.5 text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-                title="Dismiss for this session"
-              >
-                <X className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            {/* Inline re-engagement form */}
+            {loggingId === c.id && (
+              <div className="border-t border-current/10 px-4 pb-3 pt-2 space-y-2">
+                <p className="text-xs font-medium text-foreground">What action did you take?</p>
+                <textarea
+                  autoFocus
+                  rows={2}
+                  value={actionText}
+                  onChange={(e) => setActionText(e.target.value)}
+                  placeholder="e.g. Called candidate, sent LinkedIn message, scheduled follow-up…"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                />
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => handleSkipAndDismiss(c.id)}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Skip & Dismiss
+                  </button>
+                  <button
+                    onClick={() => handleLogAndDismiss(c.id)}
+                    disabled={!actionText.trim() || submitting}
+                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50 transition-opacity"
+                  >
+                    {submitting ? "Saving…" : "Log & Dismiss"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         ))}
       </div>

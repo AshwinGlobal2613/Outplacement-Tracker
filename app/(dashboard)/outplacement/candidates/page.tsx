@@ -99,6 +99,8 @@ function CandidatesContent() {
   );
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkUpdating, setBulkUpdating] = useState(false);
 
   async function load() {
     try {
@@ -120,8 +122,34 @@ function CandidatesContent() {
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
+  // Clear selection when tab changes
+  useEffect(() => { setSelectedIds(new Set()); }, [activeTab]);
+
   // Unique clients across all candidates for the filter dropdown
   const uniqueClients = Array.from(new Set(candidates.map((c) => c.clientName).filter(Boolean))).sort();
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll(ids: string[]) {
+    setSelectedIds((prev) => {
+      const allSelected = ids.every((id) => prev.has(id));
+      return allSelected ? new Set() : new Set(ids);
+    });
+  }
+
+  async function handleBulkUpdate(newStatus: CandidateStatus) {
+    setBulkUpdating(true);
+    await Promise.all(Array.from(selectedIds).map((id) => updateCandidateStatus(id, newStatus)));
+    setSelectedIds(new Set());
+    setBulkUpdating(false);
+    load();
+  }
 
   const activeFilterCount = [filterCoach, filterSupport, filterClient, filterLevel].filter(Boolean).length;
 
@@ -267,13 +295,28 @@ function CandidatesContent() {
           <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
         </div>
       ) : activeTab === "active" ? (
-        <ActiveTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab} />
+        <ActiveTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab}
+          selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
       ) : activeTab === "completed" ? (
-        <CompletedTable candidates={filtered} onRefresh={load} activeTab={activeTab} />
+        <CompletedTable candidates={filtered} onRefresh={load} activeTab={activeTab}
+          selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
       ) : activeTab === "declined" ? (
-        <DeclinedTable candidates={filtered} onRefresh={load} activeTab={activeTab} />
+        <DeclinedTable candidates={filtered} onRefresh={load} activeTab={activeTab}
+          selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
       ) : (
-        <SimpleTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab} />
+        <SimpleTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab}
+          selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
+      )}
+
+      {/* Bulk action bar */}
+      {selectedIds.size > 0 && (
+        <BulkActionBar
+          count={selectedIds.size}
+          currentStatus={activeTab}
+          onApply={handleBulkUpdate}
+          onClear={() => setSelectedIds(new Set())}
+          loading={bulkUpdating}
+        />
       )}
 
       {showModal && (
@@ -295,14 +338,72 @@ export default function CandidatesPage() {
   );
 }
 
+/* ─── Selection props shared by all tables ─── */
+interface SelectionProps {
+  selectedIds: Set<string>;
+  onToggleSelect: (id: string) => void;
+  onToggleAll: (ids: string[]) => void;
+}
+
+/* ─── Bulk Action Bar ─── */
+function BulkActionBar({ count, currentStatus, onApply, onClear, loading }: {
+  count: number;
+  currentStatus: CandidateStatus;
+  onApply: (s: CandidateStatus) => void;
+  onClear: () => void;
+  loading: boolean;
+}) {
+  const [targetStatus, setTargetStatus] = useState<CandidateStatus>(
+    statusOptions.find((o) => o.value !== currentStatus)?.value ?? "active"
+  );
+
+  return (
+    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-3 shadow-2xl">
+      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+        {count}
+      </div>
+      <p className="text-sm font-medium text-foreground">
+        candidate{count > 1 ? "s" : ""} selected
+      </p>
+      <div className="mx-1 h-5 w-px bg-border" />
+      <p className="text-xs text-muted-foreground">Move to</p>
+      <select
+        value={targetStatus}
+        onChange={(e) => setTargetStatus(e.target.value as CandidateStatus)}
+        className="rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+      >
+        {statusOptions.filter((o) => o.value !== currentStatus).map((o) => (
+          <option key={o.value} value={o.value} className="bg-card">{o.label}</option>
+        ))}
+      </select>
+      <button
+        onClick={() => onApply(targetStatus)}
+        disabled={loading}
+        className="rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+      >
+        {loading ? "Updating…" : "Apply"}
+      </button>
+      <button onClick={onClear} className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+        Cancel
+      </button>
+    </div>
+  );
+}
+
 /* ─── Referred + Candidate Reached (simple table) ─── */
-function SimpleTable({ candidates, supportColors, onRefresh, activeTab }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string }) {
+function SimpleTable({ candidates, supportColors, onRefresh, activeTab, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string } & SelectionProps) {
   if (candidates.length === 0) return <EmptyState message="No candidates in this status" />;
+  const allIds = candidates.map((c) => c.id);
+  const allSelected = allIds.every((id) => selectedIds.has(id));
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-sidebar/50">
+            <th className="w-10 px-4 py-3">
+              <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+            </th>
             <Th>Candidate</Th>
             <Th>Client / Partner</Th>
             <Th>Lead Coach</Th>
@@ -316,7 +417,11 @@ function SimpleTable({ candidates, supportColors, onRefresh, activeTab }: { cand
         </thead>
         <tbody className="divide-y divide-border">
           {candidates.map((c) => (
-            <tr key={c.id} className="group transition-colors hover:bg-sidebar-accent/40">
+            <tr key={c.id} className={cn("group transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
+              <td className="px-4 py-3">
+                <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
+                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+              </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <Avatar name={c.candidateName} color="violet" />
@@ -362,13 +467,19 @@ function SimpleTable({ candidates, supportColors, onRefresh, activeTab }: { cand
 }
 
 /* ─── Active candidates table ─── */
-function ActiveTable({ candidates, supportColors, onRefresh, activeTab }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string }) {
+function ActiveTable({ candidates, supportColors, onRefresh, activeTab, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string } & SelectionProps) {
   if (candidates.length === 0) return <EmptyState message="No active candidates" />;
+  const allIds = candidates.map((c) => c.id);
+  const allSelected = allIds.every((id) => selectedIds.has(id));
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-sidebar/50">
+            <th className="w-10 px-4 py-3">
+              <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+            </th>
             <Th>Candidate</Th>
             <Th>Client / Partner</Th>
             <Th>Lead Coach</Th>
@@ -390,7 +501,11 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab }: { cand
             const total = 5 + (c.progress?.custom?.length ?? 0);
             const pct = total > 0 ? Math.round((done / total) * 100) : 0;
             return (
-              <tr key={c.id} className="group transition-colors hover:bg-sidebar-accent/40">
+              <tr key={c.id} className={cn("group transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
+                <td className="px-4 py-3">
+                  <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
+                    className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <Avatar name={c.candidateName} color="emerald" />
@@ -444,9 +559,11 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab }: { cand
 }
 
 /* ─── Completed candidates table ─── */
-function CompletedTable({ candidates, onRefresh, activeTab }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string }) {
+function CompletedTable({ candidates, onRefresh, activeTab, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string } & SelectionProps) {
   const placed = candidates.filter((c) => c.jobStatus === "Y").length;
   if (candidates.length === 0) return <EmptyState message="No completed candidates yet" />;
+  const allIds = candidates.map((c) => c.id);
+  const allSelected = allIds.every((id) => selectedIds.has(id));
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-3">
@@ -458,6 +575,10 @@ function CompletedTable({ candidates, onRefresh, activeTab }: { candidates: Cand
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-sidebar/50">
+              <th className="w-10 px-4 py-3">
+                <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
+                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+              </th>
               <Th>Candidate</Th>
               <Th>From</Th>
               <Th>New Company / Placement</Th>
@@ -471,7 +592,11 @@ function CompletedTable({ candidates, onRefresh, activeTab }: { candidates: Cand
           </thead>
           <tbody className="divide-y divide-border">
             {candidates.map((c) => (
-              <tr key={c.id} className="group transition-colors hover:bg-sidebar-accent/40">
+              <tr key={c.id} className={cn("group transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
+                <td className="px-4 py-3">
+                  <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
+                    className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
                     <Avatar name={c.candidateName} color="blue" />
@@ -516,13 +641,19 @@ function CompletedTable({ candidates, onRefresh, activeTab }: { candidates: Cand
 }
 
 /* ─── Declined candidates table ─── */
-function DeclinedTable({ candidates, onRefresh, activeTab }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string }) {
+function DeclinedTable({ candidates, onRefresh, activeTab, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string } & SelectionProps) {
   if (candidates.length === 0) return <EmptyState message="No declined candidates" />;
+  const allIds = candidates.map((c) => c.id);
+  const allSelected = allIds.every((id) => selectedIds.has(id));
   return (
     <div className="overflow-hidden rounded-xl border border-border bg-card">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-border bg-sidebar/50">
+            <th className="w-10 px-4 py-3">
+              <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
+                className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+            </th>
             <Th>Candidate</Th>
             <Th>Client / Partner</Th>
             <Th>Lead Coach</Th>
@@ -534,7 +665,11 @@ function DeclinedTable({ candidates, onRefresh, activeTab }: { candidates: Candi
         </thead>
         <tbody className="divide-y divide-border">
           {candidates.map((c) => (
-            <tr key={c.id} className="group transition-colors hover:bg-sidebar-accent/40">
+            <tr key={c.id} className={cn("group transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
+              <td className="px-4 py-3">
+                <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
+                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+              </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-3">
                   <Avatar name={c.candidateName} color="rose" />
