@@ -283,3 +283,44 @@ export async function sendSessionInviteEmail(
     throw new Error(`Resend API error ${res.status}: ${body}`);
   }
 }
+
+export async function sendSessionCancellationEmail(
+  to: string,
+  recipientName: string,
+  session: Session,
+  candidateName: string,
+  candidateId: string
+): Promise<void> {
+  const [year, month, day] = session.date.split("-").map(Number);
+  const [hours, minutes] = session.time.split(":").map(Number);
+  const formattedDate = new Date(year, month - 1, day).toLocaleDateString("en-GB", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+  const formattedTime = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  const candidateUrl = `${BASE_URL}/outplacement/candidates/${candidateId}`;
+
+  await sendEmail(
+    to,
+    `Session Cancelled: ${session.title} — ${candidateName} · ${formattedDate}`,
+    `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:36px;border-radius:12px;">
+      <div style="margin-bottom:24px;">
+        <span style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0.5px;">Global Management Consultants</span>
+      </div>
+      <h2 style="color:#f87171;margin:0 0 8px;">Session Cancelled ❌</h2>
+      <p style="color:#94a3b8;margin:0 0 20px;">Hi ${recipientName}, the following session has been <strong style="color:#f87171;">cancelled</strong>.</p>
+      <div style="background:#1e293b;border-radius:8px;padding:16px 20px;margin:0 0 24px;border-left:3px solid #f87171;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="color:#64748b;font-size:13px;padding:6px 0;width:40%;">Session</td><td style="color:#e2e8f0;font-weight:600;font-size:13px;padding:6px 0;text-decoration:line-through;">${session.title}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Candidate</td><td style="color:#e2e8f0;font-size:13px;padding:6px 0;">${candidateName}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Date</td><td style="color:#94a3b8;font-size:13px;padding:6px 0;text-decoration:line-through;">${formattedDate}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Time</td><td style="color:#94a3b8;font-size:13px;padding:6px 0;text-decoration:line-through;">${formattedTime}</td></tr>
+          ${session.location ? `<tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Location</td><td style="color:#94a3b8;font-size:13px;padding:6px 0;">${session.location}</td></tr>` : ""}
+        </table>
+      </div>
+      <p style="color:#94a3b8;margin:0 0 20px;font-size:14px;">Please remove this event from your calendar. A new session will be scheduled if required.</p>
+      <hr style="border:none;border-top:1px solid #1e293b;margin:0 0 16px;" />
+      <a href="${candidateUrl}" style="color:#6366f1;font-size:12px;">View candidate profile in OMS →</a>
+    </div>`
+  );
+}
