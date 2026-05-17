@@ -11,11 +11,13 @@ interface Props {
   options: string[];
   placeholder?: string;
   canCreate?: boolean;
+  canDelete?: boolean;
   onChange: (value: string) => void;
   onNewOption?: (value: string) => void;
+  onOptionDeleted?: () => void;
 }
 
-export function CreatableSelect({ value, listKey, options, placeholder = "Select or type…", canCreate = false, onChange, onNewOption }: Props) {
+export function CreatableSelect({ value, listKey, options, placeholder = "Select or type…", canCreate = false, canDelete = false, onChange, onNewOption, onOptionDeleted }: Props) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState(value);
   const ref = useRef<HTMLDivElement>(null);
@@ -50,6 +52,21 @@ export function CreatableSelect({ value, listKey, options, placeholder = "Select
     onChange(val);
     setQuery(val);
     setOpen(false);
+  }
+
+  async function handleDeleteOption(e: React.MouseEvent, opt: string) {
+    e.stopPropagation();
+    await fetch("/api/lists", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key: listKey, value: opt }),
+    });
+    // If the deleted option was the currently selected value, clear it
+    if (value === opt) {
+      onChange("");
+      setQuery("");
+    }
+    onOptionDeleted?.();
   }
 
   function handleClear(e: React.MouseEvent) {
@@ -91,17 +108,31 @@ export function CreatableSelect({ value, listKey, options, placeholder = "Select
               <p className="px-3 py-2 text-xs text-muted-foreground">No options found</p>
             )}
             {filtered.map((opt) => (
-              <button
+              <div
                 key={opt}
-                type="button"
-                onClick={() => handleSelect(opt)}
                 className={cn(
-                  "flex w-full items-center px-3 py-2 text-left text-sm transition-colors hover:bg-sidebar-accent",
+                  "group flex w-full items-center justify-between px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent",
                   opt === value ? "text-primary font-medium" : "text-foreground"
                 )}
               >
-                {opt}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleSelect(opt)}
+                  className="flex-1 text-left"
+                >
+                  {opt}
+                </button>
+                {canDelete && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleDeleteOption(e, opt)}
+                    className="ml-2 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
+                    title={`Remove "${opt}"`}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
           {showCreate && canCreate && (

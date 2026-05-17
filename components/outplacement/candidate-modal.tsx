@@ -176,8 +176,10 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                 options={lists.coaches}
                 placeholder="Saima, Ashwin…"
                 canCreate={true}
+                canDelete={true}
                 onChange={(v) => set("leadCoach", v)}
                 onNewOption={refreshLists}
+                onOptionDeleted={refreshLists}
               />
             </Field>
             <Field label="Support">
@@ -187,8 +189,10 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                 options={lists.supports}
                 placeholder="Celeste, Ankit…"
                 canCreate={true}
+                canDelete={true}
                 onChange={(v) => set("support", v)}
                 onNewOption={refreshLists}
+                onOptionDeleted={refreshLists}
               />
             </Field>
           </div>

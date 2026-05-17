@@ -644,6 +644,15 @@ export async function addToList(key: keyof Lists, value: string): Promise<void> 
   }
 }
 
+export async function removeFromList(key: keyof Lists, value: string): Promise<void> {
+  const lists = await getLists();
+  lists[key] = lists[key].filter((v) => v !== value);
+  const { error } = await supabase
+    .from("lists")
+    .upsert({ id: 1, [key]: lists[key] }, { onConflict: "id" });
+  if (error) throw error;
+}
+
 // ─── Activity Log ─────────────────────────────────────────────────────────────
 
 export async function getActivityLog(): Promise<ActivityLog[]> {
