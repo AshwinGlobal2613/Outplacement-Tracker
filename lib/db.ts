@@ -311,7 +311,6 @@ export async function createCandidate(candidate: Candidate): Promise<Candidate> 
       old_placement: candidate.oldPlacement,
       progress: candidate.progress,
       activities: candidate.activities,
-      sessions: candidate.sessions ?? [],
       disc_done: candidate.discDone,
       invoice_status: candidate.invoiceStatus,
       costing_status: candidate.costingStatus,
