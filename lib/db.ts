@@ -62,6 +62,8 @@ function toCandidate(r: Record<string, unknown>): Candidate {
     },
     activities: (r.activities as Candidate["activities"]) ?? [],
     sessions: (r.sessions as Candidate["sessions"]) ?? [],
+    folders: (r.folders as Candidate["folders"]) ?? [],
+    documents: (r.documents as Candidate["documents"]) ?? [],
     discDone: (r.disc_done as Candidate["discDone"]) ?? "Not Done",
     invoiceStatus: (r.invoice_status as Candidate["invoiceStatus"]) ?? "Not Raised",
     costingStatus: (r.costing_status as Candidate["costingStatus"]) ?? "Not Done",
@@ -356,6 +358,8 @@ export async function updateCandidate(
   if (updates.progress !== undefined) dbUpdates.progress = updates.progress;
   if (updates.activities !== undefined) dbUpdates.activities = updates.activities;
   if (updates.sessions !== undefined) dbUpdates.sessions = updates.sessions;
+  if (updates.folders !== undefined) dbUpdates.folders = updates.folders;
+  if (updates.documents !== undefined) dbUpdates.documents = updates.documents;
   if (updates.discDone !== undefined) dbUpdates.disc_done = updates.discDone;
   if (updates.invoiceStatus !== undefined) dbUpdates.invoice_status = updates.invoiceStatus;
   if (updates.costingStatus !== undefined) dbUpdates.costing_status = updates.costingStatus;

@@ -55,6 +55,24 @@ export interface CandidateActivity {
   createdBy: string;
 }
 
+export interface DocumentFolder {
+  id: string;
+  name: string;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface CandidateDocument {
+  id: string;
+  name: string;
+  folderId: string | null;
+  size: number;
+  mimeType: string;
+  storagePath: string;
+  uploadedAt: string;
+  uploadedBy: string;
+}
+
 export interface Session {
   id: string;
   type: string;
@@ -97,6 +115,8 @@ export interface Candidate {
   progress: CandidateProgress;
   activities: CandidateActivity[];
   sessions?: Session[];
+  folders?: DocumentFolder[];
+  documents?: CandidateDocument[];
   discDone: DiscDoneStatus;
   invoiceStatus: InvoiceStatus;
   costingStatus: CostingStatus;

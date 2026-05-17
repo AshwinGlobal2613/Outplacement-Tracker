@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { Candidate, CandidateActivity, ActivityType, CustomMilestone, Session } from "@/lib/types";
 import { ScheduleModal } from "@/components/outplacement/schedule-modal";
+import { DocumentManager } from "@/components/outplacement/document-manager";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { CandidateModal } from "@/components/outplacement/candidate-modal";
@@ -248,6 +249,12 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
             networkCount={networkCount}
             onAdd={addActivity}
             onRemove={removeActivity}
+          />
+
+          {/* Documents */}
+          <DocumentManager
+            candidate={candidate}
+            onUpdated={(updated) => setCandidate(updated)}
           />
         </div>
 
