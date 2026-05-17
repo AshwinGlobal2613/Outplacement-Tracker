@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { v4 as uuidv4 } from "uuid";
 import { authOptions } from "@/lib/auth";
-import { getCandidateById, updateCandidate } from "@/lib/db";
+import { getCandidateById, updateCandidate, getUsers } from "@/lib/db";
 import { Session } from "@/lib/types";
+import { sendSessionInviteEmail } from "@/lib/email";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const candidate = await getCandidateById(params.id);
@@ -36,6 +37,56 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const sessions = [...(candidate.sessions ?? []), newSession];
   const updated = await updateCandidate(params.id, { sessions });
+
+  // Fire-and-forget: send invite emails to candidate, lead coach, and support
+  getUsers()
+    .then((users) => {
+      const coachUser = candidate.leadCoach
+        ? users.find((u) => u.name.trim().toLowerCase() === candidate.leadCoach.trim().toLowerCase())
+        : null;
+      const supportUser = candidate.support
+        ? users.find((u) => u.name.trim().toLowerCase() === candidate.support.trim().toLowerCase())
+        : null;
+
+      // Collect all attendee emails for calendar invite
+      const allEmails = [candidate.email, coachUser?.email, supportUser?.email].filter(Boolean) as string[];
+
+      const invites: Promise<void>[] = [];
+
+      // Candidate
+      if (candidate.email) {
+        invites.push(
+          sendSessionInviteEmail(
+            candidate.email, candidate.candidateName, "Candidate",
+            newSession, candidate.candidateName, candidate.id, allEmails
+          ).catch((e) => console.error("[email] Candidate session invite failed:", e))
+        );
+      }
+
+      // Lead Coach
+      if (coachUser?.email) {
+        invites.push(
+          sendSessionInviteEmail(
+            coachUser.email, coachUser.name, "Lead Coach",
+            newSession, candidate.candidateName, candidate.id, allEmails
+          ).catch((e) => console.error("[email] Lead Coach session invite failed:", e))
+        );
+      }
+
+      // Support
+      if (supportUser?.email) {
+        invites.push(
+          sendSessionInviteEmail(
+            supportUser.email, supportUser.name, "Support",
+            newSession, candidate.candidateName, candidate.id, allEmails
+          ).catch((e) => console.error("[email] Support session invite failed:", e))
+        );
+      }
+
+      return Promise.all(invites);
+    })
+    .catch((e) => console.error("[email] Session invite lookup failed:", e));
+
   return NextResponse.json({ candidate: updated, session: newSession });
 }
 
