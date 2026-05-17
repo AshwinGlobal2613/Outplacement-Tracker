@@ -334,7 +334,7 @@ export default function BrandScorecardPage() {
             {/* Actions */}
             <div className="flex gap-3">
               <Button className="flex-1 gap-2">
-                <CalendarDays className="h-4 w-4 text-white" />
+                <CalendarDays className="h-4 w-4" style={{ color: "#ffffff" }} />
                 Book Strategy Session
               </Button>
               <Button variant="outline" className="flex-1 gap-2" onClick={handleRestart}>

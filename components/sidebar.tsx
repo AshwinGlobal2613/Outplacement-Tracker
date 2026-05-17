@@ -91,7 +91,7 @@ export function Sidebar() {
                           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                       )}
                     >
-                      <Icon className={cn("h-4 w-4 shrink-0 text-white", isActive && "text-primary")} />
+                      <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} style={!isActive ? { color: "#ffffff" } : {}} />
                       {item.label}
                     </Link>
                   );
@@ -125,7 +125,7 @@ export function Sidebar() {
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
                     )}
                   >
-                    <Icon className={cn("h-4 w-4 shrink-0 text-white", isActive && "text-primary")} />
+                    <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-primary")} style={!isActive ? { color: "#ffffff" } : {}} />
                     {item.label}
                   </Link>
                 );

@@ -91,7 +91,7 @@ export default function SessionsPage() {
         </div>
       ) : displayed.length === 0 ? (
         <div className="flex h-40 flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border">
-          <CalendarDays className="h-8 w-8 text-white" />
+          <CalendarDays className="h-8 w-8" style={{ color: "#ffffff" }} />
           <p className="text-sm text-muted-foreground">
             {tab === "upcoming" ? "No upcoming sessions scheduled." : "No past sessions."}
           </p>
@@ -104,7 +104,7 @@ export default function SessionsPage() {
               <div className="flex items-start gap-4">
                 <div className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
                   tab === "upcoming" ? "bg-primary/15" : "bg-muted")}>
-                  <CalendarDays className="h-5 w-5 text-white" />
+                  <CalendarDays className="h-5 w-5" style={{ color: "#ffffff" }} />
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -121,7 +121,7 @@ export default function SessionsPage() {
                       <Users className="h-3.5 w-3.5" /> {s.candidateName}
                     </span>
                     <span className="flex items-center gap-1">
-                      <CalendarDays className="h-3.5 w-3.5 text-white" /> {formatDate(s.date, s.time)}
+                      <CalendarDays className="h-3.5 w-3.5" style={{ color: "#ffffff" }} /> {formatDate(s.date, s.time)}
                     </span>
                     <span className="flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5" /> {s.time} · {formatDuration(s.duration)}

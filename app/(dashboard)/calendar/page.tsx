@@ -172,7 +172,7 @@ export default function CalendarPage() {
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-gradient-to-br ${post.color}`}
                   >
-                    <CalendarDays className="h-4 w-4 text-white" />
+                    <CalendarDays className="h-4 w-4" style={{ color: "#ffffff" }} />
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-foreground">{post.title}</p>

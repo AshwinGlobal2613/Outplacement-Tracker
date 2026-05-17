@@ -158,7 +158,7 @@ export function ScheduleModal({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-2">
-            <CalendarDays className="h-5 w-5 text-white" />
+            <CalendarDays className="h-5 w-5" style={{ color: "#ffffff" }} />
             <h2 className="font-semibold text-foreground">Schedule Session</h2>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
@@ -198,7 +198,7 @@ export function ScheduleModal({
               {/* Date + Time + Duration */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3 text-white" /> Date</label>
+                  <label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" style={{ color: "#ffffff" }} /> Date</label>
                   <input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} className={inputCls} />
                 </div>
                 <div className="space-y-1">
@@ -240,7 +240,7 @@ export function ScheduleModal({
               </button>
               <button onClick={handleSave} disabled={!form.date || !form.time || saving}
                 className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity">
-                <CalendarDays className="h-4 w-4 text-white" />
+                <CalendarDays className="h-4 w-4" style={{ color: "#ffffff" }} />
                 {saving ? "Saving…" : "Save & Get Invite"}
               </button>
             </div>
