@@ -160,7 +160,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
         <div className="flex-1">
           <PageHeader title={candidate.candidateName} description={`${candidate.clientName} · ${candidate.partner}`}>
             <button onClick={() => setShowSchedule(true)} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
-              <CalendarDays className="h-4 w-4" /> Schedule Session
+              <CalendarDays className="h-4 w-4 text-white" /> Schedule Session
             </button>
             <button onClick={() => setShowEdit(true)} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <Pencil className="h-4 w-4" /> Edit
@@ -387,7 +387,7 @@ function SessionRow({ session, formatDate, formatDuration, onDelete, isUpcoming 
     )}>
       <div className={cn("mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg",
         isUpcoming ? "bg-primary/20" : "bg-muted")}>
-        <CalendarDays className={cn("h-4 w-4", isUpcoming ? "text-primary" : "text-muted-foreground")} />
+        <CalendarDays className="h-4 w-4 text-white" />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -398,7 +398,7 @@ function SessionRow({ session, formatDate, formatDuration, onDelete, isUpcoming 
           </span>
         </div>
         <div className="mt-1 flex items-center gap-3 flex-wrap text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3" />{formatDate(session.date, session.time)}</span>
+          <span className="flex items-center gap-1"><CalendarDays className="h-3 w-3 text-white" />{formatDate(session.date, session.time)}</span>
           <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{session.time} · {formatDuration(session.duration)}</span>
           <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{session.location}</span>
         </div>
