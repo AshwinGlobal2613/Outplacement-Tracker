@@ -6,9 +6,9 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
   Pencil, Trash2, ExternalLink, MessageCircle, CheckCircle2,
-  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin,
+  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity,
 } from "lucide-react";
-import { Candidate, CandidateActivity, ActivityType, CustomMilestone, Session } from "@/lib/types";
+import { Candidate, CandidateActivity, ActivityType, CustomMilestone, Session, ActivityLog } from "@/lib/types";
 import { ScheduleModal } from "@/components/outplacement/schedule-modal";
 import { DocumentManager } from "@/components/outplacement/document-manager";
 import Link from "next/link";
@@ -57,6 +57,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
   const [showEdit, setShowEdit] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
 
   async function load() {
     try {
@@ -68,6 +69,11 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
       return;
     }
     setLoading(false);
+    // Load activity log in parallel (non-blocking)
+    fetch(`/api/candidates/${params.id}/activity`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((logs) => setActivityLog(Array.isArray(logs) ? logs : []))
+      .catch(() => {});
   }
 
   useEffect(() => { load(); }, [params.id]);
@@ -256,6 +262,9 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
             candidate={candidate}
             onUpdated={(updated) => setCandidate(updated)}
           />
+
+          {/* Activity Log */}
+          <CandidateActivityLog logs={activityLog} />
         </div>
 
         {/* Right col: Contact + Program */}
@@ -653,6 +662,57 @@ function ActivityTracker({
               </div>
             );
           })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── Candidate Activity Log ─── */
+function CandidateActivityLog({ logs }: { logs: ActivityLog[] }) {
+  function timeAgo(date: string) {
+    const diff = Date.now() - new Date(date).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d ago`;
+    return new Date(date).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <Activity className="h-4 w-4 text-muted-foreground" />
+        <h2 className="font-semibold text-foreground">Activity Log</h2>
+      </div>
+
+      {logs.length === 0 ? (
+        <p className="py-4 text-center text-sm text-muted-foreground">No activity recorded yet.</p>
+      ) : (
+        <div className="relative">
+          {/* Vertical line */}
+          <div className="absolute left-3.5 top-0 h-full w-px bg-border" />
+          <ul className="space-y-4 pl-10">
+            {logs.map((log) => (
+              <li key={log.id} className="relative">
+                {/* Dot */}
+                <div className="absolute -left-[26px] top-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary/20 ring-2 ring-card">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-foreground">
+                    <span className="font-medium">{log.userName}</span>
+                    {" "}
+                    <span className="text-muted-foreground">{log.action}</span>
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{timeAgo(log.createdAt)}</p>
+                </div>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

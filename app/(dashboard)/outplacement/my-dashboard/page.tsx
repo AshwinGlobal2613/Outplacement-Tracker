@@ -37,24 +37,21 @@ function timeAgo(date: string) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-// Returns the most recent date of any meaningful action on a candidate
-function getLastActionDate(c: Candidate): Date {
+// Returns the most recent date of any meaningful action on a candidate.
+// Only counts sessions and tracked activities — NOT createdAt/updatedAt.
+// Returns null if no meaningful actions have been taken yet.
+function getLastActionDate(c: Candidate): Date | null {
   const timestamps: number[] = [];
 
-  // Core update timestamp
-  if (c.updatedAt) timestamps.push(new Date(c.updatedAt).getTime());
-  if (c.createdAt) timestamps.push(new Date(c.createdAt).getTime());
-
-  // Sessions created
   for (const s of c.sessions ?? []) {
     if (s.createdAt) timestamps.push(new Date(s.createdAt).getTime());
   }
 
-  // Opportunities / activities logged
   for (const a of c.activities ?? []) {
     if (a.createdAt) timestamps.push(new Date(a.createdAt).getTime());
   }
 
+  if (timestamps.length === 0) return null;
   return new Date(Math.max(...timestamps));
 }
 
@@ -64,7 +61,7 @@ function daysSince(date: Date): number {
 
 interface StaleCandidate {
   candidate: Candidate;
-  lastAction: Date;
+  lastAction: Date; // always set when included — candidates with no actions are excluded
   daysInactive: number;
   urgency: "warning" | "urgent"; // 7-13d = warning, 14+d = urgent
 }
@@ -119,15 +116,18 @@ export default function MyDashboardPage() {
   });
 
   // ── Inactivity alerts (only active / candidate_reached) ───────────────────
+  // Only alerts when there IS a recorded session or activity that's 7+ days old.
+  // Candidates with no sessions/activities yet are excluded (they're new).
   const staleAlerts: StaleCandidate[] = myCandidates
     .filter((c) => c.status === "active" || c.status === "candidate_reached")
     .filter((c) => !dismissedIds.has(c.id))
-    .map((c) => {
+    .flatMap((c) => {
       const lastAction = getLastActionDate(c);
+      if (!lastAction) return []; // no meaningful activity yet — skip
       const daysInactive = daysSince(lastAction);
-      return { candidate: c, lastAction, daysInactive, urgency: daysInactive >= 14 ? "urgent" : "warning" } as StaleCandidate;
+      if (daysInactive < 7) return [];
+      return [{ candidate: c, lastAction, daysInactive, urgency: (daysInactive >= 14 ? "urgent" : "warning") as "urgent" | "warning" }];
     })
-    .filter((s) => s.daysInactive >= 0) // ← TESTING: set back to 7 when done
     .sort((a, b) => b.daysInactive - a.daysInactive);
 
   // ── Stat counts ───────────────────────────────────────────────────────────

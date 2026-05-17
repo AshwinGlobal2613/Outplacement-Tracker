@@ -665,6 +665,17 @@ export async function getActivityLog(): Promise<ActivityLog[]> {
   return (data ?? []).map((r) => toActivityLog(r as Record<string, unknown>));
 }
 
+export async function getActivityLogForCandidate(candidateId: string): Promise<ActivityLog[]> {
+  const { data, error } = await supabase
+    .from("activity_log")
+    .select("*")
+    .eq("entity_id", candidateId)
+    .order("created_at", { ascending: false })
+    .limit(50);
+  if (error) throw error;
+  return (data ?? []).map((r) => toActivityLog(r as Record<string, unknown>));
+}
+
 export async function addActivityLog(entry: ActivityLog): Promise<void> {
   const { error } = await supabase.from("activity_log").insert({
     id: entry.id,
