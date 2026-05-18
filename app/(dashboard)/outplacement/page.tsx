@@ -10,71 +10,6 @@ import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { UpcomingSessionsWidget } from "@/components/outplacement/upcoming-sessions-widget";
 
-function CoachWorkloadView({ candidates }: { candidates: Candidate[] }) {
-  const active = candidates.filter((c) => c.status === "active" || c.status === "candidate_reached");
-
-  // Build workload map keyed by coach name
-  const workload: Record<string, { asLead: Candidate[]; asSupport: Candidate[] }> = {};
-
-  function splitNames(val: string): string[] {
-    return val.split(",").map((n) => n.trim()).filter(Boolean);
-  }
-
-  for (const c of active) {
-    if (c.leadCoach) {
-      for (const name of splitNames(c.leadCoach)) {
-        if (!workload[name]) workload[name] = { asLead: [], asSupport: [] };
-        workload[name].asLead.push(c);
-      }
-    }
-    if (c.support) {
-      for (const name of splitNames(c.support)) {
-        if (!workload[name]) workload[name] = { asLead: [], asSupport: [] };
-        workload[name].asSupport.push(c);
-      }
-    }
-  }
-
-  const coaches = Object.entries(workload).sort((a, b) => (b[1].asLead.length + b[1].asSupport.length) - (a[1].asLead.length + a[1].asSupport.length));
-
-  if (coaches.length === 0) return null;
-
-  const maxTotal = Math.max(...coaches.map(([, w]) => w.asLead.length + w.asSupport.length), 1);
-
-  return (
-    <div className="rounded-xl border border-border bg-card p-5">
-      <h2 className="mb-4 font-semibold text-foreground">Coach Workload</h2>
-      <div className="space-y-3">
-        {coaches.map(([name, w]) => {
-          const total = w.asLead.length + w.asSupport.length;
-          const pct = Math.round((total / maxTotal) * 100);
-          const load = total >= 10 ? "text-rose-400" : total >= 6 ? "text-amber-400" : "text-emerald-400";
-          return (
-            <div key={name} className="flex items-center gap-3">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/15 text-xs font-bold text-primary">
-                {name.slice(0, 2).toUpperCase()}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-sm font-medium text-foreground truncate">{name}</span>
-                  <span className={cn("text-xs font-semibold", load)}>{total} active</span>
-                </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
-                </div>
-                <div className="mt-1 flex gap-3 text-[10px] text-muted-foreground">
-                  <span>{w.asLead.length} as lead</span>
-                  {w.asSupport.length > 0 && <span>{w.asSupport.length} as support</span>}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function timeAgo(date: string) {
   const diff = Date.now() - new Date(date).getTime();
   const mins = Math.floor(diff / 60000);
@@ -237,9 +172,6 @@ export default function OutplacementOverview() {
           <UpcomingSessionsWidget candidates={candidates} />
         </div>
       </div>
-
-      {/* Coach Workload — admin only */}
-      {isAdmin && <CoachWorkloadView candidates={candidates} />}
 
       {/* Ending Soon */}
       {dueThisMonth.length > 0 && (
