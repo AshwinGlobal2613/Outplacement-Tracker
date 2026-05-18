@@ -112,7 +112,14 @@ function ZoomLinkButton({
         body: JSON.stringify({ topic: title, startTime, duration }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.detail ?? data.error ?? "unknown");
+      if (!res.ok) {
+        if (data.error === "scheduling_conflict") {
+          const list = (data.conflicts as string[]).map((c: string) => `• ${c}`).join("\n");
+          setError(`Conflict: another session is already scheduled at this time:\n${list}`);
+          return;
+        }
+        throw new Error(data.detail ?? data.error ?? "unknown");
+      }
       onLink(data.joinUrl);
     } catch (e: unknown) {
       setError(`Failed: ${e instanceof Error ? e.message : "unknown error"}`);
@@ -132,7 +139,7 @@ function ZoomLinkButton({
         {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Video className="h-3.5 w-3.5" />}
         {generating ? "Generating…" : "Generate Zoom Link"}
       </button>
-      {error && <p className="text-[11px] text-rose-400">{error}</p>}
+      {error && <p className="whitespace-pre-line text-[11px] text-rose-400">{error}</p>}
     </div>
   );
 }

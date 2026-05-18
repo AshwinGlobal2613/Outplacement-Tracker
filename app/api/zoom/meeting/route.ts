@@ -124,11 +124,18 @@ export async function POST(req: NextRequest) {
   const resolvedTopic = topic || "Coaching Session";
   const resolvedDuration = duration ?? 60;
 
-  // Check for conflicts and notify Slack if any found
+  // Check for conflicts — block meeting creation if any found
   if (startTime) {
     const conflicts = await findConflictingSessions(startTime, resolvedDuration);
     if (conflicts.length > 0) {
       await sendSlackAlert(conflicts, { topic: resolvedTopic, startTime, duration: resolvedDuration });
+      return NextResponse.json(
+        {
+          error: "scheduling_conflict",
+          conflicts: conflicts.map((c) => `${c.candidateName} — ${c.sessionTitle} at ${c.time} on ${c.date}`),
+        },
+        { status: 409 }
+      );
     }
   }
 
