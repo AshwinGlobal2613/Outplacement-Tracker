@@ -74,7 +74,7 @@ async function findConflictingSessions(
 
 async function sendSlackAlert(
   conflicts: ConflictingSession[],
-  newSession: { topic: string; date: string; time: string; duration: number }
+  newSession: { topic: string; date: string; time: string; duration: number; requestedBy: string }
 ) {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   if (!webhookUrl) return;
@@ -97,7 +97,7 @@ async function sendSlackAlert(
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `A Zoom link was requested for *${newSession.topic}* on *${newSession.date}* at *${newSession.time}* (${newSession.duration} min), but it conflicts with:`,
+            text: `*${newSession.requestedBy}* requested a Zoom link for *${newSession.topic}* on *${newSession.date}* at *${newSession.time}* (${newSession.duration} min), but it conflicts with:`,
           },
         },
         {
@@ -132,7 +132,8 @@ export async function POST(req: NextRequest) {
   if (date && time) {
     const conflicts = await findConflictingSessions(date, time, resolvedDuration);
     if (conflicts.length > 0) {
-      await sendSlackAlert(conflicts, { topic: resolvedTopic, date, time, duration: resolvedDuration });
+      const requestedBy = (token.name as string) || (token.email as string) || "Unknown user";
+      await sendSlackAlert(conflicts, { topic: resolvedTopic, date, time, duration: resolvedDuration, requestedBy });
       return NextResponse.json(
         {
           error: "scheduling_conflict",
