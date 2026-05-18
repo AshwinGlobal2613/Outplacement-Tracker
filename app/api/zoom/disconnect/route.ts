@@ -1,11 +1,10 @@
-import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
 import { deleteZoomTokens } from "@/lib/db";
 
-export async function DELETE() {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  await deleteZoomTokens(session.user.id);
+export async function DELETE(req: NextRequest) {
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || "outplacement-tracker-secret-key-2026" });
+  if (!token?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  await deleteZoomTokens(token.id as string);
   return NextResponse.json({ ok: true });
 }

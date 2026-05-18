@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 import { saveZoomTokens } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) return new NextResponse("Unauthorized", { status: 401 });
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || "outplacement-tracker-secret-key-2026" });
+  if (!token?.id) {
+    return new NextResponse(
+      `<html><body><script>window.opener?.postMessage({type:"zoom-error",error:"unauthorized"},"*");window.close();</script></body></html>`,
+      { headers: { "Content-Type": "text/html" } }
+    );
+  }
 
   const code = req.nextUrl.searchParams.get("code");
   const error = req.nextUrl.searchParams.get("error");
@@ -45,7 +49,7 @@ export async function GET(req: NextRequest) {
   const expiresAt = new Date(Date.now() + expires_in * 1000).toISOString();
 
   await saveZoomTokens({
-    userId: session.user.id,
+    userId: token.id as string,
     accessToken: access_token,
     refreshToken: refresh_token,
     expiresAt,

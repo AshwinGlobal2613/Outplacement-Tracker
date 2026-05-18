@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getToken } from "next-auth/jwt";
 import { getZoomTokens, saveZoomTokens, deleteZoomTokens } from "@/lib/db";
 
 async function getValidAccessToken(userId: string): Promise<string | null> {
@@ -45,10 +44,10 @@ async function getValidAccessToken(userId: string): Promise<string | null> {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || "outplacement-tracker-secret-key-2026" });
+  if (!token?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const accessToken = await getValidAccessToken(session.user.id);
+  const accessToken = await getValidAccessToken(token.id as string);
   if (!accessToken) return NextResponse.json({ error: "not_connected" }, { status: 401 });
 
   const { topic, startTime, duration } = await req.json() as {
