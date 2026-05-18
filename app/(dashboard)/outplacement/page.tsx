@@ -15,14 +15,23 @@ function CoachWorkloadView({ candidates }: { candidates: Candidate[] }) {
 
   // Build workload map keyed by coach name
   const workload: Record<string, { asLead: Candidate[]; asSupport: Candidate[] }> = {};
+
+  function splitNames(val: string): string[] {
+    return val.split(",").map((n) => n.trim()).filter(Boolean);
+  }
+
   for (const c of active) {
     if (c.leadCoach) {
-      if (!workload[c.leadCoach]) workload[c.leadCoach] = { asLead: [], asSupport: [] };
-      workload[c.leadCoach].asLead.push(c);
+      for (const name of splitNames(c.leadCoach)) {
+        if (!workload[name]) workload[name] = { asLead: [], asSupport: [] };
+        workload[name].asLead.push(c);
+      }
     }
-    if (c.support && c.support !== c.leadCoach) {
-      if (!workload[c.support]) workload[c.support] = { asLead: [], asSupport: [] };
-      workload[c.support].asSupport.push(c);
+    if (c.support) {
+      for (const name of splitNames(c.support)) {
+        if (!workload[name]) workload[name] = { asLead: [], asSupport: [] };
+        workload[name].asSupport.push(c);
+      }
     }
   }
 
