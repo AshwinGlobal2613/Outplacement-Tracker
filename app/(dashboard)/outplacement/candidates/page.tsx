@@ -296,16 +296,16 @@ function CandidatesContent() {
         </div>
       ) : activeTab === "active" ? (
         <ActiveTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab}
-          selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
+          isAdmin={isAdmin} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
       ) : activeTab === "completed" ? (
         <CompletedTable candidates={filtered} onRefresh={load} activeTab={activeTab}
-          selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
+          isAdmin={isAdmin} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
       ) : activeTab === "declined" ? (
         <DeclinedTable candidates={filtered} onRefresh={load} activeTab={activeTab}
-          selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
+          isAdmin={isAdmin} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
       ) : (
         <SimpleTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab}
-          selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
+          isAdmin={isAdmin} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
       )}
 
       {/* Bulk action bar */}
@@ -340,6 +340,7 @@ export default function CandidatesPage() {
 
 /* ─── Selection props shared by all tables ─── */
 interface SelectionProps {
+  isAdmin?: boolean;
   selectedIds: Set<string>;
   onToggleSelect: (id: string) => void;
   onToggleAll: (ids: string[]) => void;
@@ -391,7 +392,7 @@ function BulkActionBar({ count, currentStatus, onApply, onClear, loading }: {
 }
 
 /* ─── Referred + Candidate Reached (simple table) ─── */
-function SimpleTable({ candidates, supportColors, onRefresh, activeTab, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string } & SelectionProps) {
+function SimpleTable({ candidates, supportColors, onRefresh, activeTab, isAdmin, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string } & SelectionProps) {
   if (candidates.length === 0) return <EmptyState message="No candidates in this status" />;
   const allIds = candidates.map((c) => c.id);
   const allSelected = allIds.every((id) => selectedIds.has(id));
@@ -412,6 +413,7 @@ function SimpleTable({ candidates, supportColors, onRefresh, activeTab, selected
             <Th>Status</Th>
             <Th>Date Added</Th>
             <Th>Notes</Th>
+            {isAdmin && <Th>Budget</Th>}
             <th className="w-10 px-4 py-3" />
           </tr>
         </thead>
@@ -453,6 +455,11 @@ function SimpleTable({ candidates, supportColors, onRefresh, activeTab, selected
               <td className="px-4 py-3 max-w-[180px]">
                 <p className="truncate text-xs text-muted-foreground">{c.notes || "—"}</p>
               </td>
+              {isAdmin && (
+                <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                  {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
+                </td>
+              )}
               <td className="px-4 py-3">
                 <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                   <ExternalLink className="h-4 w-4" />
@@ -467,7 +474,7 @@ function SimpleTable({ candidates, supportColors, onRefresh, activeTab, selected
 }
 
 /* ─── Active candidates table ─── */
-function ActiveTable({ candidates, supportColors, onRefresh, activeTab, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string } & SelectionProps) {
+function ActiveTable({ candidates, supportColors, onRefresh, activeTab, isAdmin, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string } & SelectionProps) {
   if (candidates.length === 0) return <EmptyState message="No active candidates" />;
   const allIds = candidates.map((c) => c.id);
   const allSelected = allIds.every((id) => selectedIds.has(id));
@@ -489,6 +496,7 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab, selected
             <Th>Level</Th>
             <Th>Status</Th>
             <Th>End Date</Th>
+            {isAdmin && <Th>Budget</Th>}
             <th className="w-10 px-4 py-3" />
           </tr>
         </thead>
@@ -544,6 +552,11 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab, selected
                 <td className="px-4 py-3 text-xs text-muted-foreground">
                   {c.endDate ? new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
                 </td>
+                {isAdmin && (
+                  <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                    {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                     <ExternalLink className="h-4 w-4" />
@@ -559,7 +572,7 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab, selected
 }
 
 /* ─── Completed candidates table ─── */
-function CompletedTable({ candidates, onRefresh, activeTab, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string } & SelectionProps) {
+function CompletedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string } & SelectionProps) {
   const placed = candidates.filter((c) => c.jobStatus === "Y").length;
   if (candidates.length === 0) return <EmptyState message="No completed candidates yet" />;
   const allIds = candidates.map((c) => c.id);
@@ -587,6 +600,7 @@ function CompletedTable({ candidates, onRefresh, activeTab, selectedIds, onToggl
               <Th>DiSC</Th>
               <Th>Status</Th>
               <Th>Placed</Th>
+              {isAdmin && <Th>Budget</Th>}
               <th className="w-10 px-4 py-3" />
             </tr>
           </thead>
@@ -626,6 +640,11 @@ function CompletedTable({ candidates, onRefresh, activeTab, selectedIds, onToggl
                     ? <span className="flex items-center gap-1 text-xs font-medium text-emerald-400"><CheckCircle2 className="h-4 w-4" /> Placed</span>
                     : <span className="text-xs text-muted-foreground">Pending</span>}
                 </td>
+                {isAdmin && (
+                  <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                    {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                     <ExternalLink className="h-4 w-4" />
@@ -641,7 +660,7 @@ function CompletedTable({ candidates, onRefresh, activeTab, selectedIds, onToggl
 }
 
 /* ─── Declined candidates table ─── */
-function DeclinedTable({ candidates, onRefresh, activeTab, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string } & SelectionProps) {
+function DeclinedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string } & SelectionProps) {
   if (candidates.length === 0) return <EmptyState message="No declined candidates" />;
   const allIds = candidates.map((c) => c.id);
   const allSelected = allIds.every((id) => selectedIds.has(id));
@@ -660,6 +679,7 @@ function DeclinedTable({ candidates, onRefresh, activeTab, selectedIds, onToggle
             <Th>Status</Th>
             <Th>Date Started</Th>
             <Th>Notes</Th>
+            {isAdmin && <Th>Budget</Th>}
             <th className="w-10 px-4 py-3" />
           </tr>
         </thead>
@@ -691,6 +711,11 @@ function DeclinedTable({ candidates, onRefresh, activeTab, selectedIds, onToggle
                 {c.dateStarted ? new Date(c.dateStarted).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
               </td>
               <td className="px-4 py-3 text-xs text-muted-foreground max-w-xs truncate">{c.notes || "—"}</td>
+              {isAdmin && (
+                <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                  {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
+                </td>
+              )}
               <td className="px-4 py-3">
                 <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                   <ExternalLink className="h-4 w-4" />

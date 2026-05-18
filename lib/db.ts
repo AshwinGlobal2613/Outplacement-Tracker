@@ -68,6 +68,7 @@ function toCandidate(r: Record<string, unknown>): Candidate {
     invoiceStatus: (r.invoice_status as Candidate["invoiceStatus"]) ?? "Not Raised",
     costingStatus: (r.costing_status as Candidate["costingStatus"]) ?? "Not Done",
     budget: (r.budget as number) ?? null,
+    budgetCurrency: (r.budget_currency as string) ?? "AED",
     createdAt: r.created_at as string,
     updatedAt: (r.updated_at as string) ?? new Date().toISOString(),
     updatedBy: (r.updated_by as string) ?? null,
@@ -318,6 +319,7 @@ export async function createCandidate(candidate: Candidate): Promise<Candidate> 
       invoice_status: candidate.invoiceStatus,
       costing_status: candidate.costingStatus,
       budget: candidate.budget ?? null,
+      budget_currency: candidate.budgetCurrency ?? "AED",
       created_at: candidate.createdAt,
       updated_at: candidate.updatedAt,
       updated_by: candidate.updatedBy,
@@ -366,6 +368,7 @@ export async function updateCandidate(
   if (updates.invoiceStatus !== undefined) dbUpdates.invoice_status = updates.invoiceStatus;
   if (updates.costingStatus !== undefined) dbUpdates.costing_status = updates.costingStatus;
   if (updates.budget !== undefined) dbUpdates.budget = updates.budget;
+  if (updates.budgetCurrency !== undefined) dbUpdates.budget_currency = updates.budgetCurrency;
   if (updates.updatedBy !== undefined) dbUpdates.updated_by = updates.updatedBy;
 
   const { data, error } = await supabase

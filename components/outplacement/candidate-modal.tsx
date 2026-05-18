@@ -54,6 +54,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
     sessionsCompleted: candidate?.sessionsCompleted ?? 0,
     notes: candidate?.notes ?? "",
     budget: candidate?.budget ?? null as number | null,
+    budgetCurrency: candidate?.budgetCurrency ?? "AED",
     status: candidate?.status ?? "referred",
     discStyle: candidate?.discStyle ?? "",
     oldPlacement: candidate?.oldPlacement ?? "",
@@ -234,15 +235,26 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
 
           {/* Budget — admin only */}
           {isAdmin && (
-            <Field label="Programme Budget (AED)">
-              <input
-                type="number"
-                min="0"
-                value={form.budget ?? ""}
-                onChange={(e) => set("budget", e.target.value ? parseFloat(e.target.value) : null)}
-                placeholder="e.g. 25000"
-                className={inputCls + " w-48"}
-              />
+            <Field label="Programme Budget">
+              <div className="flex gap-2">
+                <select
+                  value={form.budgetCurrency}
+                  onChange={(e) => set("budgetCurrency", e.target.value)}
+                  className={inputCls + " w-28 shrink-0"}
+                >
+                  {["AED","USD","GBP","EUR","SAR","QAR","KWD","BHD","OMR","EGP","INR","PKR"].map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.budget ?? ""}
+                  onChange={(e) => set("budget", e.target.value ? parseFloat(e.target.value) : null)}
+                  placeholder="e.g. 25000"
+                  className={inputCls}
+                />
+              </div>
             </Field>
           )}
 
