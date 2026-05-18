@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { X, CalendarDays, Clock, MapPin, Link2, FileDown, Check, ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, CalendarDays, Clock, MapPin, Link2, FileDown, Check, ExternalLink, Loader2, Video, Unlink } from "lucide-react";
 import { Candidate, Session } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -29,19 +29,15 @@ const LOCATIONS = ["Google Meet", "In Person", "Phone Call", "Zoom", "Microsoft 
 function formatGoogleCalendarLink(session: Session, candidate: Candidate): string {
   const [year, month, day] = session.date.split("-").map(Number);
   const [hours, minutes] = session.time.split(":").map(Number);
-
   const pad = (n: number) => String(n).padStart(2, "0");
   const startStr = `${year}${pad(month)}${pad(day)}T${pad(hours)}${pad(minutes)}00`;
-
   const endDate = new Date(year, month - 1, day, hours, minutes + session.duration);
   const endStr = `${endDate.getFullYear()}${pad(endDate.getMonth() + 1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
-
   const attendees = [candidate.email].filter(Boolean).join(",");
   const description = [
     session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
     session.notes ? `Notes: ${session.notes}` : "",
   ].filter(Boolean).join("\n\n");
-
   const params = new URLSearchParams({
     action: "TEMPLATE",
     text: `${session.title} — ${candidate.candidateName}`,
@@ -50,7 +46,6 @@ function formatGoogleCalendarLink(session: Session, candidate: Candidate): strin
     location: session.meetingLink || session.location,
   });
   if (attendees) params.append("add", attendees);
-
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
@@ -58,17 +53,14 @@ function generateICS(session: Session, candidate: Candidate): string {
   const [year, month, day] = session.date.split("-").map(Number);
   const [hours, minutes] = session.time.split(":").map(Number);
   const pad = (n: number) => String(n).padStart(2, "0");
-
   const startStr = `${year}${pad(month)}${pad(day)}T${pad(hours)}${pad(minutes)}00`;
   const endDate = new Date(year, month - 1, day, hours, minutes + session.duration);
   const endStr = `${endDate.getFullYear()}${pad(endDate.getMonth() + 1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
-
   const description =
     `Candidate: ${candidate.candidateName}` +
     (candidate.leadCoach ? `\\nLead Coach: ${candidate.leadCoach}` : "") +
     (candidate.support ? `\\nSupport: ${candidate.support}` : "") +
     (session.notes ? `\\n\\nNotes: ${session.notes}` : "");
-
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -84,7 +76,6 @@ function generateICS(session: Session, candidate: Candidate): string {
     "END:VEVENT",
     "END:VCALENDAR",
   ].filter(Boolean);
-
   return lines.join("\r\n");
 }
 
@@ -96,6 +87,122 @@ function downloadICS(icsContent: string, filename: string) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+/* ─── Zoom Link Generator ─── */
+function ZoomLinkButton({
+  date, time, duration, title,
+  onLink,
+}: {
+  date: string; time: string; duration: number; title: string;
+  onLink: (url: string) => void;
+}) {
+  const [connected, setConnected] = useState<boolean | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/zoom/status")
+      .then((r) => r.json())
+      .then((d) => setConnected(d.connected))
+      .catch(() => setConnected(false));
+  }, []);
+
+  // Listen for OAuth popup completion
+  useEffect(() => {
+    function handleMessage(e: MessageEvent) {
+      if (e.data?.type === "zoom-connected") {
+        setConnected(true);
+        setError("");
+      } else if (e.data?.type === "zoom-error") {
+        setError("Zoom connection failed. Please try again.");
+      }
+    }
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
+  }, []);
+
+  function connectZoom() {
+    const w = 600, h = 700;
+    const left = window.screenX + (window.outerWidth - w) / 2;
+    const top = window.screenY + (window.outerHeight - h) / 2;
+    window.open(
+      "/api/zoom/connect",
+      "zoom-oauth",
+      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
+    );
+  }
+
+  async function generateLink() {
+    if (!date || !time) { setError("Set date and time first."); return; }
+    setGenerating(true);
+    setError("");
+    try {
+      // Build ISO start time from local date+time fields
+      const startTime = new Date(`${date}T${time}:00`).toISOString();
+      const res = await fetch("/api/zoom/meeting", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topic: title, startTime, duration }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        if (data.error === "not_connected") { setConnected(false); return; }
+        throw new Error(data.error);
+      }
+      onLink(data.joinUrl);
+    } catch {
+      setError("Failed to generate link. Please try again.");
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  async function disconnectZoom() {
+    await fetch("/api/zoom/disconnect", { method: "DELETE" });
+    setConnected(false);
+  }
+
+  if (connected === null) return null; // loading
+
+  return (
+    <div className="space-y-1.5">
+      {connected ? (
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={generateLink}
+            disabled={generating}
+            className="flex items-center gap-1.5 rounded-lg bg-[#2D8CFF] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1a7ae8] disabled:opacity-60 transition-colors"
+          >
+            {generating
+              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              : <Video className="h-3.5 w-3.5" />}
+            {generating ? "Generating…" : "Generate Zoom Link"}
+          </button>
+          <button
+            type="button"
+            onClick={disconnectZoom}
+            className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+            title="Disconnect Zoom"
+          >
+            <Unlink className="h-3 w-3" />
+            Disconnect
+          </button>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={connectZoom}
+          className="flex items-center gap-1.5 rounded-lg border border-[#2D8CFF]/50 bg-[#2D8CFF]/10 px-3 py-1.5 text-xs font-medium text-[#2D8CFF] hover:bg-[#2D8CFF]/20 transition-colors"
+        >
+          <Video className="h-3.5 w-3.5" />
+          Connect Zoom to generate link
+        </button>
+      )}
+      {error && <p className="text-[11px] text-rose-400">{error}</p>}
+    </div>
+  );
 }
 
 const inputCls =
@@ -198,11 +305,15 @@ export function ScheduleModal({
               {/* Date + Time + Duration */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground flex items-center gap-1"><CalendarDays className="h-3 w-3" style={{ color: "#ffffff" }} /> Date</label>
+                  <label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <CalendarDays className="h-3 w-3" style={{ color: "#ffffff" }} /> Date
+                  </label>
                   <input type="date" value={form.date} onChange={(e) => set("date", e.target.value)} className={inputCls} />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="h-3 w-3" /> Time</label>
+                  <label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Time
+                  </label>
                   <input type="time" value={form.time} onChange={(e) => set("time", e.target.value)} className={inputCls} />
                 </div>
                 <div className="space-y-1">
@@ -216,21 +327,47 @@ export function ScheduleModal({
               {/* Location + Meeting Link */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> Location</label>
+                  <label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> Location
+                  </label>
                   <select value={form.location} onChange={(e) => set("location", e.target.value)} className={inputCls}>
                     {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs text-muted-foreground flex items-center gap-1"><Link2 className="h-3 w-3" /> Meeting Link</label>
-                  <input value={form.meetingLink} onChange={(e) => set("meetingLink", e.target.value)} className={inputCls} placeholder="https://meet.google.com/…" />
+                  <label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Link2 className="h-3 w-3" /> Meeting Link
+                  </label>
+                  <input
+                    value={form.meetingLink}
+                    onChange={(e) => set("meetingLink", e.target.value)}
+                    className={cn(inputCls, form.meetingLink.includes("zoom.us") && "border-[#2D8CFF]/50 bg-[#2D8CFF]/5")}
+                    placeholder="https://meet.google.com/…"
+                  />
                 </div>
               </div>
+
+              {/* Zoom generate button — shown when location is Zoom */}
+              {form.location === "Zoom" && (
+                <ZoomLinkButton
+                  date={form.date}
+                  time={form.time}
+                  duration={form.duration}
+                  title={form.title}
+                  onLink={(url) => set("meetingLink", url)}
+                />
+              )}
 
               {/* Notes */}
               <div className="space-y-1">
                 <label className="text-xs text-muted-foreground">Notes</label>
-                <textarea value={form.notes} onChange={(e) => set("notes", e.target.value)} rows={2} className={inputCls + " resize-none"} placeholder="Optional agenda or context…" />
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => set("notes", e.target.value)}
+                  rows={2}
+                  className={inputCls + " resize-none"}
+                  placeholder="Optional agenda or context…"
+                />
               </div>
             </div>
 
@@ -238,8 +375,11 @@ export function ScheduleModal({
               <button onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Cancel
               </button>
-              <button onClick={handleSave} disabled={!form.date || !form.time || saving}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity">
+              <button
+                onClick={handleSave}
+                disabled={!form.date || !form.time || saving}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+              >
                 <CalendarDays className="h-4 w-4" style={{ color: "#ffffff" }} />
                 {saving ? "Saving…" : "Save & Get Invite"}
               </button>
@@ -261,8 +401,12 @@ export function ScheduleModal({
             <p className="text-sm text-muted-foreground">Now add it to your calendar:</p>
 
             <div className="space-y-3">
-              <a href={formatGoogleCalendarLink(saved, candidate)} target="_blank" rel="noopener noreferrer"
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors">
+              <a
+                href={formatGoogleCalendarLink(saved, candidate)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors"
+              >
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
                     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
@@ -280,8 +424,10 @@ export function ScheduleModal({
                 <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
               </a>
 
-              <button onClick={() => downloadICS(generateICS(saved, candidate), `${saved.title.replace(/\s+/g, "_")}.ics`)}
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors">
+              <button
+                onClick={() => downloadICS(generateICS(saved, candidate), `${saved.title.replace(/\s+/g, "_")}.ics`)}
+                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors"
+              >
                 <div className="flex items-center gap-3">
                   <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
                     <FileDown className="h-4 w-4 text-primary" />

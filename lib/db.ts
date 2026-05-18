@@ -689,3 +689,41 @@ export async function addActivityLog(entry: ActivityLog): Promise<void> {
   });
   if (error) throw error;
 }
+
+// ─── Zoom OAuth Tokens ─────────────────────────────────────────────────────────
+
+export interface ZoomTokens {
+  userId: string;
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+}
+
+export async function getZoomTokens(userId: string): Promise<ZoomTokens | null> {
+  const { data } = await supabase
+    .from("zoom_tokens")
+    .select("*")
+    .eq("user_id", userId)
+    .maybeSingle();
+  if (!data) return null;
+  return {
+    userId: data.user_id as string,
+    accessToken: data.access_token as string,
+    refreshToken: data.refresh_token as string,
+    expiresAt: data.expires_at as string,
+  };
+}
+
+export async function saveZoomTokens(tokens: ZoomTokens): Promise<void> {
+  const { error } = await supabase.from("zoom_tokens").upsert({
+    user_id: tokens.userId,
+    access_token: tokens.accessToken,
+    refresh_token: tokens.refreshToken,
+    expires_at: tokens.expiresAt,
+  }, { onConflict: "user_id" });
+  if (error) throw error;
+}
+
+export async function deleteZoomTokens(userId: string): Promise<void> {
+  await supabase.from("zoom_tokens").delete().eq("user_id", userId);
+}
