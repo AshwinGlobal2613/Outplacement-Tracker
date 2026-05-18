@@ -115,7 +115,7 @@ function ZoomLinkButton({
         setConnected(true);
         setError("");
       } else if (e.data?.type === "zoom-error") {
-        setError("Zoom connection failed. Please try again.");
+        setError(`Zoom error: ${e.data.error ?? "unknown"}`);
       }
     }
     window.addEventListener("message", handleMessage);

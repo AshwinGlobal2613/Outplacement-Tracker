@@ -2,24 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { saveZoomTokens } from "@/lib/db";
 
+function errorPage(error: string) {
+  return new NextResponse(
+    `<html><body><script>window.opener?.postMessage({type:"zoom-error",error:${JSON.stringify(error)}},"*");window.close();</script></body></html>`,
+    { headers: { "Content-Type": "text/html" } }
+  );
+}
+
 export async function GET(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || "outplacement-tracker-secret-key-2026" });
-  if (!token?.id) {
-    return new NextResponse(
-      `<html><body><script>window.opener?.postMessage({type:"zoom-error",error:"unauthorized"},"*");window.close();</script></body></html>`,
-      { headers: { "Content-Type": "text/html" } }
-    );
-  }
+  if (!token?.id) return errorPage("unauthorized - no session found");
 
   const code = req.nextUrl.searchParams.get("code");
   const error = req.nextUrl.searchParams.get("error");
 
-  if (error || !code) {
-    return new NextResponse(
-      `<html><body><script>window.opener?.postMessage({type:"zoom-error",error:"${error ?? "missing_code"}"},"*");window.close();</script></body></html>`,
-      { headers: { "Content-Type": "text/html" } }
-    );
-  }
+  if (error || !code) return errorPage(error ?? "missing_code");
 
   const credentials = Buffer.from(
     `${process.env.ZOOM_CLIENT_ID}:${process.env.ZOOM_CLIENT_SECRET}`
@@ -39,10 +36,8 @@ export async function GET(req: NextRequest) {
   });
 
   if (!tokenRes.ok) {
-    return new NextResponse(
-      `<html><body><script>window.opener?.postMessage({type:"zoom-error",error:"token_exchange_failed"},"*");window.close();</script></body></html>`,
-      { headers: { "Content-Type": "text/html" } }
-    );
+    const detail = await tokenRes.text();
+    return errorPage(`token_exchange_failed: ${detail}`);
   }
 
   const { access_token, refresh_token, expires_in } = await tokenRes.json();
