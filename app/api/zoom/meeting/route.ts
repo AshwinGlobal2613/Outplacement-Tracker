@@ -20,6 +20,12 @@ async function getAccessToken(): Promise<string | null> {
   return access_token;
 }
 
+// Convert "HH:MM" to minutes since midnight
+function toMinutes(time: string): number {
+  const [h, m] = time.split(":").map(Number);
+  return h * 60 + m;
+}
+
 interface ConflictingSession {
   candidateName: string;
   sessionTitle: string;
@@ -30,11 +36,12 @@ interface ConflictingSession {
 }
 
 async function findConflictingSessions(
-  startTime: string,
+  date: string,
+  time: string,
   duration: number
 ): Promise<ConflictingSession[]> {
-  const requestedStart = new Date(startTime).getTime();
-  const requestedEnd = requestedStart + duration * 60 * 1000;
+  const reqStart = toMinutes(time);
+  const reqEnd = reqStart + duration;
 
   const candidates = await getCandidates();
   const conflicts: ConflictingSession[] = [];
@@ -42,11 +49,14 @@ async function findConflictingSessions(
   for (const candidate of candidates) {
     for (const session of candidate.sessions ?? []) {
       if (!session.date || !session.time) continue;
-      const sessionStart = new Date(`${session.date}T${session.time}:00`).getTime();
-      const sessionEnd = sessionStart + session.duration * 60 * 1000;
+      // Only check sessions on the same date
+      if (session.date !== date) continue;
 
-      // Overlap: requested starts before existing ends AND requested ends after existing starts
-      if (requestedStart < sessionEnd && requestedEnd > sessionStart) {
+      const sesStart = toMinutes(session.time);
+      const sesEnd = sesStart + session.duration;
+
+      // Overlap: req starts before session ends AND req ends after session starts
+      if (reqStart < sesEnd && reqEnd > sesStart) {
         conflicts.push({
           candidateName: candidate.candidateName,
           sessionTitle: session.title,
@@ -62,73 +72,67 @@ async function findConflictingSessions(
   return conflicts;
 }
 
-async function sendSlackAlert(conflicts: ConflictingSession[], newSession: { topic: string; startTime: string; duration: number }) {
+async function sendSlackAlert(
+  conflicts: ConflictingSession[],
+  newSession: { topic: string; date: string; time: string; duration: number }
+) {
   const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   if (!webhookUrl) return;
 
-  const formatTime = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  };
-
-  const conflictLines = conflicts.map(
-    (c) =>
-      `• *${c.candidateName}* — ${c.sessionTitle} at ${c.time} on ${c.date} (${c.duration} min) with ${c.coach}`
-  ).join("\n");
-
-  const message = {
-    text: `:warning: *Session Scheduling Conflict Detected*`,
-    blocks: [
-      {
-        type: "header",
-        text: { type: "plain_text", text: "⚠️ Session Scheduling Conflict", emoji: true },
-      },
-      {
-        type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `A new Zoom link was just generated for *${newSession.topic}* at *${formatTime(newSession.startTime)}* (${newSession.duration} min), but the following session(s) overlap with that time:`,
-        },
-      },
-      {
-        type: "section",
-        text: { type: "mrkdwn", text: conflictLines },
-      },
-      {
-        type: "context",
-        elements: [{ type: "mrkdwn", text: "Please review and resolve the scheduling conflict in the Outplacement Management System." }],
-      },
-    ],
-  };
+  const conflictLines = conflicts
+    .map((c) => `• *${c.candidateName}* — ${c.sessionTitle} at ${c.time} on ${c.date} (${c.duration} min) with ${c.coach}`)
+    .join("\n");
 
   await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(message),
-  }).catch(() => {/* don't block meeting creation if Slack fails */});
+    body: JSON.stringify({
+      text: `:warning: *Session Scheduling Conflict Detected*`,
+      blocks: [
+        {
+          type: "header",
+          text: { type: "plain_text", text: "⚠️ Session Scheduling Conflict", emoji: true },
+        },
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `A Zoom link was requested for *${newSession.topic}* on *${newSession.date}* at *${newSession.time}* (${newSession.duration} min), but it conflicts with:`,
+          },
+        },
+        {
+          type: "section",
+          text: { type: "mrkdwn", text: conflictLines },
+        },
+        {
+          type: "context",
+          elements: [{ type: "mrkdwn", text: "The Zoom link was *not* generated. Please resolve the conflict in the Outplacement Management System." }],
+        },
+      ],
+    }),
+  }).catch(() => {/* don't crash if Slack fails */});
 }
 
 export async function POST(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || "outplacement-tracker-secret-key-2026" });
   if (!token?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const accessToken = await getAccessToken();
-  if (!accessToken) return NextResponse.json({ error: "zoom_auth_failed" }, { status: 500 });
-
-  const { topic, startTime, duration } = await req.json() as {
+  const { topic, startTime, duration, date, time } = await req.json() as {
     topic?: string;
     startTime?: string;
     duration?: number;
+    date?: string;
+    time?: string;
   };
 
   const resolvedTopic = topic || "Coaching Session";
   const resolvedDuration = duration ?? 60;
 
-  // Check for conflicts — block meeting creation if any found
-  if (startTime) {
-    const conflicts = await findConflictingSessions(startTime, resolvedDuration);
+  // Check for conflicts using raw date/time strings (no timezone issues)
+  if (date && time) {
+    const conflicts = await findConflictingSessions(date, time, resolvedDuration);
     if (conflicts.length > 0) {
-      await sendSlackAlert(conflicts, { topic: resolvedTopic, startTime, duration: resolvedDuration });
+      await sendSlackAlert(conflicts, { topic: resolvedTopic, date, time, duration: resolvedDuration });
       return NextResponse.json(
         {
           error: "scheduling_conflict",
@@ -138,6 +142,9 @@ export async function POST(req: NextRequest) {
       );
     }
   }
+
+  const accessToken = await getAccessToken();
+  if (!accessToken) return NextResponse.json({ error: "zoom_auth_failed" }, { status: 500 });
 
   const res = await fetch("https://api.zoom.us/v2/users/me/meetings", {
     method: "POST",

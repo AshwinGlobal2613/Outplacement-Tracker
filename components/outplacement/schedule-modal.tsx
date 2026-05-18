@@ -109,7 +109,7 @@ function ZoomLinkButton({
       const res = await fetch("/api/zoom/meeting", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ topic: title, startTime, duration }),
+        body: JSON.stringify({ topic: title, startTime, duration, date, time }),
       });
       const data = await res.json();
       if (!res.ok) {
