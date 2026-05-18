@@ -1,45 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
-import { getZoomTokens, saveZoomTokens, deleteZoomTokens } from "@/lib/db";
 
-async function getValidAccessToken(userId: string): Promise<string | null> {
-  const tokens = await getZoomTokens(userId);
-  if (!tokens) return null;
-
-  // Still valid with >5 min remaining
-  if (new Date(tokens.expiresAt).getTime() - Date.now() > 5 * 60 * 1000) {
-    return tokens.accessToken;
-  }
-
-  // Refresh
+async function getAccessToken(): Promise<string | null> {
   const credentials = Buffer.from(
     `${process.env.ZOOM_CLIENT_ID}:${process.env.ZOOM_CLIENT_SECRET}`
   ).toString("base64");
 
-  const res = await fetch("https://zoom.us/oauth/token", {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: new URLSearchParams({
-      grant_type: "refresh_token",
-      refresh_token: tokens.refreshToken,
-    }),
-  });
+  const res = await fetch(
+    `https://zoom.us/oauth/token?grant_type=account_credentials&account_id=${process.env.ZOOM_ACCOUNT_ID}`,
+    {
+      method: "POST",
+      headers: { Authorization: `Basic ${credentials}` },
+    }
+  );
 
-  if (!res.ok) {
-    await deleteZoomTokens(userId);
-    return null;
-  }
-
-  const { access_token, refresh_token, expires_in } = await res.json();
-  await saveZoomTokens({
-    userId,
-    accessToken: access_token,
-    refreshToken: refresh_token,
-    expiresAt: new Date(Date.now() + expires_in * 1000).toISOString(),
-  });
+  if (!res.ok) return null;
+  const { access_token } = await res.json();
   return access_token;
 }
 
@@ -47,8 +23,8 @@ export async function POST(req: NextRequest) {
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET || "outplacement-tracker-secret-key-2026" });
   if (!token?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const accessToken = await getValidAccessToken(token.id as string);
-  if (!accessToken) return NextResponse.json({ error: "not_connected" }, { status: 401 });
+  const accessToken = await getAccessToken();
+  if (!accessToken) return NextResponse.json({ error: "zoom_auth_failed" }, { status: 500 });
 
   const { topic, startTime, duration } = await req.json() as {
     topic?: string;

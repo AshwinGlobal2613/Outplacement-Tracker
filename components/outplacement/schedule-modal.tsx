@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, CalendarDays, Clock, MapPin, Link2, FileDown, Check, ExternalLink, Loader2, Video, Unlink } from "lucide-react";
+import { X, CalendarDays, Clock, MapPin, Link2, FileDown, Check, ExternalLink, Loader2, Video } from "lucide-react";
 import { Candidate, Session } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -97,48 +97,14 @@ function ZoomLinkButton({
   date: string; time: string; duration: number; title: string;
   onLink: (url: string) => void;
 }) {
-  const [connected, setConnected] = useState<boolean | null>(null);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetch("/api/zoom/status")
-      .then((r) => r.json())
-      .then((d) => setConnected(d.connected))
-      .catch(() => setConnected(false));
-  }, []);
-
-  // Listen for OAuth popup completion
-  useEffect(() => {
-    function handleMessage(e: MessageEvent) {
-      if (e.data?.type === "zoom-connected") {
-        setConnected(true);
-        setError("");
-      } else if (e.data?.type === "zoom-error") {
-        setError(`Zoom error: ${e.data.error ?? "unknown"}`);
-      }
-    }
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, []);
-
-  function connectZoom() {
-    const w = 600, h = 700;
-    const left = window.screenX + (window.outerWidth - w) / 2;
-    const top = window.screenY + (window.outerHeight - h) / 2;
-    window.open(
-      "/api/zoom/connect",
-      "zoom-oauth",
-      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no`
-    );
-  }
 
   async function generateLink() {
     if (!date || !time) { setError("Set date and time first."); return; }
     setGenerating(true);
     setError("");
     try {
-      // Build ISO start time from local date+time fields
       const startTime = new Date(`${date}T${time}:00`).toISOString();
       const res = await fetch("/api/zoom/meeting", {
         method: "POST",
@@ -146,60 +112,26 @@ function ZoomLinkButton({
         body: JSON.stringify({ topic: title, startTime, duration }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        if (data.error === "not_connected") { setConnected(false); return; }
-        throw new Error(data.error);
-      }
+      if (!res.ok) throw new Error(data.detail ?? data.error ?? "unknown");
       onLink(data.joinUrl);
-    } catch {
-      setError("Failed to generate link. Please try again.");
+    } catch (e: unknown) {
+      setError(`Failed: ${e instanceof Error ? e.message : "unknown error"}`);
     } finally {
       setGenerating(false);
     }
   }
 
-  async function disconnectZoom() {
-    await fetch("/api/zoom/disconnect", { method: "DELETE" });
-    setConnected(false);
-  }
-
-  if (connected === null) return null; // loading
-
   return (
     <div className="space-y-1.5">
-      {connected ? (
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={generateLink}
-            disabled={generating}
-            className="flex items-center gap-1.5 rounded-lg bg-[#2D8CFF] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1a7ae8] disabled:opacity-60 transition-colors"
-          >
-            {generating
-              ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              : <Video className="h-3.5 w-3.5" />}
-            {generating ? "Generating…" : "Generate Zoom Link"}
-          </button>
-          <button
-            type="button"
-            onClick={disconnectZoom}
-            className="flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
-            title="Disconnect Zoom"
-          >
-            <Unlink className="h-3 w-3" />
-            Disconnect
-          </button>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={connectZoom}
-          className="flex items-center gap-1.5 rounded-lg border border-[#2D8CFF]/50 bg-[#2D8CFF]/10 px-3 py-1.5 text-xs font-medium text-[#2D8CFF] hover:bg-[#2D8CFF]/20 transition-colors"
-        >
-          <Video className="h-3.5 w-3.5" />
-          Connect Zoom to generate link
-        </button>
-      )}
+      <button
+        type="button"
+        onClick={generateLink}
+        disabled={generating}
+        className="flex items-center gap-1.5 rounded-lg bg-[#2D8CFF] px-3 py-1.5 text-xs font-medium text-white hover:bg-[#1a7ae8] disabled:opacity-60 transition-colors"
+      >
+        {generating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Video className="h-3.5 w-3.5" />}
+        {generating ? "Generating…" : "Generate Zoom Link"}
+      </button>
       {error && <p className="text-[11px] text-rose-400">{error}</p>}
     </div>
   );
