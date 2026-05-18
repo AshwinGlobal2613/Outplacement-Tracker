@@ -252,7 +252,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                   value={form.budget ?? ""}
                   onChange={(e) => set("budget", e.target.value ? parseFloat(e.target.value) : null)}
                   placeholder="e.g. 25000"
-                  className={inputCls}
+                  className={inputCls + " flex-1"}
                 />
               </div>
             </Field>
