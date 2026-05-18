@@ -21,6 +21,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
+
+  // Auto-set discDone based on whether discStyle is filled in
+  if (body.discStyle !== undefined) {
+    body.discDone = body.discStyle?.trim() ? "Done" : "Not Done";
+  }
+
   const updated = await updateCandidate(params.id, { ...body, updatedBy: session.user.id });
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
