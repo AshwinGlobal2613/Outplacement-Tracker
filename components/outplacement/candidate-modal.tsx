@@ -240,7 +240,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                 <select
                   value={form.budgetCurrency}
                   onChange={(e) => set("budgetCurrency", e.target.value)}
-                  className={inputCls + " w-28 shrink-0"}
+                  className="w-28 shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   {["AED","USD","GBP","EUR","SAR","QAR","KWD","BHD","OMR","EGP","INR","PKR"].map((c) => (
                     <option key={c} value={c}>{c}</option>
@@ -252,7 +252,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                   value={form.budget ?? ""}
                   onChange={(e) => set("budget", e.target.value ? parseFloat(e.target.value) : null)}
                   placeholder="e.g. 25000"
-                  className={inputCls + " flex-1"}
+                  className="flex-1 min-w-0 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
                 />
               </div>
             </Field>
