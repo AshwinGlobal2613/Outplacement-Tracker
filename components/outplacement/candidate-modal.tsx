@@ -53,6 +53,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
     endDate: candidate?.endDate ?? "",
     sessionsCompleted: candidate?.sessionsCompleted ?? 0,
     notes: candidate?.notes ?? "",
+    budget: candidate?.budget ?? null as number | null,
     status: candidate?.status ?? "referred",
     discStyle: candidate?.discStyle ?? "",
     oldPlacement: candidate?.oldPlacement ?? "",
@@ -230,6 +231,20 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
               <input type="date" value={form.endDate ?? ""} onChange={(e) => set("endDate", e.target.value || null)} className={inputCls} />
             </Field>
           </div>
+
+          {/* Budget — admin only */}
+          {isAdmin && (
+            <Field label="Programme Budget (AED)">
+              <input
+                type="number"
+                min="0"
+                value={form.budget ?? ""}
+                onChange={(e) => set("budget", e.target.value ? parseFloat(e.target.value) : null)}
+                placeholder="e.g. 25000"
+                className={inputCls + " w-48"}
+              />
+            </Field>
+          )}
 
           {/* Notes — optional */}
           <Field label="Notes">

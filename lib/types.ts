@@ -120,6 +120,7 @@ export interface Candidate {
   discDone: DiscDoneStatus;
   invoiceStatus: InvoiceStatus;
   costingStatus: CostingStatus;
+  budget?: number | null;
   createdAt: string;
   updatedAt: string;
   updatedBy: string | null;
