@@ -24,7 +24,7 @@ const DURATIONS = [
   { label: "2 hours", value: 120 },
 ];
 
-const LOCATIONS = ["Google Meet", "In Person", "Phone Call", "Zoom", "Microsoft Teams", "Other"];
+const LOCATIONS = ["Zoom", "Google Meet", "In Person"];
 
 function formatGoogleCalendarLink(session: Session, candidate: Candidate): string {
   const [year, month, day] = session.date.split("-").map(Number);
@@ -162,7 +162,7 @@ export function ScheduleModal({
     date: today,
     time: "10:00",
     duration: 60,
-    location: "Google Meet",
+    location: "Zoom",
     meetingLink: "",
     notes: "",
   });
