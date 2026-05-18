@@ -114,8 +114,7 @@ function ZoomLinkButton({
       const data = await res.json();
       if (!res.ok) {
         if (data.error === "scheduling_conflict") {
-          const list = (data.conflicts as string[]).map((c: string) => `• ${c}`).join("\n");
-          setError(`Conflict: another session is already scheduled at this time:\n${list}`);
+          setError("Conflict: Another session is already scheduled at this time. Your admin has been notified, please get a new link from him and paste it here.");
           return;
         }
         throw new Error(data.detail ?? data.error ?? "unknown");
