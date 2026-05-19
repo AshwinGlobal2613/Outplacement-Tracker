@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCandidates, getUsers } from "@/lib/db";
 
-function getTomorrowDate(): string {
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().split("T")[0];
+function getTargetDate(): string {
+  // Cron runs at 8 AM UTC (12 PM GST). Find the date 24 hours from now.
+  const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  // Convert to GST (UTC+4) to get the correct local date
+  const gstOffset = 4 * 60 * 60 * 1000;
+  const gstDate = new Date(d.getTime() + gstOffset);
+  return gstDate.toISOString().split("T")[0];
 }
 
 // Look up a Slack user ID by email using the bot token
@@ -46,7 +49,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const tomorrow = getTomorrowDate();
+  const tomorrow = getTargetDate();
   const [candidates, users] = await Promise.all([getCandidates(), getUsers()]);
 
   // Build a name → email map from system users
