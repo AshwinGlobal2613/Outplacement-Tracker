@@ -184,15 +184,6 @@ export default function MyDashboardPage() {
         <StatCard icon={XCircle}      color="text-rose-400"    label="Declined"           value={myDeclined.length} />
       </div>
 
-      {/* Activity breakdown */}
-      {totalActivities > 0 && (
-        <div className="grid grid-cols-3 gap-3">
-          <MiniPill icon={Briefcase}  label="Job Opportunities" value={jobOpps}  color="text-amber-400 bg-amber-500/10 border-amber-500/20" />
-          <MiniPill icon={CalendarDays} label="Events"          value={events}   color="text-sky-400 bg-sky-500/10 border-sky-500/20" />
-          <MiniPill icon={Users2}     label="Networks"          value={networks} color="text-violet-400 bg-violet-500/10 border-violet-500/20" />
-        </div>
-      )}
-
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* My Candidates */}
         <div className="col-span-2 rounded-xl border border-border bg-card p-5">
