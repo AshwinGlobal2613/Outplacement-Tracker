@@ -218,31 +218,23 @@ function ResourceModal({
 
     let transformed: string[];
 
+    // Helper: insert a new list item at end of current line, cursor right after prefix
+    function insertNewItem(prefix: string) {
+      const needsNewline = lineEnd > 0 && val[lineEnd - 1] !== "\n";
+      const ins = (needsNewline ? "\n" : "") + prefix;
+      set("content", val.substring(0, lineEnd) + ins + val.substring(lineEnd));
+      setTimeout(() => { ta.focus(); const p = lineEnd + ins.length; ta.setSelectionRange(p, p); }, 0);
+    }
+
     if (fmt === "bullet") {
-      if (!hasSel) {
-        // No selection — just insert one new item
-        const ins = `\n- List item`;
-        set("content", val.substring(0, lineEnd) + ins + val.substring(lineEnd));
-        setTimeout(() => { ta.focus(); const p = lineEnd + ins.length; ta.setSelectionRange(p, p); }, 0);
-        return;
-      }
+      if (!hasSel) { insertNewItem("- "); return; }
       transformed = lines.map(l => l.trim() ? `${indent(l)}- ${strip(l).trimStart()}` : l);
     } else if (fmt === "numbered") {
-      if (!hasSel) {
-        const ins = `\n1. List item`;
-        set("content", val.substring(0, lineEnd) + ins + val.substring(lineEnd));
-        setTimeout(() => { ta.focus(); const p = lineEnd + ins.length; ta.setSelectionRange(p, p); }, 0);
-        return;
-      }
+      if (!hasSel) { insertNewItem("1. "); return; }
       let n = 1;
       transformed = lines.map(l => l.trim() ? `${indent(l)}${n++}. ${strip(l).trimStart()}` : l);
     } else if (fmt === "checklist") {
-      if (!hasSel) {
-        const ins = `\n- [ ] Task item`;
-        set("content", val.substring(0, lineEnd) + ins + val.substring(lineEnd));
-        setTimeout(() => { ta.focus(); const p = lineEnd + ins.length; ta.setSelectionRange(p, p); }, 0);
-        return;
-      }
+      if (!hasSel) { insertNewItem("- [ ] "); return; }
       transformed = lines.map(l => l.trim() ? `${indent(l)}- [ ] ${strip(l).trimStart()}` : l);
     } else if (fmt === "indent") {
       transformed = lines.map(l => l ? `  ${l}` : l);
@@ -255,6 +247,22 @@ function ResourceModal({
     const newBlock = transformed.join("\n");
     set("content", val.substring(0, lineStart) + newBlock + val.substring(lineEnd));
     setTimeout(() => { ta.focus(); ta.setSelectionRange(lineStart, lineStart + newBlock.length); }, 0);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    // Tab = indent, Shift+Tab = outdent
+    if (e.key === "Tab") {
+      e.preventDefault();
+      applyFormat(e.shiftKey ? "outdent" : "indent");
+      return;
+    }
+    // Ctrl/Cmd shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      const k = e.key.toLowerCase();
+      if (k === "b") { e.preventDefault(); applyFormat("bold"); }
+      if (k === "i") { e.preventDefault(); applyFormat("italic"); }
+      if (k === "u") { e.preventDefault(); applyFormat("underline"); }
+    }
   }
 
   async function handleSave() {
@@ -369,6 +377,7 @@ function ResourceModal({
                       ref={textareaRef}
                       value={form.content}
                       onChange={(e) => set("content", e.target.value)}
+                      onKeyDown={handleKeyDown}
                       placeholder={contentPlaceholder}
                       rows={12}
                       className="w-full rounded-b-lg rounded-t-none border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-y font-mono leading-relaxed"
