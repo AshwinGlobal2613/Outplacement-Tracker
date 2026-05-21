@@ -69,7 +69,12 @@ function ResourceModal({
       body: JSON.stringify(form),
     });
     setSaving(false);
-    if (!res.ok) { setError("Failed to save. Please try again."); return; }
+    if (!res.ok) {
+      let msg = "Failed to save. Please try again.";
+      try { const d = await res.json(); if (d?.error) msg = d.error; } catch {}
+      setError(msg);
+      return;
+    }
     onSaved();
   }
 
