@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import {
   Plus, X, Copy, Check, ExternalLink, Trash2, Pencil,
   BookOpen, Mail, FileText, Link2, Search, Eye,
-  Bold, Italic, Underline, Strikethrough,
+  Bold, Italic, Underline, Strikethrough, Link,
   List, ListOrdered, ListChecks,
   Indent, Outdent,
 } from "lucide-react";
@@ -98,7 +98,12 @@ function applyInline(text: string): string {
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
     .replace(/__(.*?)__/g, "<u>$1</u>")
-    .replace(/~~(.*?)~~/g, "<s>$1</s>");
+    .replace(/~~(.*?)~~/g, "<s>$1</s>")
+    .replace(/\[([^\]]+)\]\(([^)]*)\)/g, (_, label, url) =>
+      url
+        ? `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-primary underline hover:opacity-80">${label}</a>`
+        : `<span class="text-primary underline opacity-60">${label}</span>`
+    );
 }
 
 /* ─── Formatting Toolbar ─── */
@@ -137,6 +142,7 @@ function FormatToolbar({ onFormat }: { onFormat: (fmt: string) => void }) {
       <ToolBtn icon={Italic}        label="Italic (Ctrl+I)"        fmt="italic"    onFormat={onFormat} />
       <ToolBtn icon={Underline}     label="Underline (Ctrl+U)"     fmt="underline" onFormat={onFormat} />
       <ToolBtn icon={Strikethrough} label="Strikethrough"          fmt="strike"    onFormat={onFormat} />
+      <ToolBtn icon={Link}          label="Hyperlink"              fmt="link"      onFormat={onFormat} />
       <Sep />
       {/* Lists */}
       <ToolBtn icon={List}          label="Bullet list"            fmt="bullet"    onFormat={onFormat} />
@@ -187,9 +193,30 @@ function ResourceModal({
     const hasSel   = selStart !== selEnd;
 
     // ── Inline formats: toggle wrap on selection only ────────────────────
-    if (["bold", "italic", "underline", "strike"].includes(fmt)) {
+    if (["bold", "italic", "underline", "strike", "link"].includes(fmt)) {
       // No selection → do nothing
       if (!hasSel) return;
+
+      const sel = val.substring(selStart, selEnd);
+
+      // ── Hyperlink ──
+      if (fmt === "link") {
+        const isLink = /^\[.+\]\(.*\)$/.test(sel);
+        let replacement: string;
+        let cursorPos: number;
+        if (isLink) {
+          // Unwrap → extract display text only
+          replacement = sel.replace(/^\[(.+)\]\(.*\)$/, "$1");
+          cursorPos = selStart + replacement.length;
+        } else {
+          // Wrap as [text](|) — cursor lands inside the () ready to paste URL
+          replacement = `[${sel}]()`;
+          cursorPos = selStart + replacement.length - 1; // inside the ()
+        }
+        set("content", val.substring(0, selStart) + replacement + val.substring(selEnd));
+        setTimeout(() => { el.focus(); el.setSelectionRange(cursorPos, cursorPos); }, 0);
+        return;
+      }
 
       const markers: Record<string, [string, string]> = {
         bold:      ["**", "**"],
@@ -198,7 +225,6 @@ function ResourceModal({
         strike:    ["~~", "~~"],
       };
       const [o, c] = markers[fmt];
-      const sel = val.substring(selStart, selEnd);
 
       // Detect if already wrapped (italic needs special check vs bold **)
       const alreadyWrapped = fmt === "italic"
@@ -207,10 +233,8 @@ function ResourceModal({
 
       let replacement: string;
       if (alreadyWrapped) {
-        // Unwrap: remove the surrounding markers
         replacement = sel.substring(o.length, sel.length - c.length);
       } else {
-        // Wrap: add markers around selection
         replacement = `${o}${sel}${c}`;
       }
 
