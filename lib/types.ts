@@ -180,6 +180,21 @@ export interface Notification {
   createdAt: string;
 }
 
+export type ResourceCategory = "Email Templates" | "Reading Materials" | "Guides" | "Other";
+
+export interface Resource {
+  id: string;
+  title: string;
+  description: string;
+  category: ResourceCategory;
+  content: string;       // For templates: the template body. For links: the URL.
+  type: "template" | "document" | "link";
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface ActivityLog {
   id: string;
   userId: string;

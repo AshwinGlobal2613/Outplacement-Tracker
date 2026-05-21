@@ -12,6 +12,7 @@ import {
   UserCircle2,
   LogOut,
   CalendarDays,
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -37,6 +38,7 @@ const navSections: NavSection[] = [
       { label: "Candidates", href: "/outplacement/candidates", icon: Users },
       { label: "Sessions", href: "/outplacement/sessions", icon: CalendarDays },
       { label: "Headhunters", href: "/outplacement/headhunters", icon: Search },
+      { label: "Resources", href: "/outplacement/resources", icon: BookOpen },
     ],
   },
 ];

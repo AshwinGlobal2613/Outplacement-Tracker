@@ -9,6 +9,7 @@ import {
   ActivityLog,
   Lists,
   PasswordResetToken,
+  Resource,
 } from "./types";
 
 // ─── Mappers: DB row (snake_case) → TypeScript type (camelCase) ───────────────
@@ -732,4 +733,67 @@ export async function saveZoomTokens(tokens: ZoomTokens): Promise<void> {
 
 export async function deleteZoomTokens(userId: string): Promise<void> {
   await supabase.from("zoom_tokens").delete().eq("user_id", userId);
+}
+
+// ─── Resources ────────────────────────────────────────────────────────────────
+
+function toResource(r: Record<string, unknown>): Resource {
+  return {
+    id: r.id as string,
+    title: r.title as string,
+    description: (r.description as string) ?? "",
+    category: r.category as Resource["category"],
+    content: (r.content as string) ?? "",
+    type: r.type as Resource["type"],
+    createdBy: (r.created_by as string) ?? "",
+    createdByName: (r.created_by_name as string) ?? "",
+    createdAt: r.created_at as string,
+    updatedAt: (r.updated_at as string) ?? r.created_at as string,
+  };
+}
+
+export async function getResources(): Promise<Resource[]> {
+  const { data, error } = await supabase
+    .from("resources")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r) => toResource(r as Record<string, unknown>));
+}
+
+export async function createResource(resource: Resource): Promise<Resource> {
+  const { data, error } = await supabase
+    .from("resources")
+    .insert({
+      id: resource.id,
+      title: resource.title,
+      description: resource.description,
+      category: resource.category,
+      content: resource.content,
+      type: resource.type,
+      created_by: resource.createdBy,
+      created_by_name: resource.createdByName,
+      created_at: resource.createdAt,
+      updated_at: resource.updatedAt,
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return toResource(data as Record<string, unknown>);
+}
+
+export async function updateResource(id: string, updates: Partial<Resource>): Promise<Resource | null> {
+  const dbUpdates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+  if (updates.title !== undefined) dbUpdates.title = updates.title;
+  if (updates.description !== undefined) dbUpdates.description = updates.description;
+  if (updates.category !== undefined) dbUpdates.category = updates.category;
+  if (updates.content !== undefined) dbUpdates.content = updates.content;
+  if (updates.type !== undefined) dbUpdates.type = updates.type;
+  const { data, error } = await supabase.from("resources").update(dbUpdates).eq("id", id).select().maybeSingle();
+  if (error) throw error;
+  return data ? toResource(data as Record<string, unknown>) : null;
+}
+
+export async function deleteResource(id: string): Promise<void> {
+  await supabase.from("resources").delete().eq("id", id);
 }
