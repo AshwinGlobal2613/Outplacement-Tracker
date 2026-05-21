@@ -180,6 +180,7 @@ function ResourceModal({
   function applyFormat(fmt: string) {
     const ta = textareaRef.current;
     if (!ta) return;
+    const el = ta; // non-null alias for use inside callbacks
     const val      = ta.value;
     const selStart = ta.selectionStart;
     const selEnd   = ta.selectionEnd;
@@ -198,7 +199,7 @@ function ResourceModal({
       const insert = `${o}${sel || ph}${c}`;
       set("content", val.substring(0, selStart) + insert + val.substring(selEnd));
       const cur = selStart + (sel ? insert.length : o.length + ph.length);
-      setTimeout(() => { ta.focus(); ta.setSelectionRange(cur, cur); }, 0);
+      setTimeout(() => { el.focus(); el.setSelectionRange(cur, cur); }, 0);
       return;
     }
 
@@ -223,7 +224,7 @@ function ResourceModal({
       const needsNewline = lineEnd > 0 && val[lineEnd - 1] !== "\n";
       const ins = (needsNewline ? "\n" : "") + prefix;
       set("content", val.substring(0, lineEnd) + ins + val.substring(lineEnd));
-      setTimeout(() => { ta.focus(); const p = lineEnd + ins.length; ta.setSelectionRange(p, p); }, 0);
+      setTimeout(() => { el.focus(); const p = lineEnd + ins.length; el.setSelectionRange(p, p); }, 0);
     }
 
     if (fmt === "bullet") {
@@ -246,7 +247,7 @@ function ResourceModal({
 
     const newBlock = transformed.join("\n");
     set("content", val.substring(0, lineStart) + newBlock + val.substring(lineEnd));
-    setTimeout(() => { ta.focus(); ta.setSelectionRange(lineStart, lineStart + newBlock.length); }, 0);
+    setTimeout(() => { el.focus(); el.setSelectionRange(lineStart, lineStart + newBlock.length); }, 0);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
