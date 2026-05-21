@@ -35,7 +35,15 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json(resource);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
+    let message = "Unknown error";
+    if (err instanceof Error) {
+      message = err.message;
+    } else if (typeof err === "object" && err !== null) {
+      const e = err as Record<string, unknown>;
+      message = (e.message as string) ?? (e.details as string) ?? (e.hint as string) ?? JSON.stringify(err);
+    } else {
+      message = String(err);
+    }
     console.error("POST /api/resources error:", message);
     return NextResponse.json({ error: message }, { status: 500 });
   }

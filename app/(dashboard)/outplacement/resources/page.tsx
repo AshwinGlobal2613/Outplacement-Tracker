@@ -71,7 +71,12 @@ function ResourceModal({
     setSaving(false);
     if (!res.ok) {
       let msg = "Failed to save. Please try again.";
-      try { const d = await res.json(); if (d?.error) msg = d.error; } catch {}
+      try {
+        const d = await res.json();
+        if (d?.error) {
+          msg = typeof d.error === "string" ? d.error : JSON.stringify(d.error);
+        }
+      } catch {}
       setError(msg);
       return;
     }
