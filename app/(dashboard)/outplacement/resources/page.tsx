@@ -5,8 +5,10 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
   Plus, X, Copy, Check, ExternalLink, Trash2, Pencil,
-  BookOpen, Mail, FileText, Link2, Search, Bold, Italic,
-  List, ListOrdered, Eye,
+  BookOpen, Mail, FileText, Link2, Search, Eye,
+  Bold, Italic, Underline, Strikethrough,
+  List, ListOrdered, ListChecks,
+  Indent, Outdent,
 } from "lucide-react";
 import { Resource, ResourceCategory } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -35,7 +37,7 @@ const TYPE_OPTIONS = [
 
 const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
 
-/* ─── Simple Markdown Renderer ─── */
+/* ─── Markdown Renderer ─── */
 function renderMarkdown(raw: string): string {
   const escaped = raw
     .replace(/&/g, "&amp;")
@@ -46,20 +48,38 @@ function renderMarkdown(raw: string): string {
   const output: string[] = [];
   let inUL = false;
   let inOL = false;
+  let inCL = false;
 
   for (const line of lines) {
-    const ul = line.match(/^[-*] (.+)/);
-    const ol = line.match(/^\d+\. (.+)/);
+    const ul  = line.match(/^- (.+)/);
+    const ol  = line.match(/^\d+\. (.+)/);
+    const cl  = line.match(/^- \[(x| )\] (.+)/i);
+    // indent: 2-space or tab prefix turns into nested item
+    const ind = line.match(/^(?:  |\t)- (.+)/);
 
-    if (ul) {
+    if (cl) {
+      if (!inCL) {
+        if (inUL) { output.push("</ul>"); inUL = false; }
+        if (inOL) { output.push("</ol>"); inOL = false; }
+        output.push('<ul class="checklist">'); inCL = true;
+      }
+      const checked = cl[1].toLowerCase() === "x";
+      output.push(`<li><input type="checkbox" disabled ${checked ? "checked" : ""} /> ${applyInline(cl[2])}</li>`);
+    } else if (ind) {
+      // nested bullet inside existing list
+      output.push(`<ul class="nested"><li>${applyInline(ind[1])}</li></ul>`);
+    } else if (ul) {
+      if (inCL) { output.push("</ul>"); inCL = false; }
       if (!inUL) { if (inOL) { output.push("</ol>"); inOL = false; } output.push("<ul>"); inUL = true; }
       output.push(`<li>${applyInline(ul[1])}</li>`);
     } else if (ol) {
+      if (inCL) { output.push("</ul>"); inCL = false; }
       if (!inOL) { if (inUL) { output.push("</ul>"); inUL = false; } output.push("<ol>"); inOL = true; }
       output.push(`<li>${applyInline(ol[1])}</li>`);
     } else {
       if (inUL) { output.push("</ul>"); inUL = false; }
       if (inOL) { output.push("</ol>"); inOL = false; }
+      if (inCL) { output.push("</ul>"); inCL = false; }
       if (line.trim() === "") {
         output.push("<br />");
       } else {
@@ -69,6 +89,7 @@ function renderMarkdown(raw: string): string {
   }
   if (inUL) output.push("</ul>");
   if (inOL) output.push("</ol>");
+  if (inCL) output.push("</ul>");
   return output.join("");
 }
 
@@ -76,32 +97,55 @@ function applyInline(text: string): string {
   return text
     .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
     .replace(/\*(.*?)\*/g, "<em>$1</em>")
-    .replace(/__(.*?)__/g, "<u>$1</u>");
+    .replace(/__(.*?)__/g, "<u>$1</u>")
+    .replace(/~~(.*?)~~/g, "<s>$1</s>");
 }
 
 /* ─── Formatting Toolbar ─── */
-function FormatToolbar({ onFormat }: { onFormat: (fmt: string) => void }) {
-  const tools = [
-    { icon: Bold,        label: "Bold",           fmt: "bold" },
-    { icon: Italic,      label: "Italic",         fmt: "italic" },
-    { icon: List,        label: "Bullet list",    fmt: "bullet" },
-    { icon: ListOrdered, label: "Numbered list",  fmt: "numbered" },
-  ];
+function Sep() {
+  return <div className="mx-0.5 h-4 w-px bg-border shrink-0" />;
+}
+
+function ToolBtn({
+  icon: Icon,
+  label,
+  fmt,
+  onFormat,
+}: {
+  icon: React.ElementType;
+  label: string;
+  fmt: string;
+  onFormat: (f: string) => void;
+}) {
   return (
-    <div className="flex items-center gap-1 rounded-t-lg border border-b-0 border-border bg-sidebar px-2 py-1.5">
-      {tools.map(({ icon: Icon, label, fmt }) => (
-        <button
-          key={fmt}
-          type="button"
-          title={label}
-          onMouseDown={(e) => { e.preventDefault(); onFormat(fmt); }}
-          className="rounded p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
-        >
-          <Icon className="h-3.5 w-3.5" />
-        </button>
-      ))}
-      <div className="mx-1 h-4 w-px bg-border" />
-      <span className="text-[10px] text-muted-foreground/60 select-none">**bold** &nbsp;*italic* &nbsp;- list</span>
+    <button
+      type="button"
+      title={label}
+      onMouseDown={(e) => { e.preventDefault(); onFormat(fmt); }}
+      className="rounded p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
+    >
+      <Icon className="h-3.5 w-3.5" />
+    </button>
+  );
+}
+
+function FormatToolbar({ onFormat }: { onFormat: (fmt: string) => void }) {
+  return (
+    <div className="flex flex-wrap items-center gap-0.5 rounded-t-lg border border-b-0 border-border bg-sidebar px-2 py-1.5">
+      {/* Text style */}
+      <ToolBtn icon={Bold}          label="Bold (Ctrl+B)"          fmt="bold"      onFormat={onFormat} />
+      <ToolBtn icon={Italic}        label="Italic (Ctrl+I)"        fmt="italic"    onFormat={onFormat} />
+      <ToolBtn icon={Underline}     label="Underline (Ctrl+U)"     fmt="underline" onFormat={onFormat} />
+      <ToolBtn icon={Strikethrough} label="Strikethrough"          fmt="strike"    onFormat={onFormat} />
+      <Sep />
+      {/* Lists */}
+      <ToolBtn icon={List}          label="Bullet list"            fmt="bullet"    onFormat={onFormat} />
+      <ToolBtn icon={ListOrdered}   label="Numbered list"          fmt="numbered"  onFormat={onFormat} />
+      <ToolBtn icon={ListChecks}    label="Checklist"              fmt="checklist" onFormat={onFormat} />
+      <Sep />
+      {/* Indent */}
+      <ToolBtn icon={Outdent}       label="Decrease indent"        fmt="outdent"   onFormat={onFormat} />
+      <ToolBtn icon={Indent}        label="Increase indent"        fmt="indent"    onFormat={onFormat} />
     </div>
   );
 }
@@ -139,17 +183,65 @@ function ResourceModal({
     const start = ta.selectionStart;
     const end   = ta.selectionEnd;
     const sel   = ta.value.substring(start, end);
-    let insert  = "";
-    if (fmt === "bold")     insert = `**${sel || "bold text"}**`;
-    if (fmt === "italic")   insert = `*${sel || "italic text"}*`;
-    if (fmt === "bullet")   insert = `\n- ${sel || "List item"}`;
-    if (fmt === "numbered") insert = `\n1. ${sel || "List item"}`;
-    const next = ta.value.substring(0, start) + insert + ta.value.substring(end);
+    const before = ta.value.substring(0, start);
+    const after  = ta.value.substring(end);
+
+    // For line-level formats, find the current line's start
+    const lineStart = before.lastIndexOf("\n") + 1;
+    const currentLine = ta.value.substring(lineStart, end === start ? ta.value.indexOf("\n", lineStart) >>> 0 || ta.value.length : end);
+
+    let insert = "";
+    let cursorOffset = 0;
+
+    if (fmt === "bold") {
+      insert = `**${sel || "bold text"}**`;
+      cursorOffset = sel ? insert.length : 2;
+    } else if (fmt === "italic") {
+      insert = `*${sel || "italic text"}*`;
+      cursorOffset = sel ? insert.length : 1;
+    } else if (fmt === "underline") {
+      insert = `__${sel || "underline text"}__`;
+      cursorOffset = sel ? insert.length : 2;
+    } else if (fmt === "strike") {
+      insert = `~~${sel || "strikethrough"}~~`;
+      cursorOffset = sel ? insert.length : 2;
+    } else if (fmt === "bullet") {
+      const prefix = before.endsWith("\n") || before === "" ? "" : "\n";
+      insert = `${prefix}- ${sel || "List item"}`;
+      cursorOffset = insert.length;
+    } else if (fmt === "numbered") {
+      const prefix = before.endsWith("\n") || before === "" ? "" : "\n";
+      insert = `${prefix}1. ${sel || "List item"}`;
+      cursorOffset = insert.length;
+    } else if (fmt === "checklist") {
+      const prefix = before.endsWith("\n") || before === "" ? "" : "\n";
+      insert = `${prefix}- [ ] ${sel || "Task item"}`;
+      cursorOffset = insert.length;
+    } else if (fmt === "indent") {
+      // Add 2 spaces at the start of the current line
+      const newVal = ta.value.substring(0, lineStart) + "  " + ta.value.substring(lineStart);
+      set("content", newVal);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, end + 2); }, 0);
+      return;
+    } else if (fmt === "outdent") {
+      // Remove up to 2 leading spaces from current line
+      const lineContent = ta.value.substring(lineStart);
+      const stripped = lineContent.replace(/^( {1,2}|\t)/, "");
+      const removed = lineContent.length - stripped.length;
+      if (removed > 0) {
+        const newVal = ta.value.substring(0, lineStart) + stripped;
+        set("content", newVal);
+        setTimeout(() => { ta.focus(); ta.setSelectionRange(Math.max(lineStart, start - removed), Math.max(lineStart, end - removed)); }, 0);
+      }
+      return;
+    }
+
+    const next = before + insert + after;
     set("content", next);
     setTimeout(() => {
       ta.focus();
-      const cursor = start + insert.length;
-      ta.setSelectionRange(cursor, cursor);
+      const pos = start + cursorOffset;
+      ta.setSelectionRange(pos, pos);
     }, 0);
   }
 
@@ -255,7 +347,7 @@ function ResourceModal({
               {form.type === "template" ? (
                 preview ? (
                   <div
-                    className="min-h-[200px] rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground prose-sm prose-invert max-w-none"
+                    className="min-h-[200px] rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_s]:line-through [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_.nested]:pl-6 [&_.checklist]:list-none [&_.checklist_li]:flex [&_.checklist_li]:items-center [&_.checklist_li]:gap-2"
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(form.content) }}
                   />
                 ) : (
@@ -356,7 +448,7 @@ function PreviewModal({
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {resource.type === "template" ? (
             <div
-              className="text-sm text-foreground leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_br]:block"
+              className="text-sm text-foreground leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_s]:line-through [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_.nested]:pl-6 [&_.checklist]:list-none [&_.checklist_li]:flex [&_.checklist_li]:items-center [&_.checklist_li]:gap-2 [&_input[type=checkbox]]:accent-primary"
               dangerouslySetInnerHTML={{ __html: renderMarkdown(resource.content) }}
             />
           ) : (
