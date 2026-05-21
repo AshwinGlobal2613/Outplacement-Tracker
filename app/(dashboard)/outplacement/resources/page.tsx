@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import {
   Plus, X, Copy, Check, ExternalLink, Trash2, Pencil,
   BookOpen, Mail, FileText, Link2, Search, Eye,
-  Bold, Italic, Underline, Strikethrough, Link,
+  Bold, Italic, Underline, Strikethrough, Link as LinkIcon,
   List, ListOrdered, ListChecks,
   Indent, Outdent,
 } from "lucide-react";
@@ -142,7 +142,7 @@ function FormatToolbar({ onFormat }: { onFormat: (fmt: string) => void }) {
       <ToolBtn icon={Italic}        label="Italic (Ctrl+I)"        fmt="italic"    onFormat={onFormat} />
       <ToolBtn icon={Underline}     label="Underline (Ctrl+U)"     fmt="underline" onFormat={onFormat} />
       <ToolBtn icon={Strikethrough} label="Strikethrough"          fmt="strike"    onFormat={onFormat} />
-      <ToolBtn icon={Link}          label="Hyperlink"              fmt="link"      onFormat={onFormat} />
+      <ToolBtn icon={LinkIcon}      label="Hyperlink"              fmt="link"      onFormat={onFormat} />
       <Sep />
       {/* Lists */}
       <ToolBtn icon={List}          label="Bullet list"            fmt="bullet"    onFormat={onFormat} />
