@@ -186,20 +186,36 @@ function ResourceModal({
     const selEnd   = ta.selectionEnd;
     const hasSel   = selStart !== selEnd;
 
-    // ── Inline formats: wrap selection (or placeholder) ──────────────────
+    // ── Inline formats: toggle wrap on selection only ────────────────────
     if (["bold", "italic", "underline", "strike"].includes(fmt)) {
-      const map: Record<string, [string, string, string]> = {
-        bold:      ["**", "**", "bold text"],
-        italic:    ["*",  "*",  "italic text"],
-        underline: ["__", "__", "underline text"],
-        strike:    ["~~", "~~", "strikethrough"],
+      // No selection → do nothing
+      if (!hasSel) return;
+
+      const markers: Record<string, [string, string]> = {
+        bold:      ["**", "**"],
+        italic:    ["*",  "*"],
+        underline: ["__", "__"],
+        strike:    ["~~", "~~"],
       };
-      const [o, c, ph] = map[fmt];
-      const sel    = val.substring(selStart, selEnd);
-      const insert = `${o}${sel || ph}${c}`;
-      set("content", val.substring(0, selStart) + insert + val.substring(selEnd));
-      const cur = selStart + (sel ? insert.length : o.length + ph.length);
-      setTimeout(() => { el.focus(); el.setSelectionRange(cur, cur); }, 0);
+      const [o, c] = markers[fmt];
+      const sel = val.substring(selStart, selEnd);
+
+      // Detect if already wrapped (italic needs special check vs bold **)
+      const alreadyWrapped = fmt === "italic"
+        ? sel.length >= 3 && sel[0] === "*" && sel[1] !== "*" && sel.slice(-1) === "*" && sel.slice(-2, -1) !== "*"
+        : sel.length > o.length + c.length && sel.startsWith(o) && sel.endsWith(c);
+
+      let replacement: string;
+      if (alreadyWrapped) {
+        // Unwrap: remove the surrounding markers
+        replacement = sel.substring(o.length, sel.length - c.length);
+      } else {
+        // Wrap: add markers around selection
+        replacement = `${o}${sel}${c}`;
+      }
+
+      set("content", val.substring(0, selStart) + replacement + val.substring(selEnd));
+      setTimeout(() => { el.focus(); el.setSelectionRange(selStart, selStart + replacement.length); }, 0);
       return;
     }
 
