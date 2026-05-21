@@ -180,69 +180,81 @@ function ResourceModal({
   function applyFormat(fmt: string) {
     const ta = textareaRef.current;
     if (!ta) return;
-    const start = ta.selectionStart;
-    const end   = ta.selectionEnd;
-    const sel   = ta.value.substring(start, end);
-    const before = ta.value.substring(0, start);
-    const after  = ta.value.substring(end);
+    const val      = ta.value;
+    const selStart = ta.selectionStart;
+    const selEnd   = ta.selectionEnd;
+    const hasSel   = selStart !== selEnd;
 
-    // For line-level formats, find the current line's start
-    const lineStart = before.lastIndexOf("\n") + 1;
-    const currentLine = ta.value.substring(lineStart, end === start ? ta.value.indexOf("\n", lineStart) >>> 0 || ta.value.length : end);
-
-    let insert = "";
-    let cursorOffset = 0;
-
-    if (fmt === "bold") {
-      insert = `**${sel || "bold text"}**`;
-      cursorOffset = sel ? insert.length : 2;
-    } else if (fmt === "italic") {
-      insert = `*${sel || "italic text"}*`;
-      cursorOffset = sel ? insert.length : 1;
-    } else if (fmt === "underline") {
-      insert = `__${sel || "underline text"}__`;
-      cursorOffset = sel ? insert.length : 2;
-    } else if (fmt === "strike") {
-      insert = `~~${sel || "strikethrough"}~~`;
-      cursorOffset = sel ? insert.length : 2;
-    } else if (fmt === "bullet") {
-      const prefix = before.endsWith("\n") || before === "" ? "" : "\n";
-      insert = `${prefix}- ${sel || "List item"}`;
-      cursorOffset = insert.length;
-    } else if (fmt === "numbered") {
-      const prefix = before.endsWith("\n") || before === "" ? "" : "\n";
-      insert = `${prefix}1. ${sel || "List item"}`;
-      cursorOffset = insert.length;
-    } else if (fmt === "checklist") {
-      const prefix = before.endsWith("\n") || before === "" ? "" : "\n";
-      insert = `${prefix}- [ ] ${sel || "Task item"}`;
-      cursorOffset = insert.length;
-    } else if (fmt === "indent") {
-      // Add 2 spaces at the start of the current line
-      const newVal = ta.value.substring(0, lineStart) + "  " + ta.value.substring(lineStart);
-      set("content", newVal);
-      setTimeout(() => { ta.focus(); ta.setSelectionRange(start + 2, end + 2); }, 0);
-      return;
-    } else if (fmt === "outdent") {
-      // Remove up to 2 leading spaces from current line
-      const lineContent = ta.value.substring(lineStart);
-      const stripped = lineContent.replace(/^( {1,2}|\t)/, "");
-      const removed = lineContent.length - stripped.length;
-      if (removed > 0) {
-        const newVal = ta.value.substring(0, lineStart) + stripped;
-        set("content", newVal);
-        setTimeout(() => { ta.focus(); ta.setSelectionRange(Math.max(lineStart, start - removed), Math.max(lineStart, end - removed)); }, 0);
-      }
+    // ── Inline formats: wrap selection (or placeholder) ──────────────────
+    if (["bold", "italic", "underline", "strike"].includes(fmt)) {
+      const map: Record<string, [string, string, string]> = {
+        bold:      ["**", "**", "bold text"],
+        italic:    ["*",  "*",  "italic text"],
+        underline: ["__", "__", "underline text"],
+        strike:    ["~~", "~~", "strikethrough"],
+      };
+      const [o, c, ph] = map[fmt];
+      const sel    = val.substring(selStart, selEnd);
+      const insert = `${o}${sel || ph}${c}`;
+      set("content", val.substring(0, selStart) + insert + val.substring(selEnd));
+      const cur = selStart + (sel ? insert.length : o.length + ph.length);
+      setTimeout(() => { ta.focus(); ta.setSelectionRange(cur, cur); }, 0);
       return;
     }
 
-    const next = before + insert + after;
-    set("content", next);
-    setTimeout(() => {
-      ta.focus();
-      const pos = start + cursorOffset;
-      ta.setSelectionRange(pos, pos);
-    }, 0);
+    // ── Line-level formats: expand selection to whole lines ───────────────
+    const lineStart = val.lastIndexOf("\n", selStart - 1) + 1;
+    const lineEnd   = (() => { const nl = val.indexOf("\n", selEnd); return nl === -1 ? val.length : nl; })();
+    const lines     = val.substring(lineStart, lineEnd).split("\n");
+
+    // Strip any existing list prefix while preserving leading indent
+    function strip(line: string) {
+      return line
+        .replace(/^(\s*)- \[[ xX]\] /, "$1")
+        .replace(/^(\s*)[-*] /,        "$1")
+        .replace(/^(\s*)\d+\. /,       "$1");
+    }
+    function indent(line: string) { return (line.match(/^(\s*)/) ?? ["", ""])[1]; }
+
+    let transformed: string[];
+
+    if (fmt === "bullet") {
+      if (!hasSel) {
+        // No selection — just insert one new item
+        const ins = `\n- List item`;
+        set("content", val.substring(0, lineEnd) + ins + val.substring(lineEnd));
+        setTimeout(() => { ta.focus(); const p = lineEnd + ins.length; ta.setSelectionRange(p, p); }, 0);
+        return;
+      }
+      transformed = lines.map(l => l.trim() ? `${indent(l)}- ${strip(l).trimStart()}` : l);
+    } else if (fmt === "numbered") {
+      if (!hasSel) {
+        const ins = `\n1. List item`;
+        set("content", val.substring(0, lineEnd) + ins + val.substring(lineEnd));
+        setTimeout(() => { ta.focus(); const p = lineEnd + ins.length; ta.setSelectionRange(p, p); }, 0);
+        return;
+      }
+      let n = 1;
+      transformed = lines.map(l => l.trim() ? `${indent(l)}${n++}. ${strip(l).trimStart()}` : l);
+    } else if (fmt === "checklist") {
+      if (!hasSel) {
+        const ins = `\n- [ ] Task item`;
+        set("content", val.substring(0, lineEnd) + ins + val.substring(lineEnd));
+        setTimeout(() => { ta.focus(); const p = lineEnd + ins.length; ta.setSelectionRange(p, p); }, 0);
+        return;
+      }
+      transformed = lines.map(l => l.trim() ? `${indent(l)}- [ ] ${strip(l).trimStart()}` : l);
+    } else if (fmt === "indent") {
+      transformed = lines.map(l => l ? `  ${l}` : l);
+    } else if (fmt === "outdent") {
+      transformed = lines.map(l => l.replace(/^ {1,2}|\t/, ""));
+    } else {
+      return;
+    }
+
+    const newBlock = transformed.join("\n");
+    set("content", val.substring(0, lineStart) + newBlock + val.substring(lineEnd));
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(lineStart, lineStart + newBlock.length); }, 0);
   }
 
   async function handleSave() {
