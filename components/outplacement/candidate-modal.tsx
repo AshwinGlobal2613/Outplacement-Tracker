@@ -53,7 +53,6 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
     endDate: candidate?.endDate ?? "",
     sessionsCompleted: candidate?.sessionsCompleted ?? 0,
     notes: candidate?.notes ?? "",
-    adminNotes: candidate?.adminNotes ?? "",
     budget: candidate?.budget ?? null as number | null,
     budgetCurrency: candidate?.budgetCurrency ?? "AED",
     status: candidate?.status ?? "referred",
@@ -269,24 +268,6 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
               className={inputCls + " resize-none"}
             />
           </Field>
-
-          {/* Admin Notes — admin only */}
-          {isAdmin && (
-            <Field label="Admin Notes">
-              <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-0.5">
-                <textarea
-                  value={form.adminNotes}
-                  onChange={(e) => set("adminNotes", e.target.value)}
-                  rows={4}
-                  placeholder="Internal notes visible only to admins…"
-                  className="w-full rounded-md bg-transparent px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none resize-none"
-                />
-              </div>
-              <p className="mt-1 text-[11px] text-amber-500/70 flex items-center gap-1">
-                <span>🔒</span> Only visible to admins
-              </p>
-            </Field>
-          )}
 
           {/* Edit-only: Sessions completed */}
           {isEdit && (

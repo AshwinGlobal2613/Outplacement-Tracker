@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
-import { ShieldCheck, AlertCircle, Clock } from "lucide-react";
+import { ShieldCheck, AlertCircle, Clock, ExternalLink } from "lucide-react";
 import { Candidate, DiscDoneStatus, InvoiceStatus, CostingStatus } from "@/lib/types";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const discColors: Record<DiscDoneStatus, string> = {
@@ -135,10 +136,15 @@ export default function CandidateManagementPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {candidates.map((c) => (
-                <tr key={c.id} className="hover:bg-sidebar-accent/30 transition-colors">
+                <tr key={c.id} className="group hover:bg-sidebar-accent/30 transition-colors">
                   <td className="px-4 py-3">
-                    <p className="font-medium text-foreground whitespace-nowrap">{c.candidateName}</p>
-                    <p className="text-xs text-muted-foreground">{c.leadCoach}</p>
+                    <Link href={`/outplacement/candidates/${c.id}?from=admin`} className="flex items-start gap-2 group/name">
+                      <div>
+                        <p className="font-medium text-foreground whitespace-nowrap group-hover/name:text-primary transition-colors">{c.candidateName}</p>
+                        <p className="text-xs text-muted-foreground">{c.leadCoach}</p>
+                      </div>
+                      <ExternalLink className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </Link>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{c.partner}</td>
                   <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{c.clientName}</td>

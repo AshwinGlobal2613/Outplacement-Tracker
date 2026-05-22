@@ -122,7 +122,6 @@ export interface Candidate {
   costingStatus: CostingStatus;
   budget?: number | null;
   budgetCurrency?: string | null;
-  adminNotes?: string;
   createdAt: string;
   updatedAt: string;
   updatedBy: string | null;

@@ -601,7 +601,7 @@ function CompletedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds
               <Th>Status</Th>
               <Th>Placed</Th>
               {isAdmin && <Th>Budget</Th>}
-              <th className="w-10 px-4 py-3" />
+                <th className="w-10 px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">

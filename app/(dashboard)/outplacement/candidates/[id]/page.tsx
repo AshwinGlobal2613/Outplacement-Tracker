@@ -48,8 +48,10 @@ const progressSteps = [
 function CandidateDetailContent({ params }: { params: { id: string } }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const backTab = searchParams.get("from") ?? "active";
-  const backHref = `/outplacement/candidates?tab=${backTab}`;
+  const backFrom = searchParams.get("from") ?? "active";
+  const backHref = backFrom === "admin"
+    ? "/outplacement/admin/candidate-management"
+    : `/outplacement/candidates?tab=${backFrom}`;
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
   const [candidate, setCandidate] = useState<Candidate | null>(null);
