@@ -6,7 +6,7 @@ import { PageHeader } from "@/components/page-header";
 import {
   Plus, X, Copy, Check, ExternalLink, Trash2, Pencil,
   BookOpen, Mail, FileText, Link2, Search, Eye,
-  Bold, Italic, Underline, Strikethrough, Link as LinkIcon,
+  Bold, Italic, Underline, Strikethrough, Link as LinkIcon, Table2,
   List, ListOrdered, ListChecks,
   Indent, Outdent,
 } from "lucide-react";
@@ -38,6 +38,10 @@ const TYPE_OPTIONS = [
 const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
 
 /* ─── Markdown Renderer ─── */
+const isTableRow = (l: string) => /^\|.+\|$/.test(l.trim());
+const isSepRow   = (l: string) => /^\|[\s\-:|]+\|$/.test(l.trim());
+const parseRow   = (l: string) => l.trim().replace(/^\||\|$/g, "").split("|").map(c => c.trim());
+
 function renderMarkdown(raw: string): string {
   const escaped = raw
     .replace(/&/g, "&amp;")
@@ -45,52 +49,78 @@ function renderMarkdown(raw: string): string {
     .replace(/>/g, "&gt;");
 
   const lines = escaped.split("\n");
-  const output: string[] = [];
-  let inUL = false;
-  let inOL = false;
-  let inCL = false;
+  const out: string[] = [];
+  let inUL = false, inOL = false, inCL = false, inTable = false;
 
-  for (const line of lines) {
-    const ul  = line.match(/^- (.+)/);
-    const ol  = line.match(/^\d+\. (.+)/);
-    const cl  = line.match(/^- \[(x| )\] (.+)/i);
-    // indent: 2-space or tab prefix turns into nested item
-    const ind = line.match(/^(?:  |\t)- (.+)/);
-
-    if (cl) {
-      if (!inCL) {
-        if (inUL) { output.push("</ul>"); inUL = false; }
-        if (inOL) { output.push("</ol>"); inOL = false; }
-        output.push('<ul class="checklist">'); inCL = true;
-      }
-      const checked = cl[1].toLowerCase() === "x";
-      output.push(`<li><input type="checkbox" disabled ${checked ? "checked" : ""} /> ${applyInline(cl[2])}</li>`);
-    } else if (ind) {
-      // nested bullet inside existing list
-      output.push(`<ul class="nested"><li>${applyInline(ind[1])}</li></ul>`);
-    } else if (ul) {
-      if (inCL) { output.push("</ul>"); inCL = false; }
-      if (!inUL) { if (inOL) { output.push("</ol>"); inOL = false; } output.push("<ul>"); inUL = true; }
-      output.push(`<li>${applyInline(ul[1])}</li>`);
-    } else if (ol) {
-      if (inCL) { output.push("</ul>"); inCL = false; }
-      if (!inOL) { if (inUL) { output.push("</ul>"); inUL = false; } output.push("<ol>"); inOL = true; }
-      output.push(`<li>${applyInline(ol[1])}</li>`);
-    } else {
-      if (inUL) { output.push("</ul>"); inUL = false; }
-      if (inOL) { output.push("</ol>"); inOL = false; }
-      if (inCL) { output.push("</ul>"); inCL = false; }
-      if (line.trim() === "") {
-        output.push("<br />");
-      } else {
-        output.push(`<p>${applyInline(line)}</p>`);
-      }
-    }
+  function closeLists() {
+    if (inUL) { out.push("</ul>");  inUL = false; }
+    if (inOL) { out.push("</ol>");  inOL = false; }
+    if (inCL) { out.push("</ul>");  inCL = false; }
   }
-  if (inUL) output.push("</ul>");
-  if (inOL) output.push("</ol>");
-  if (inCL) output.push("</ul>");
-  return output.join("");
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // ── Table continuation ──────────────────────────────────────────────
+    if (inTable) {
+      if (isTableRow(line) && !isSepRow(line)) {
+        out.push(`<tr>${parseRow(line).map(c => `<td>${applyInline(c)}</td>`).join("")}</tr>`);
+        continue;
+      }
+      out.push("</tbody></table>");
+      inTable = false;
+    }
+
+    // ── Table start: header row + separator on next line ────────────────
+    if (isTableRow(line) && i + 1 < lines.length && isSepRow(lines[i + 1])) {
+      closeLists();
+      const headers = parseRow(line);
+      out.push(`<table><thead><tr>${headers.map(h => `<th>${applyInline(h)}</th>`).join("")}</tr></thead><tbody>`);
+      inTable = true;
+      i++; // skip separator row
+      continue;
+    }
+
+    // ── Checklist ────────────────────────────────────────────────────────
+    const cl = line.match(/^- \[(x| )\] (.+)/i);
+    if (cl) {
+      if (!inCL) { closeLists(); out.push('<ul class="checklist">'); inCL = true; }
+      out.push(`<li><input type="checkbox" disabled ${cl[1].toLowerCase() === "x" ? "checked" : ""} /> ${applyInline(cl[2])}</li>`);
+      continue;
+    }
+
+    // ── Nested bullet ────────────────────────────────────────────────────
+    const ind = line.match(/^(?:  |\t)- (.+)/);
+    if (ind) { out.push(`<ul class="nested"><li>${applyInline(ind[1])}</li></ul>`); continue; }
+
+    // ── Bullet ───────────────────────────────────────────────────────────
+    const ul = line.match(/^- (.+)/);
+    if (ul) {
+      if (inCL) { out.push("</ul>"); inCL = false; }
+      if (!inUL) { if (inOL) { out.push("</ol>"); inOL = false; } out.push("<ul>"); inUL = true; }
+      out.push(`<li>${applyInline(ul[1])}</li>`);
+      continue;
+    }
+
+    // ── Numbered ─────────────────────────────────────────────────────────
+    const ol = line.match(/^\d+\. (.+)/);
+    if (ol) {
+      if (inCL) { out.push("</ul>"); inCL = false; }
+      if (!inOL) { if (inUL) { out.push("</ul>"); inUL = false; } out.push("<ol>"); inOL = true; }
+      out.push(`<li>${applyInline(ol[1])}</li>`);
+      continue;
+    }
+
+    // ── Paragraph / blank ────────────────────────────────────────────────
+    closeLists();
+    out.push(line.trim() === "" ? "<br />" : `<p>${applyInline(line)}</p>`);
+  }
+
+  if (inUL) out.push("</ul>");
+  if (inOL) out.push("</ol>");
+  if (inCL) out.push("</ul>");
+  if (inTable) out.push("</tbody></table>");
+  return out.join("");
 }
 
 function applyInline(text: string): string {
@@ -152,6 +182,9 @@ function FormatToolbar({ onFormat }: { onFormat: (fmt: string) => void }) {
       {/* Indent */}
       <ToolBtn icon={Outdent}       label="Decrease indent"        fmt="outdent"   onFormat={onFormat} />
       <ToolBtn icon={Indent}        label="Increase indent"        fmt="indent"    onFormat={onFormat} />
+      <Sep />
+      {/* Table */}
+      <ToolBtn icon={Table2}        label="Insert table"           fmt="table"     onFormat={onFormat} />
     </div>
   );
 }
@@ -240,6 +273,18 @@ function ResourceModal({
 
       set("content", val.substring(0, selStart) + replacement + val.substring(selEnd));
       setTimeout(() => { el.focus(); el.setSelectionRange(selStart, selStart + replacement.length); }, 0);
+      return;
+    }
+
+    // ── Table: insert template at cursor ─────────────────────────────────
+    if (fmt === "table") {
+      const needsGap = selStart > 0 && val[selStart - 1] !== "\n";
+      const prefix   = needsGap ? "\n\n" : "";
+      const tpl = `${prefix}| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |`;
+      set("content", val.substring(0, selStart) + tpl + val.substring(selEnd));
+      // Place cursor inside the first data cell
+      const cursor = selStart + prefix.length + "| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| ".length;
+      setTimeout(() => { el.focus(); el.setSelectionRange(cursor, cursor); }, 0);
       return;
     }
 
@@ -408,7 +453,7 @@ function ResourceModal({
               {form.type === "template" ? (
                 preview ? (
                   <div
-                    className="min-h-[200px] rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_s]:line-through [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_.nested]:pl-6 [&_.checklist]:list-none [&_.checklist_li]:flex [&_.checklist_li]:items-center [&_.checklist_li]:gap-2"
+                    className="min-h-[200px] rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_s]:line-through [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_.nested]:pl-6 [&_.checklist]:list-none [&_.checklist_li]:flex [&_.checklist_li]:items-center [&_.checklist_li]:gap-2 [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_table]:text-sm [&_th]:border [&_th]:border-border [&_th]:bg-muted/60 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2"
                     dangerouslySetInnerHTML={{ __html: renderMarkdown(form.content) }}
                   />
                 ) : (
@@ -510,7 +555,7 @@ function PreviewModal({
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {resource.type === "template" ? (
             <div
-              className="text-sm text-foreground leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_s]:line-through [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_.nested]:pl-6 [&_.checklist]:list-none [&_.checklist_li]:flex [&_.checklist_li]:items-center [&_.checklist_li]:gap-2 [&_input[type=checkbox]]:accent-primary"
+              className="text-sm text-foreground leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_s]:line-through [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_.nested]:pl-6 [&_.checklist]:list-none [&_.checklist_li]:flex [&_.checklist_li]:items-center [&_.checklist_li]:gap-2 [&_input[type=checkbox]]:accent-primary [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_table]:text-sm [&_th]:border [&_th]:border-border [&_th]:bg-muted/60 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2"
               dangerouslySetInnerHTML={{ __html: renderMarkdown(resource.content) }}
             />
           ) : (
