@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -189,6 +189,63 @@ function FormatToolbar({ onFormat }: { onFormat: (fmt: string) => void }) {
   );
 }
 
+/* ─── HTML → Markdown (for WYSIWYG sync) ─── */
+function htmlToMarkdown(root: HTMLElement): string {
+  function walk(node: Node): string {
+    if (node.nodeType === Node.TEXT_NODE)
+      return (node.textContent ?? "").replace(/ /g, " ");
+    if (node.nodeType !== Node.ELEMENT_NODE) return "";
+    const el   = node as HTMLElement;
+    const tag  = el.tagName.toLowerCase();
+    const kids = () => Array.from(el.childNodes).map(walk).join("");
+
+    switch (tag) {
+      case "b": case "strong": { const t = kids(); return t ? `**${t}**` : ""; }
+      case "i": case "em":     { const t = kids(); return t ? `*${t}*`   : ""; }
+      case "u":                { const t = kids(); return t ? `__${t}__` : ""; }
+      case "s": case "del": case "strike": { const t = kids(); return t ? `~~${t}~~` : ""; }
+      case "a": return `[${kids()}](${el.getAttribute("href") ?? ""})`;
+      case "br": return "\n";
+      case "p": case "div": { const t = kids(); return t ? t + "\n" : "\n"; }
+      case "ul": {
+        return Array.from(el.querySelectorAll(":scope > li")).map(li => {
+          const cb = (li as HTMLElement).querySelector("input[type='checkbox']") as HTMLInputElement | null;
+          if (cb) {
+            const txt = Array.from(li.childNodes).filter(n => n !== cb).map(walk).join("").trim();
+            return `- [${cb.checked ? "x" : " "}] ${txt}`;
+          }
+          return `- ${Array.from(li.childNodes).map(walk).join("").trim()}`;
+        }).join("\n") + "\n";
+      }
+      case "ol": {
+        return Array.from(el.querySelectorAll(":scope > li")).map((li, i) =>
+          `${i + 1}. ${Array.from(li.childNodes).map(walk).join("").trim()}`
+        ).join("\n") + "\n";
+      }
+      case "li": return kids();
+      case "table": {
+        const rows = Array.from(el.querySelectorAll("tr"));
+        if (!rows.length) return "";
+        const lines: string[] = [];
+        rows.forEach((row, i) => {
+          const cells = Array.from(row.querySelectorAll("th, td"))
+            .map(c => (c.textContent ?? "").trim().replace(/\|/g, "\\|"));
+          lines.push(`| ${cells.join(" | ")} |`);
+          if (i === 0) lines.push(`| ${cells.map(() => "---").join(" | ")} |`);
+        });
+        return "\n" + lines.join("\n") + "\n\n";
+      }
+      case "thead": case "tbody": case "tfoot":
+      case "tr": case "th": case "td":
+      case "span": case "font":
+        return kids();
+      default: return kids();
+    }
+  }
+  return Array.from(root.childNodes).map(walk).join("")
+    .replace(/\n{3,}/g, "\n\n").trim();
+}
+
 /* ─── Resource Modal (Add / Edit) ─── */
 function ResourceModal({
   resource,
@@ -200,7 +257,8 @@ function ResourceModal({
   onSaved: () => void;
 }) {
   const isEdit = !!resource;
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const editorRef  = useRef<HTMLDivElement>(null);
+  const initMd     = useRef(resource?.content ?? "");
   const [form, setForm] = useState({
     title:       resource?.title       ?? "",
     description: resource?.description ?? "",
@@ -210,139 +268,131 @@ function ResourceModal({
   });
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState("");
-  const [preview, setPreview] = useState(false);
+
+  // Callback ref: initialise the editor when the div mounts
+  const editorCallbackRef = useCallback((el: HTMLDivElement | null) => {
+    (editorRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+    if (!el) return;
+    el.innerHTML = renderMarkdown(initMd.current) || "<p><br></p>";
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   function set(field: string, value: string) {
     setForm((prev) => ({ ...prev, [field]: value }));
   }
 
-  function applyFormat(fmt: string) {
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const el = ta; // non-null alias for use inside callbacks
-    const val      = ta.value;
-    const selStart = ta.selectionStart;
-    const selEnd   = ta.selectionEnd;
-    const hasSel   = selStart !== selEnd;
-
-    // ── Inline formats: toggle wrap on selection only ────────────────────
-    if (["bold", "italic", "underline", "strike", "link"].includes(fmt)) {
-      // No selection → do nothing
-      if (!hasSel) return;
-
-      const sel = val.substring(selStart, selEnd);
-
-      // ── Hyperlink ──
-      if (fmt === "link") {
-        const isLink = /^\[.+\]\(.*\)$/.test(sel);
-        let replacement: string;
-        let cursorPos: number;
-        if (isLink) {
-          // Unwrap → extract display text only
-          replacement = sel.replace(/^\[(.+)\]\(.*\)$/, "$1");
-          cursorPos = selStart + replacement.length;
-        } else {
-          // Wrap as [text](|) — cursor lands inside the () ready to paste URL
-          replacement = `[${sel}]()`;
-          cursorPos = selStart + replacement.length - 1; // inside the ()
-        }
-        set("content", val.substring(0, selStart) + replacement + val.substring(selEnd));
-        setTimeout(() => { el.focus(); el.setSelectionRange(cursorPos, cursorPos); }, 0);
-        return;
-      }
-
-      const markers: Record<string, [string, string]> = {
-        bold:      ["**", "**"],
-        italic:    ["*",  "*"],
-        underline: ["__", "__"],
-        strike:    ["~~", "~~"],
-      };
-      const [o, c] = markers[fmt];
-
-      // Detect if already wrapped (italic needs special check vs bold **)
-      const alreadyWrapped = fmt === "italic"
-        ? sel.length >= 3 && sel[0] === "*" && sel[1] !== "*" && sel.slice(-1) === "*" && sel.slice(-2, -1) !== "*"
-        : sel.length > o.length + c.length && sel.startsWith(o) && sel.endsWith(c);
-
-      let replacement: string;
-      if (alreadyWrapped) {
-        replacement = sel.substring(o.length, sel.length - c.length);
-      } else {
-        replacement = `${o}${sel}${c}`;
-      }
-
-      set("content", val.substring(0, selStart) + replacement + val.substring(selEnd));
-      setTimeout(() => { el.focus(); el.setSelectionRange(selStart, selStart + replacement.length); }, 0);
-      return;
-    }
-
-    // ── Table: insert template at cursor ─────────────────────────────────
-    if (fmt === "table") {
-      const needsGap = selStart > 0 && val[selStart - 1] !== "\n";
-      const prefix   = needsGap ? "\n\n" : "";
-      const tpl = `${prefix}| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n|  |  |  |\n|  |  |  |`;
-      set("content", val.substring(0, selStart) + tpl + val.substring(selEnd));
-      // Place cursor inside the first data cell
-      const cursor = selStart + prefix.length + "| Column 1 | Column 2 | Column 3 |\n| --- | --- | --- |\n| ".length;
-      setTimeout(() => { el.focus(); el.setSelectionRange(cursor, cursor); }, 0);
-      return;
-    }
-
-    // ── Line-level formats: expand selection to whole lines ───────────────
-    const lineStart = val.lastIndexOf("\n", selStart - 1) + 1;
-    const lineEnd   = (() => { const nl = val.indexOf("\n", selEnd); return nl === -1 ? val.length : nl; })();
-    const lines     = val.substring(lineStart, lineEnd).split("\n");
-
-    // Strip any existing list prefix while preserving leading indent
-    function strip(line: string) {
-      return line
-        .replace(/^(\s*)- \[[ xX]\] /, "$1")
-        .replace(/^(\s*)[-*] /,        "$1")
-        .replace(/^(\s*)\d+\. /,       "$1");
-    }
-    function indent(line: string) { return (line.match(/^(\s*)/) ?? ["", ""])[1]; }
-
-    let transformed: string[];
-
-    // Helper: insert a new list item at end of current line, cursor right after prefix
-    function insertNewItem(prefix: string) {
-      const needsNewline = lineEnd > 0 && val[lineEnd - 1] !== "\n";
-      const ins = (needsNewline ? "\n" : "") + prefix;
-      set("content", val.substring(0, lineEnd) + ins + val.substring(lineEnd));
-      setTimeout(() => { el.focus(); const p = lineEnd + ins.length; el.setSelectionRange(p, p); }, 0);
-    }
-
-    if (fmt === "bullet") {
-      if (!hasSel) { insertNewItem("- "); return; }
-      transformed = lines.map(l => l.trim() ? `${indent(l)}- ${strip(l).trimStart()}` : l);
-    } else if (fmt === "numbered") {
-      if (!hasSel) { insertNewItem("1. "); return; }
-      let n = 1;
-      transformed = lines.map(l => l.trim() ? `${indent(l)}${n++}. ${strip(l).trimStart()}` : l);
-    } else if (fmt === "checklist") {
-      if (!hasSel) { insertNewItem("- [ ] "); return; }
-      transformed = lines.map(l => l.trim() ? `${indent(l)}- [ ] ${strip(l).trimStart()}` : l);
-    } else if (fmt === "indent") {
-      transformed = lines.map(l => l ? `  ${l}` : l);
-    } else if (fmt === "outdent") {
-      transformed = lines.map(l => l.replace(/^ {1,2}|\t/, ""));
-    } else {
-      return;
-    }
-
-    const newBlock = transformed.join("\n");
-    set("content", val.substring(0, lineStart) + newBlock + val.substring(lineEnd));
-    setTimeout(() => { el.focus(); el.setSelectionRange(lineStart, lineStart + newBlock.length); }, 0);
+  function syncContent() {
+    if (editorRef.current)
+      set("content", htmlToMarkdown(editorRef.current));
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    // Tab = indent, Shift+Tab = outdent
+  function applyFormat(fmt: string) {
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+
+    switch (fmt) {
+      case "bold":      document.execCommand("bold",          false); break;
+      case "italic":    document.execCommand("italic",        false); break;
+      case "underline": document.execCommand("underline",     false); break;
+      case "strike":    document.execCommand("strikeThrough", false); break;
+      case "bullet":    document.execCommand("insertUnorderedList", false); break;
+      case "numbered":  document.execCommand("insertOrderedList",   false); break;
+      case "indent":    document.execCommand("indent",  false); break;
+      case "outdent":   document.execCommand("outdent", false); break;
+      case "link": {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const url = window.prompt("Enter URL:", "https://");
+        if (!url) { editor.focus(); return; }
+        document.execCommand("createLink", false, url);
+        editor.querySelectorAll("a").forEach(a => {
+          a.setAttribute("target", "_blank");
+          a.setAttribute("rel", "noopener noreferrer");
+          (a as HTMLElement).style.color = "var(--primary)";
+        });
+        break;
+      }
+      case "checklist": {
+        document.execCommand("insertUnorderedList", false);
+        const sel = window.getSelection();
+        if (sel?.anchorNode) {
+          let n: Node | null = sel.anchorNode;
+          while (n && (n as Element).tagName?.toLowerCase() !== "li") n = n.parentNode;
+          if (n && !(n as HTMLElement).querySelector("input")) {
+            const cb = document.createElement("input");
+            cb.type = "checkbox";
+            cb.style.cssText = "margin-right:6px;accent-color:var(--primary);";
+            (n as HTMLElement).insertBefore(cb, (n as HTMLElement).firstChild);
+          }
+        }
+        break;
+      }
+      case "table": {
+        const table = document.createElement("table");
+        const thead = table.createTHead();
+        const hRow  = thead.insertRow();
+        ["Column 1", "Column 2", "Column 3"].forEach(txt => {
+          const th = document.createElement("th");
+          th.textContent = txt;
+          hRow.appendChild(th);
+        });
+        const tbody = table.createTBody();
+        for (let r = 0; r < 2; r++) {
+          const row = tbody.insertRow();
+          for (let c = 0; c < 3; c++) { const td = row.insertCell(); td.innerHTML = "<br>"; }
+        }
+        const sel = window.getSelection();
+        if (sel?.rangeCount) {
+          const range = sel.getRangeAt(0);
+          range.collapse(false);
+          const spacer = document.createElement("p");
+          spacer.innerHTML = "<br>";
+          range.insertNode(table);
+          range.insertNode(spacer);
+          const firstCell = tbody.rows[0]?.cells[0];
+          if (firstCell) {
+            const r2 = document.createRange();
+            r2.setStart(firstCell, 0);
+            r2.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(r2);
+          }
+        }
+        break;
+      }
+    }
+    setTimeout(syncContent, 20);
+  }
+
+  function handleEditorKeyDown(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === "Tab") {
       e.preventDefault();
-      applyFormat(e.shiftKey ? "outdent" : "indent");
+      const sel = window.getSelection();
+      if (sel?.rangeCount) {
+        // Navigate table cells with Tab / Shift+Tab
+        let node: Node | null = sel.anchorNode;
+        let cell: HTMLElement | null = null;
+        while (node && node !== editorRef.current) {
+          const tag = (node as Element).tagName?.toLowerCase();
+          if (tag === "td" || tag === "th") { cell = node as HTMLElement; break; }
+          node = node.parentNode;
+        }
+        if (cell) {
+          const all = Array.from(cell.closest("table")!.querySelectorAll("th,td")) as HTMLElement[];
+          const target = e.shiftKey ? all[all.indexOf(cell) - 1] : all[all.indexOf(cell) + 1];
+          if (target) {
+            const r = document.createRange();
+            r.selectNodeContents(target);
+            r.collapse(false);
+            sel.removeAllRanges();
+            sel.addRange(r);
+          }
+          return;
+        }
+      }
+      document.execCommand("insertText", false, "  ");
       return;
     }
-    // Ctrl/Cmd shortcuts
     if (e.ctrlKey || e.metaKey) {
       const k = e.key.toLowerCase();
       if (k === "b") { e.preventDefault(); applyFormat("bold"); }
@@ -376,10 +426,7 @@ function ResourceModal({
     onSaved();
   }
 
-  const contentLabel       = form.type === "template" ? "Template Content" : form.type === "link" ? "URL" : "File URL";
-  const contentPlaceholder = form.type === "template"
-    ? "Dear [Candidate Name],\n\nI hope this message finds you well..."
-    : "https://...";
+  const contentLabel = form.type === "template" ? "Template Content" : form.type === "link" ? "URL" : "File URL";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -436,45 +483,27 @@ function ResourceModal({
             </div>
 
             <div className="col-span-2">
-              <div className="mb-1.5 flex items-center justify-between">
-                <label className="text-xs font-medium text-muted-foreground">{contentLabel} *</label>
-                {form.type === "template" && (
-                  <button
-                    type="button"
-                    onClick={() => setPreview((p) => !p)}
-                    className="flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    <Eye className="h-3 w-3" />
-                    {preview ? "Edit" : "Preview"}
-                  </button>
-                )}
-              </div>
+              <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{contentLabel} *</label>
 
               {form.type === "template" ? (
-                preview ? (
+                <div>
+                  <FormatToolbar onFormat={applyFormat} />
+                  {/* WYSIWYG contenteditable — shows rendered HTML, no raw markdown */}
                   <div
-                    className="min-h-[200px] rounded-lg border border-border bg-background px-4 py-3 text-sm text-foreground leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_s]:line-through [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_.nested]:pl-6 [&_.checklist]:list-none [&_.checklist_li]:flex [&_.checklist_li]:items-center [&_.checklist_li]:gap-2 [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_table]:text-sm [&_th]:border [&_th]:border-border [&_th]:bg-muted/60 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2"
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(form.content) }}
+                    ref={editorCallbackRef}
+                    contentEditable
+                    suppressContentEditableWarning
+                    onInput={syncContent}
+                    onKeyDown={handleEditorKeyDown}
+                    className="min-h-[280px] w-full rounded-b-lg rounded-t-none border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary overflow-y-auto leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_s]:line-through [&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_table]:text-sm [&_th]:border [&_th]:border-border [&_th]:bg-muted/60 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:min-w-[60px] empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50"
+                    data-placeholder="Start typing your template…"
                   />
-                ) : (
-                  <div>
-                    <FormatToolbar onFormat={applyFormat} />
-                    <textarea
-                      ref={textareaRef}
-                      value={form.content}
-                      onChange={(e) => set("content", e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder={contentPlaceholder}
-                      rows={12}
-                      className="w-full rounded-b-lg rounded-t-none border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-y font-mono leading-relaxed"
-                    />
-                  </div>
-                )
+                </div>
               ) : (
                 <input
                   value={form.content}
                   onChange={(e) => set("content", e.target.value)}
-                  placeholder={contentPlaceholder}
+                  placeholder="https://..."
                   className={inputCls}
                 />
               )}
