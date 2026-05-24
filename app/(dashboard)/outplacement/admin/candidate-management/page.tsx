@@ -8,14 +8,9 @@ import {
   ShieldCheck, AlertCircle, Clock, X, MessageCircle, ExternalLink,
   CheckCircle2, Circle, ChevronRight,
 } from "lucide-react";
-import { Candidate, DiscDoneStatus, InvoiceStatus, CostingStatus } from "@/lib/types";
+import { Candidate, InvoiceStatus, CostingStatus } from "@/lib/types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-
-const discColors: Record<DiscDoneStatus, string> = {
-  Done: "bg-emerald-500/20 text-white border border-emerald-500",
-  "Not Done": "bg-rose-500/20 text-white",
-};
 
 const invoiceColors: Record<InvoiceStatus, string> = {
   Cleared: "bg-emerald-500/20 text-white border border-emerald-500",
@@ -29,7 +24,6 @@ const costingColors: Record<CostingStatus, string> = {
   "Not Done": "bg-rose-500/20 text-white",
 };
 
-const DISC_OPTIONS: DiscDoneStatus[] = ["Done", "Not Done"];
 const INVOICE_OPTIONS: InvoiceStatus[] = ["Not Raised", "Raised", "Cleared"];
 const COSTING_OPTIONS: CostingStatus[] = ["Not Done", "To be reviewed", "Done"];
 
@@ -143,7 +137,7 @@ export default function CandidateManagementPage() {
 
       {/* Summary pills */}
       <div className="grid grid-cols-3 gap-3">
-        <SummaryPill label="DiSC Pending" value={candidates.filter((c) => c.discDone === "Not Done").length} color="text-rose-400" icon={Clock} />
+        <SummaryPill label="DiSC Pending" value={candidates.filter((c) => !c.discStyle).length} color="text-rose-400" icon={Clock} />
         <SummaryPill label="Invoice Not Raised" value={candidates.filter((c) => c.invoiceStatus === "Not Raised").length} color="text-amber-400" icon={AlertCircle} />
         <SummaryPill label="Costing Pending" value={candidates.filter((c) => c.costingStatus === "Not Done").length} color="text-rose-400" icon={Clock} />
       </div>
@@ -198,8 +192,11 @@ export default function CandidateManagementPage() {
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {c.endDate ? new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
                   </td>
-                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                    <InlineSelect value={c.discDone} options={DISC_OPTIONS} colorMap={discColors} onChange={(v) => updateField(c.id, "discDone", v)} />
+                  <td className="px-4 py-3">
+                    {c.discStyle
+                      ? <span className="rounded-full bg-emerald-500/20 border border-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">{c.discStyle}</span>
+                      : <span className="rounded-full bg-rose-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-white">Not Done</span>
+                    }
                   </td>
                   <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <InlineSelect value={c.invoiceStatus} options={INVOICE_OPTIONS} colorMap={invoiceColors} onChange={(v) => updateField(c.id, "invoiceStatus", v)} />
