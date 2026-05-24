@@ -194,7 +194,7 @@ export default function CandidateManagementPage() {
                   </td>
                   <td className="px-4 py-3">
                     {c.discStyle
-                      ? <span className="rounded-full bg-emerald-500/20 border border-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">{c.discStyle}</span>
+                      ? <span className="rounded-full bg-emerald-500/20 border border-emerald-500 px-2.5 py-0.5 text-[11px] font-semibold text-white">Done</span>
                       : <span className="rounded-full bg-rose-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-white">Not Done</span>
                     }
                   </td>
