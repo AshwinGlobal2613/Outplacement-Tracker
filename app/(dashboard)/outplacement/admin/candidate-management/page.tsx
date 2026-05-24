@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import { ShieldCheck, AlertCircle, Clock, ExternalLink } from "lucide-react";
 import { Candidate, DiscDoneStatus, InvoiceStatus, CostingStatus } from "@/lib/types";
-import Link from "next/link";
 import { cn } from "@/lib/utils";
 
 const discColors: Record<DiscDoneStatus, string> = {
@@ -132,19 +131,19 @@ export default function CandidateManagementPage() {
                 {["Candidate", "Partner", "Client", "Level", "Status", "Start Date", "End Date", "DiSC", "Invoice", "Costing", "Notes"].map((h) => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
                 ))}
+                <th className="w-10 px-4 py-3" />
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {candidates.map((c) => (
-                <tr key={c.id} className="group hover:bg-sidebar-accent/30 transition-colors">
+                <tr
+                  key={c.id}
+                  onClick={() => router.push(`/outplacement/candidates/${c.id}?from=admin`)}
+                  className="group cursor-pointer hover:bg-sidebar-accent/40 transition-colors"
+                >
                   <td className="px-4 py-3">
-                    <Link href={`/outplacement/candidates/${c.id}?from=admin`} className="flex items-start gap-2 group/name">
-                      <div>
-                        <p className="font-medium text-foreground whitespace-nowrap group-hover/name:text-primary transition-colors">{c.candidateName}</p>
-                        <p className="text-xs text-muted-foreground">{c.leadCoach}</p>
-                      </div>
-                      <ExternalLink className="h-3.5 w-3.5 mt-0.5 shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </Link>
+                    <p className="font-medium text-foreground whitespace-nowrap group-hover:text-primary transition-colors">{c.candidateName}</p>
+                    <p className="text-xs text-muted-foreground">{c.leadCoach}</p>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{c.partner}</td>
                   <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">{c.clientName}</td>
@@ -162,17 +161,20 @@ export default function CandidateManagementPage() {
                   <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
                     {c.endDate ? new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <InlineSelect value={c.discDone} options={DISC_OPTIONS} colorMap={discColors} onChange={(v) => updateField(c.id, "discDone", v)} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <InlineSelect value={c.invoiceStatus} options={INVOICE_OPTIONS} colorMap={invoiceColors} onChange={(v) => updateField(c.id, "invoiceStatus", v)} />
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                     <InlineSelect value={c.costingStatus} options={COSTING_OPTIONS} colorMap={costingColors} onChange={(v) => updateField(c.id, "costingStatus", v)} />
                   </td>
                   <td className="px-4 py-3 max-w-[180px]">
                     <p className="truncate text-xs text-muted-foreground" title={c.notes}>{c.notes || "—"}</p>
+                  </td>
+                  <td className="px-4 py-3">
+                    <ExternalLink className="h-4 w-4 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                   </td>
                 </tr>
               ))}
