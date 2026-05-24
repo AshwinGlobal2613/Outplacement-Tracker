@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { Candidate, Lists } from "@/lib/types";
 import { CreatableSelect } from "./creatable-select";
+import { MultiCreatableSelect } from "./multi-creatable-select";
 
 interface Props {
   candidate?: Candidate;
@@ -172,11 +173,11 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
           {/* Coach + Support — creatable dropdowns */}
           <div className="grid grid-cols-2 gap-4">
             <Field label="Lead Coach">
-              <CreatableSelect
+              <MultiCreatableSelect
                 value={form.leadCoach}
                 listKey="coaches"
                 options={lists.coaches}
-                placeholder="Saima, Ashwin…"
+                placeholder="Select coaches…"
                 canCreate={true}
                 canDelete={true}
                 onChange={(v) => set("leadCoach", v)}
@@ -185,11 +186,11 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
               />
             </Field>
             <Field label="Support">
-              <CreatableSelect
+              <MultiCreatableSelect
                 value={form.support}
                 listKey="supports"
                 options={lists.supports}
-                placeholder="Celeste, Ankit…"
+                placeholder="Select support…"
                 canCreate={true}
                 canDelete={true}
                 onChange={(v) => set("support", v)}

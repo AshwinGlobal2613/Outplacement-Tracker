@@ -15,3 +15,5 @@ tsconfig.tsbuildinfo
 elevate-vue-preview.html
 elevate-vue-wordpress-template.php
 preview-server.js
+
+.vercel
