@@ -28,6 +28,7 @@ export interface CustomMilestone {
   id: string;
   label: string;
   done: boolean;
+  notes?: string;
 }
 
 export interface CandidateProgress {
@@ -37,6 +38,7 @@ export interface CandidateProgress {
   profiling: boolean;
   networkingPersonalBranding: boolean;
   custom?: CustomMilestone[];
+  milestoneNotes?: Record<string, string>; // keyed by progress step key
 }
 
 export type DiscDoneStatus = "Done" | "Not Done";

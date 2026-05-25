@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
   Pencil, Trash2, ExternalLink, MessageCircle, CheckCircle2,
-  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity,
+  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText,
 } from "lucide-react";
 import { Candidate, CandidateActivity, ActivityType, CustomMilestone, Session, ActivityLog } from "@/lib/types";
 import { ScheduleModal } from "@/components/outplacement/schedule-modal";
@@ -121,6 +121,18 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
     saveProgress({ ...candidate.progress, custom });
   }
 
+  function saveStandardNote(key: string, note: string) {
+    if (!candidate) return;
+    const milestoneNotes = { ...(candidate.progress.milestoneNotes ?? {}), [key]: note };
+    saveProgress({ ...candidate.progress, milestoneNotes });
+  }
+
+  function saveCustomNote(id: string, note: string) {
+    if (!candidate) return;
+    const custom = (candidate.progress.custom ?? []).map((m) => m.id === id ? { ...m, notes: note } : m);
+    saveProgress({ ...candidate.progress, custom });
+  }
+
   async function addActivity(act: Omit<CandidateActivity, "id" | "createdAt" | "createdBy">) {
     const res = await fetch(`/api/candidates/${params.id}/tracking`, {
       method: "POST",
@@ -160,32 +172,35 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
   const networkCount = activities.filter((a) => a.type === "network").length;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
-      <div className="flex items-start gap-4">
-        <Link href={backHref} className="mt-1 text-muted-foreground hover:text-foreground transition-colors">
+    <div className="flex flex-col gap-4 p-3 sm:gap-6 sm:p-6">
+      <div className="flex items-start gap-3">
+        <Link href={backHref} className="mt-1 shrink-0 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="h-5 w-5" />
         </Link>
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <PageHeader title={candidate.candidateName} description={`${candidate.clientName} · ${candidate.partner}`}>
             <button onClick={() => setShowSchedule(true)} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity">
-              <CalendarDays className="h-4 w-4" style={{ color: "#ffffff" }} /> Schedule Session
+              <CalendarDays className="h-4 w-4" style={{ color: "#ffffff" }} />
+              <span className="hidden sm:inline">Schedule Session</span>
+              <span className="sm:hidden">Schedule</span>
             </button>
             <button onClick={() => setShowEdit(true)} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
               <Pencil className="h-4 w-4" /> Edit
             </button>
             <button onClick={handleDelete} disabled={deleting} className="flex items-center gap-1.5 rounded-lg border border-destructive/40 px-3 py-2 text-sm text-destructive hover:bg-destructive/10 transition-colors">
-              <Trash2 className="h-4 w-4" /> Delete
+              <Trash2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Delete</span>
             </button>
           </PageHeader>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
         {/* Left col */}
-        <div className="col-span-2 space-y-5">
+        <div className="col-span-1 space-y-4 sm:space-y-5 lg:col-span-2">
           {/* Status & Meta */}
-          <div className="rounded-xl border border-border bg-card p-5">
-            <div className="flex flex-wrap items-center gap-3 mb-5">
+          <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+            <div className="flex flex-wrap items-center gap-2 mb-4 sm:mb-5">
               <span className={cn("rounded-full px-3 py-1 text-xs font-semibold uppercase", statusColors[candidate.status])}>
                 {statusLabels[candidate.status] ?? candidate.status}
               </span>
@@ -200,7 +215,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
                 </span>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 sm:gap-x-8 sm:gap-y-4 sm:grid-cols-3">
               <InfoRow label="Lead Coach" value={candidate.leadCoach} />
               <InfoRow label="Support" value={candidate.support} />
               <InfoRow label="Duration" value={candidate.duration} />
@@ -225,6 +240,8 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
             onAddCustom={addCustomMilestone}
             onToggleCustom={toggleCustomMilestone}
             onRemoveCustom={removeCustomMilestone}
+            onSaveStandardNote={saveStandardNote}
+            onSaveCustomNote={saveCustomNote}
           />
 
           {/* Notes */}
@@ -270,7 +287,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
         </div>
 
         {/* Right col: Contact + Program */}
-        <div className="space-y-4">
+        <div className="space-y-4 lg:col-span-1">
           <div className="rounded-xl border border-border bg-card p-5">
             <h2 className="mb-4 font-semibold text-foreground">Contact</h2>
             <div className="space-y-3">
@@ -433,6 +450,7 @@ function SessionRow({ session, formatDate, formatDuration, onDelete, isUpcoming 
 function MilestonesPanel({
   candidate, progressCount, totalMilestones, pct, customMilestones,
   onToggleStandard, onAddCustom, onToggleCustom, onRemoveCustom,
+  onSaveStandardNote, onSaveCustomNote,
 }: {
   candidate: Candidate;
   progressCount: number;
@@ -443,9 +461,13 @@ function MilestonesPanel({
   onAddCustom: (label: string) => void;
   onToggleCustom: (id: string) => void;
   onRemoveCustom: (id: string) => void;
+  onSaveStandardNote: (key: string, note: string) => void;
+  onSaveCustomNote: (id: string, note: string) => void;
 }) {
   const [showAdd, setShowAdd] = useState(false);
   const [newLabel, setNewLabel] = useState("");
+  const [openNotes, setOpenNotes] = useState<string | null>(null);
+  const [noteDraft, setNoteDraft] = useState("");
 
   function handleAdd() {
     const trimmed = newLabel.trim();
@@ -453,6 +475,17 @@ function MilestonesPanel({
     onAddCustom(trimmed);
     setNewLabel("");
     setShowAdd(false);
+  }
+
+  function openNote(key: string, current: string) {
+    setOpenNotes(key);
+    setNoteDraft(current);
+  }
+
+  function saveNote(key: string, isCustom: boolean) {
+    if (isCustom) onSaveCustomNote(key, noteDraft);
+    else onSaveStandardNote(key, noteDraft);
+    setOpenNotes(null);
   }
 
   return (
@@ -475,43 +508,112 @@ function MilestonesPanel({
       <div className="space-y-2">
         {/* Fixed milestones */}
         {progressSteps.map((step, i) => {
-          const done = candidate.progress[step.key as keyof typeof candidate.progress];
+          const done = !!candidate.progress[step.key as keyof typeof candidate.progress];
+          const note = candidate.progress.milestoneNotes?.[step.key] ?? "";
+          const isNoteOpen = openNotes === step.key;
           return (
-            <button key={step.key} onClick={() => onToggleStandard(step.key)}
-              className="flex w-full items-center gap-3 rounded-lg border border-border px-4 py-3 text-left transition-colors hover:bg-sidebar-accent">
-              <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                done ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground")}>
-                {i + 1}
+            <div key={step.key} className="rounded-lg border border-border overflow-hidden">
+              <div className="flex w-full items-center gap-3 px-4 py-3 hover:bg-sidebar-accent transition-colors">
+                <button onClick={() => onToggleStandard(step.key)} className="flex flex-1 items-center gap-3 text-left">
+                  <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                    done ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground")}>
+                    {i + 1}
+                  </div>
+                  {done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
+                  <span className={cn("text-sm font-medium", done ? "text-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
+                    {step.label}
+                  </span>
+                </button>
+                <span className="text-xs text-muted-foreground">{done ? "Complete" : "Pending"}</span>
+                <button
+                  onClick={() => isNoteOpen ? setOpenNotes(null) : openNote(step.key, note)}
+                  className={cn("ml-1 shrink-0 transition-colors", note ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground")}
+                  title="Add note"
+                >
+                  <FileText className="h-4 w-4" />
+                </button>
               </div>
-              {done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
-              <span className={cn("text-sm font-medium", done ? "text-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
-                {step.label}
-              </span>
-              <span className="ml-auto text-xs text-muted-foreground">{done ? "Complete" : "Pending"}</span>
-            </button>
+              {isNoteOpen && (
+                <div className="border-t border-border bg-sidebar/30 px-4 py-3 space-y-2">
+                  <textarea
+                    autoFocus
+                    value={noteDraft}
+                    onChange={(e) => setNoteDraft(e.target.value)}
+                    rows={2}
+                    placeholder="Add a note for this milestone…"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                    onKeyDown={(e) => { if (e.key === "Escape") setOpenNotes(null); if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) saveNote(step.key, false); }}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setOpenNotes(null)} className="rounded px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground border border-border transition-colors">Cancel</button>
+                    <button onClick={() => saveNote(step.key, false)} className="rounded px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">Save</button>
+                  </div>
+                  {note && !noteDraft && <p className="text-xs text-muted-foreground italic">Note will be cleared on save.</p>}
+                </div>
+              )}
+              {note && !isNoteOpen && (
+                <div className="border-t border-border bg-sidebar/20 px-4 py-2">
+                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{note}</p>
+                </div>
+              )}
+            </div>
           );
         })}
 
         {/* Custom milestones */}
-        {customMilestones.map((m, i) => (
-          <div key={m.id} className="flex w-full items-center gap-3 rounded-lg border border-dashed border-border px-4 py-3 transition-colors hover:bg-sidebar-accent group">
-            <button onClick={() => onToggleCustom(m.id)} className="flex flex-1 items-center gap-3 text-left">
-              <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                m.done ? "bg-emerald-500/20 text-emerald-400" : "bg-violet-500/10 text-violet-400")}>
-                <Flag className="h-3.5 w-3.5" />
+        {customMilestones.map((m) => {
+          const isNoteOpen = openNotes === m.id;
+          return (
+            <div key={m.id} className="rounded-lg border border-dashed border-border overflow-hidden group">
+              <div className="flex w-full items-center gap-3 px-4 py-3 hover:bg-sidebar-accent transition-colors">
+                <button onClick={() => onToggleCustom(m.id)} className="flex flex-1 items-center gap-3 text-left">
+                  <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
+                    m.done ? "bg-emerald-500/20 text-emerald-400" : "bg-violet-500/10 text-violet-400")}>
+                    <Flag className="h-3.5 w-3.5" />
+                  </div>
+                  {m.done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
+                  <span className={cn("text-sm font-medium", m.done ? "text-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
+                    {m.label}
+                  </span>
+                </button>
+                <span className="text-xs text-muted-foreground">{m.done ? "Complete" : "Pending"}</span>
+                <button
+                  onClick={() => isNoteOpen ? setOpenNotes(null) : openNote(m.id, m.notes ?? "")}
+                  className={cn("ml-1 shrink-0 transition-colors", m.notes ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground")}
+                  title="Add note"
+                >
+                  <FileText className="h-4 w-4" />
+                </button>
+                <button onClick={() => onRemoveCustom(m.id)}
+                  className="shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-all">
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              {m.done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
-              <span className={cn("text-sm font-medium", m.done ? "text-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
-                {m.label}
-              </span>
-              <span className="ml-auto text-xs text-muted-foreground">{m.done ? "Complete" : "Pending"}</span>
-            </button>
-            <button onClick={() => onRemoveCustom(m.id)}
-              className="ml-2 shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-all">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ))}
+              {isNoteOpen && (
+                <div className="border-t border-border bg-sidebar/30 px-4 py-3 space-y-2">
+                  <textarea
+                    autoFocus
+                    value={noteDraft}
+                    onChange={(e) => setNoteDraft(e.target.value)}
+                    rows={2}
+                    placeholder="Add a note for this milestone…"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
+                    onKeyDown={(e) => { if (e.key === "Escape") setOpenNotes(null); if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) saveNote(m.id, true); }}
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button onClick={() => setOpenNotes(null)} className="rounded px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground border border-border transition-colors">Cancel</button>
+                    <button onClick={() => saveNote(m.id, true)} className="rounded px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">Save</button>
+                  </div>
+                </div>
+              )}
+              {m.notes && !isNoteOpen && (
+                <div className="border-t border-border bg-sidebar/20 px-4 py-2">
+                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{m.notes}</p>
+                </div>
+              )}
+            </div>
+          );
+        })}
 
         {/* Add custom form */}
         {showAdd && (

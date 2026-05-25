@@ -4,7 +4,8 @@ import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
-import { Plus, Search, ExternalLink, CheckCircle2, XCircle, Clock, UserCheck, Send, SlidersHorizontal, X } from "lucide-react";
+import { Plus, Search, ExternalLink, CheckCircle2, XCircle, Clock, UserCheck, Send, SlidersHorizontal, X, ChevronDown } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { Candidate, CandidateStatus, Lists } from "@/lib/types";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -58,7 +59,7 @@ function StatusSelect({ candidate, onChanged }: { candidate: Candidate; onChange
       value={candidate.status}
       onChange={handleChange}
       disabled={saving}
-      onClick={(e) => e.preventDefault()}
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
       className={cn(
         "rounded-lg border px-2.5 py-1.5 text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-primary transition-colors cursor-pointer disabled:opacity-60",
         statusSelectColors[candidate.status as CandidateStatus] ?? "text-muted-foreground border-border bg-card"
@@ -101,6 +102,7 @@ function CandidatesContent() {
   const [showModal, setShowModal] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
 
   async function load() {
     try {
@@ -116,16 +118,13 @@ function CandidatesContent() {
   useEffect(() => { load(); }, []);
   useEffect(() => { fetch("/api/lists").then((r) => r.json()).then(setLists).catch(() => {}); }, []);
 
-  // Sync active tab whenever the URL ?tab param changes (e.g. back-button navigation)
   useEffect(() => {
     const tab = searchParams.get("tab") as CandidateStatus | null;
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
-  // Clear selection when tab changes
   useEffect(() => { setSelectedIds(new Set()); }, [activeTab]);
 
-  // Unique clients across all candidates for the filter dropdown
   const uniqueClients = Array.from(new Set(candidates.map((c) => c.clientName).filter(Boolean))).sort();
 
   function toggleSelect(id: string) {
@@ -182,35 +181,36 @@ function CandidatesContent() {
   const currentTab = tabs.find((t) => t.key === activeTab)!;
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-4 p-3 sm:gap-6 sm:p-6">
       <PageHeader
         title="Candidates"
         description={tabs.map((t) => `${counts[t.key]} ${t.label.toLowerCase()}`).join(" · ")}
       >
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 transition-opacity"
         >
           <Plus className="h-4 w-4" />
-          Add Candidate
+          <span className="hidden xs:inline">Add Candidate</span>
+          <span className="xs:hidden">Add</span>
         </button>
       </PageHeader>
 
-      {/* Tabs */}
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-wrap gap-1 rounded-xl border border-border bg-card p-1">
+      {/* Tabs — scrollable on mobile */}
+      <div className="flex flex-col gap-3">
+        <div className="flex overflow-x-auto rounded-xl border border-border bg-card p-1 scrollbar-none gap-1">
           {tabs.map(({ key, label, icon: Icon, color }) => (
             <button
               key={key}
               onClick={() => setActiveTab(key)}
               className={cn(
-                "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+                "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap",
                 activeTab === key
                   ? "bg-primary text-primary-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Icon className={cn("h-4 w-4", activeTab === key ? "text-primary-foreground" : color)} />
+              <Icon className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", activeTab === key ? "text-primary-foreground" : color)} />
               {label}
               <span className={cn(
                 "rounded-full px-1.5 py-0.5 text-[10px] font-bold",
@@ -223,63 +223,65 @@ function CandidatesContent() {
         </div>
 
         {/* Search + Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, client, coach…"
-              className="w-56 rounded-lg border border-border bg-card pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-
-          {/* Filter dropdowns */}
-          <div className="flex items-center gap-1.5">
-            <SlidersHorizontal className="h-4 w-4 text-muted-foreground shrink-0" />
-
-            <FilterSelect
-              value={filterCoach}
-              onChange={setFilterCoach}
-              placeholder="Lead Coach"
-              options={lists.coaches}
-            />
-            <FilterSelect
-              value={filterSupport}
-              onChange={setFilterSupport}
-              placeholder="Support"
-              options={lists.supports}
-            />
-            <FilterSelect
-              value={filterClient}
-              onChange={setFilterClient}
-              placeholder="Client"
-              options={uniqueClients}
-            />
-            <FilterSelect
-              value={filterLevel}
-              onChange={setFilterLevel}
-              placeholder="Level"
-              options={SUPPORT_LEVELS}
-            />
-          </div>
-
-          {/* Clear button */}
-          {(activeFilterCount > 0 || search) && (
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+          {/* Search + filter toggle row */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1 sm:flex-none">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search name, client, coach…"
+                className="w-full sm:w-52 rounded-lg border border-border bg-card pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+            {/* Mobile filter toggle */}
             <button
-              onClick={clearFilters}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+              onClick={() => setShowFilters((v) => !v)}
+              className={cn(
+                "flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors sm:hidden",
+                (activeFilterCount > 0 || showFilters)
+                  ? "border-primary/60 bg-primary/10 text-primary"
+                  : "border-border bg-card text-muted-foreground"
+              )}
             >
-              <X className="h-3.5 w-3.5" />
-              Clear
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filters
               {activeFilterCount > 0 && (
                 <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
                   {activeFilterCount}
                 </span>
               )}
+              <ChevronDown className={cn("h-3 w-3 transition-transform", showFilters && "rotate-180")} />
             </button>
-          )}
+          </div>
+
+          {/* Filter dropdowns — always visible on sm+, collapsible on mobile */}
+          <div className={cn(
+            "flex flex-wrap items-center gap-1.5",
+            "hidden sm:flex",
+            showFilters && "!flex"
+          )}>
+            <SlidersHorizontal className="h-4 w-4 text-muted-foreground shrink-0 hidden sm:block" />
+            <FilterSelect value={filterCoach} onChange={setFilterCoach} placeholder="Lead Coach" options={lists.coaches} />
+            <FilterSelect value={filterSupport} onChange={setFilterSupport} placeholder="Support" options={lists.supports} />
+            <FilterSelect value={filterClient} onChange={setFilterClient} placeholder="Client" options={uniqueClients} />
+            <FilterSelect value={filterLevel} onChange={setFilterLevel} placeholder="Level" options={SUPPORT_LEVELS} />
+            {(activeFilterCount > 0 || search) && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-2 text-xs text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+              >
+                <X className="h-3.5 w-3.5" />
+                Clear
+                {activeFilterCount > 0 && (
+                  <span className="rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px] font-bold text-primary">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -359,15 +361,15 @@ function BulkActionBar({ count, currentStatus, onApply, onClear, loading }: {
   );
 
   return (
-    <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-2xl border border-border bg-card px-5 py-3 shadow-2xl">
+    <div className="fixed bottom-4 left-1/2 z-50 -translate-x-1/2 flex flex-wrap items-center justify-center gap-2 rounded-2xl border border-border bg-card px-4 py-3 shadow-2xl mx-4 sm:gap-3 sm:px-5">
       <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
         {count}
       </div>
       <p className="text-sm font-medium text-foreground">
         candidate{count > 1 ? "s" : ""} selected
       </p>
-      <div className="mx-1 h-5 w-px bg-border" />
-      <p className="text-xs text-muted-foreground">Move to</p>
+      <div className="mx-1 h-5 w-px bg-border hidden sm:block" />
+      <p className="text-xs text-muted-foreground hidden sm:block">Move to</p>
       <select
         value={targetStatus}
         onChange={(e) => setTargetStatus(e.target.value as CandidateStatus)}
@@ -393,132 +395,70 @@ function BulkActionBar({ count, currentStatus, onApply, onClear, loading }: {
 
 /* ─── Referred + Candidate Reached (simple table) ─── */
 function SimpleTable({ candidates, supportColors, onRefresh, activeTab, isAdmin, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string } & SelectionProps) {
+  const router = useRouter();
   if (candidates.length === 0) return <EmptyState message="No candidates in this status" />;
   const allIds = candidates.map((c) => c.id);
   const allSelected = allIds.every((id) => selectedIds.has(id));
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-sidebar/50">
-            <th className="w-10 px-4 py-3">
-              <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
-                className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
-            </th>
-            <Th>Candidate</Th>
-            <Th>Client / Partner</Th>
-            <Th>Lead Coach</Th>
-            <Th>Support</Th>
-            <Th>Level</Th>
-            <Th>Status</Th>
-            <Th>Date Added</Th>
-            <Th>Notes</Th>
-            {isAdmin && <Th>Budget</Th>}
-            <th className="w-10 px-4 py-3" />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {candidates.map((c) => (
-            <tr key={c.id} className={cn("group transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
-              <td className="px-4 py-3">
-                <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
-                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Avatar name={c.candidateName} color="violet" />
-                  <div>
-                    <p className="font-medium text-foreground">{c.candidateName}</p>
-                    <p className="text-xs text-muted-foreground">{c.email}</p>
-                  </div>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <p className="text-foreground">{c.clientName}</p>
-                <p className="text-xs text-muted-foreground">{c.partner}</p>
-              </td>
-              <td className="px-4 py-3 text-sm text-foreground">{c.leadCoach || "—"}</td>
-              <td className="px-4 py-3 text-sm text-foreground">{c.support || "—"}</td>
-              <td className="px-4 py-3">
-                {c.levelOfSupport && (
-                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", supportColors[c.levelOfSupport])}>
-                    {c.levelOfSupport}
-                  </span>
-                )}
-              </td>
-              <td className="px-4 py-3">
-                <StatusSelect candidate={c} onChanged={onRefresh} />
-              </td>
-              <td className="px-4 py-3 text-xs text-muted-foreground">
-                {c.createdAt ? new Date(c.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
-              </td>
-              <td className="px-4 py-3 max-w-[180px]">
-                <p className="truncate text-xs text-muted-foreground">{c.notes || "—"}</p>
-              </td>
-              {isAdmin && (
-                <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
-                  {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
-                </td>
+    <>
+      {/* Card view — shown on everything up to 2xl (laptops included) */}
+      <div className="flex flex-col gap-3 2xl:hidden">
+        {candidates.map((c) => (
+          <CandidateCard key={c.id} candidate={c} activeTab={activeTab} onRefresh={onRefresh}
+            selected={selectedIds.has(c.id)} onToggle={() => onToggleSelect(c.id)}>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {c.levelOfSupport && (
+                <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", supportColors[c.levelOfSupport])}>
+                  {c.levelOfSupport}
+                </span>
               )}
-              <td className="px-4 py-3">
-                <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ExternalLink className="h-4 w-4" />
-                </Link>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
+              <span className="text-xs text-muted-foreground">Added {c.createdAt ? new Date(c.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}</span>
+            </div>
+            {c.notes && <p className="mt-1 text-xs text-muted-foreground truncate">{c.notes}</p>}
+            {isAdmin && c.budget && (
+              <p className="mt-1 text-xs font-medium text-primary">{c.budgetCurrency ?? "AED"} {c.budget.toLocaleString()}</p>
+            )}
+          </CandidateCard>
+        ))}
+      </div>
 
-/* ─── Active candidates table ─── */
-function ActiveTable({ candidates, supportColors, onRefresh, activeTab, isAdmin, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string } & SelectionProps) {
-  if (candidates.length === 0) return <EmptyState message="No active candidates" />;
-  const allIds = candidates.map((c) => c.id);
-  const allSelected = allIds.every((id) => selectedIds.has(id));
-  return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-sidebar/50">
-            <th className="w-10 px-4 py-3">
-              <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
-                className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
-            </th>
-            <Th>Candidate</Th>
-            <Th>Client / Partner</Th>
-            <Th>Lead Coach</Th>
-            <Th>Support</Th>
-            <Th>Progress</Th>
-            <Th>Sessions</Th>
-            <Th>Level</Th>
-            <Th>Status</Th>
-            <Th>End Date</Th>
-            {isAdmin && <Th>Budget</Th>}
-            <th className="w-10 px-4 py-3" />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {candidates.map((c) => {
-            const p = c.progress;
-            const standardDone = [p?.introductorySession, p?.cvSessions, p?.linkedinProfile, p?.profiling, p?.networkingPersonalBranding].filter(Boolean).length;
-            const customDone = (p?.custom ?? []).filter((m) => m.done).length;
-            const done = standardDone + customDone;
-            const total = 5 + (c.progress?.custom?.length ?? 0);
-            const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-            return (
-              <tr key={c.id} className={cn("group transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
-                <td className="px-4 py-3">
+      {/* Full table — only on 2xl+ (wide monitors ≥ 1536px) */}
+      <div className="hidden 2xl:block overflow-x-auto rounded-xl border border-border bg-card">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-sidebar/50">
+              <th className="w-10 px-4 py-3">
+                <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
+                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+              </th>
+              <Th>Candidate</Th>
+              <Th>Client / Partner</Th>
+              <Th>Lead Coach</Th>
+              <Th>Support</Th>
+              <Th>Level</Th>
+              <Th>Status</Th>
+              <Th>Date Added</Th>
+              <Th>Notes</Th>
+              {isAdmin && <Th>Budget</Th>}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {candidates.map((c) => (
+              <tr key={c.id}
+                onClick={() => router.push(`/outplacement/candidates/${c.id}?from=${activeTab}`)}
+                className={cn("group cursor-pointer transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
                     className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <Avatar name={c.candidateName} color="emerald" />
+                    <Avatar name={c.candidateName} color="violet" />
                     <div>
-                      <p className="font-medium text-foreground">{c.candidateName}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-foreground">{c.candidateName}</p>
+                        <ExternalLink className="h-3 w-3 text-primary/40 group-hover:text-primary transition-colors shrink-0" />
+                      </div>
                       <p className="text-xs text-muted-foreground">{c.email}</p>
                     </div>
                   </div>
@@ -527,18 +467,8 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab, isAdmin,
                   <p className="text-foreground">{c.clientName}</p>
                   <p className="text-xs text-muted-foreground">{c.partner}</p>
                 </td>
-                <td className="px-4 py-3 text-sm text-foreground">{c.leadCoach}</td>
-                <td className="px-4 py-3 text-sm text-foreground">{c.support}</td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-xs text-muted-foreground">{pct}%</span>
-                  </div>
-                  <p className="mt-0.5 text-[10px] text-muted-foreground">{done}/{total} milestones</p>
-                </td>
-                <td className="px-4 py-3 text-center text-sm text-foreground">{c.sessionsCompleted}</td>
+                <td className="px-4 py-3 text-sm text-foreground">{c.leadCoach || "—"}</td>
+                <td className="px-4 py-3 text-sm text-foreground">{c.support || "—"}</td>
                 <td className="px-4 py-3">
                   {c.levelOfSupport && (
                     <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", supportColors[c.levelOfSupport])}>
@@ -546,33 +476,172 @@ function ActiveTable({ candidates, supportColors, onRefresh, activeTab, isAdmin,
                     </span>
                   )}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <StatusSelect candidate={c} onChanged={onRefresh} />
                 </td>
-                <td className="px-4 py-3 text-xs text-muted-foreground">
-                  {c.endDate ? new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
+                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                  {c.createdAt ? new Date(c.createdAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
+                </td>
+                <td className="px-4 py-3 max-w-[180px]">
+                  <p className="truncate text-xs text-muted-foreground">{c.notes || "—"}</p>
                 </td>
                 {isAdmin && (
                   <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
                     {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
                   </td>
                 )}
-                <td className="px-4 py-3">
-                  <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ExternalLink className="h-4 w-4" />
-                  </Link>
-                </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+/* ─── Active candidates table ─── */
+function ActiveTable({ candidates, supportColors, onRefresh, activeTab, isAdmin, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; supportColors: Record<string, string>; onRefresh: () => void; activeTab: string } & SelectionProps) {
+  const router = useRouter();
+  if (candidates.length === 0) return <EmptyState message="No active candidates" />;
+  const allIds = candidates.map((c) => c.id);
+  const allSelected = allIds.every((id) => selectedIds.has(id));
+  return (
+    <>
+      {/* Card view — shown on everything up to 2xl (laptops included) */}
+      <div className="flex flex-col gap-3 2xl:hidden">
+        {candidates.map((c) => {
+          const p = c.progress;
+          const standardDone = [p?.introductorySession, p?.cvSessions, p?.linkedinProfile, p?.profiling, p?.networkingPersonalBranding].filter(Boolean).length;
+          const customDone = (p?.custom ?? []).filter((m) => m.done).length;
+          const done = standardDone + customDone;
+          const total = 5 + (c.progress?.custom?.length ?? 0);
+          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+          return (
+            <CandidateCard key={c.id} candidate={c} activeTab={activeTab} onRefresh={onRefresh}
+              selected={selectedIds.has(c.id)} onToggle={() => onToggleSelect(c.id)}>
+              {/* Progress bar */}
+              <div className="mt-2 flex items-center gap-2">
+                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                </div>
+                <span className="text-[11px] text-muted-foreground shrink-0">{pct}% · {done}/{total}</span>
+              </div>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {c.levelOfSupport && (
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", supportColors[c.levelOfSupport])}>
+                    {c.levelOfSupport}
+                  </span>
+                )}
+                {c.endDate && (
+                  <span className="text-xs text-muted-foreground">
+                    Ends {new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}
+                  </span>
+                )}
+                {isAdmin && c.budget && (
+                  <span className="text-xs font-medium text-primary">{c.budgetCurrency ?? "AED"} {c.budget.toLocaleString()}</span>
+                )}
+              </div>
+            </CandidateCard>
+          );
+        })}
+      </div>
+
+      {/* Full table — only on 2xl+ (wide monitors ≥ 1536px) */}
+      <div className="hidden 2xl:block overflow-x-auto rounded-xl border border-border bg-card">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-sidebar/50">
+              <th className="w-10 px-4 py-3">
+                <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
+                  className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+              </th>
+              <Th>Candidate</Th>
+              <Th>Client / Partner</Th>
+              <Th>Lead Coach</Th>
+              <Th>Support</Th>
+              <Th>Progress</Th>
+              <Th>Sessions</Th>
+              <Th>Level</Th>
+              <Th>Status</Th>
+              <Th>End Date</Th>
+              {isAdmin && <Th>Budget</Th>}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {candidates.map((c) => {
+              const p = c.progress;
+              const standardDone = [p?.introductorySession, p?.cvSessions, p?.linkedinProfile, p?.profiling, p?.networkingPersonalBranding].filter(Boolean).length;
+              const customDone = (p?.custom ?? []).filter((m) => m.done).length;
+              const done = standardDone + customDone;
+              const total = 5 + (c.progress?.custom?.length ?? 0);
+              const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+              return (
+                <tr key={c.id}
+                  onClick={() => router.push(`/outplacement/candidates/${c.id}?from=${activeTab}`)}
+                  className={cn("group cursor-pointer transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
+                      className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <Avatar name={c.candidateName} color="emerald" />
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-medium text-foreground">{c.candidateName}</p>
+                          <ExternalLink className="h-3 w-3 text-primary/40 group-hover:text-primary transition-colors shrink-0" />
+                        </div>
+                        <p className="text-xs text-muted-foreground">{c.email}</p>
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <p className="text-foreground">{c.clientName}</p>
+                    <p className="text-xs text-muted-foreground">{c.partner}</p>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-foreground">{c.leadCoach}</td>
+                  <td className="px-4 py-3 text-sm text-foreground">{c.support}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-20 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="text-xs text-muted-foreground">{pct}%</span>
+                    </div>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">{done}/{total} milestones</p>
+                  </td>
+                  <td className="px-4 py-3 text-center text-sm text-foreground">{c.sessionsCompleted}</td>
+                  <td className="px-4 py-3">
+                    {c.levelOfSupport && (
+                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", supportColors[c.levelOfSupport])}>
+                        {c.levelOfSupport}
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                    <StatusSelect candidate={c} onChanged={onRefresh} />
+                  </td>
+                  <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {c.endDate ? new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
+                  </td>
+                  {isAdmin && (
+                    <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                      {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </>
   );
 }
 
 /* ─── Completed candidates table ─── */
 function CompletedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string } & SelectionProps) {
+  const router = useRouter();
   const placed = candidates.filter((c) => c.jobStatus === "Y").length;
   if (candidates.length === 0) return <EmptyState message="No completed candidates yet" />;
   const allIds = candidates.map((c) => c.id);
@@ -584,7 +653,29 @@ function CompletedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds
         <StatPill label="Successfully Placed" value={placed} color="text-emerald-400" />
         <StatPill label="Placement Rate" value={`${candidates.length > 0 ? Math.round((placed / candidates.length) * 100) : 0}%`} color="text-primary" />
       </div>
-      <div className="overflow-hidden rounded-xl border border-border bg-card">
+
+      {/* Card view — shown on everything up to 2xl (laptops included) */}
+      <div className="flex flex-col gap-3 2xl:hidden">
+        {candidates.map((c) => (
+          <CandidateCard key={c.id} candidate={c} activeTab={activeTab} onRefresh={onRefresh}
+            selected={selectedIds.has(c.id)} onToggle={() => onToggleSelect(c.id)}>
+            {c.newPlacement && (
+              <p className="mt-1 text-xs font-medium text-foreground">→ {c.newPlacement}{c.position ? ` · ${c.position}` : ""}</p>
+            )}
+            {c.sector && <p className="text-xs text-muted-foreground">{c.sector}</p>}
+            <div className="mt-2 flex flex-wrap gap-2">
+              {c.jobStatus === "Y"
+                ? <span className="flex items-center gap-1 text-xs font-medium text-emerald-400"><CheckCircle2 className="h-3.5 w-3.5" /> Placed</span>
+                : <span className="text-xs text-muted-foreground">Pending</span>}
+              {isAdmin && c.budget && (
+                <span className="text-xs font-medium text-primary">{c.budgetCurrency ?? "AED"} {c.budget.toLocaleString()}</span>
+              )}
+            </div>
+          </CandidateCard>
+        ))}
+      </div>
+
+      <div className="hidden 2xl:block overflow-x-auto rounded-xl border border-border bg-card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border bg-sidebar/50">
@@ -601,13 +692,14 @@ function CompletedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds
               <Th>Status</Th>
               <Th>Placed</Th>
               {isAdmin && <Th>Budget</Th>}
-                <th className="w-10 px-4 py-3" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
             {candidates.map((c) => (
-              <tr key={c.id} className={cn("group transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
-                <td className="px-4 py-3">
+              <tr key={c.id}
+                onClick={() => router.push(`/outplacement/candidates/${c.id}?from=${activeTab}`)}
+                className={cn("group cursor-pointer transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
                     className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
                 </td>
@@ -615,7 +707,10 @@ function CompletedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds
                   <div className="flex items-center gap-3">
                     <Avatar name={c.candidateName} color="blue" />
                     <div>
-                      <p className="font-medium text-foreground">{c.candidateName}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-foreground">{c.candidateName}</p>
+                        <ExternalLink className="h-3 w-3 text-primary/40 group-hover:text-primary transition-colors shrink-0" />
+                      </div>
                       <p className="text-xs text-muted-foreground">{c.partner}</p>
                     </div>
                   </div>
@@ -632,7 +727,7 @@ function CompletedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds
                     ? <span className="rounded-full bg-primary/20 px-2.5 py-1 text-xs font-medium text-primary">{c.discStyle}</span>
                     : <span className="text-xs text-muted-foreground">—</span>}
                 </td>
-                <td className="px-4 py-3">
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   <StatusSelect candidate={c} onChanged={onRefresh} />
                 </td>
                 <td className="px-4 py-3">
@@ -645,11 +740,6 @@ function CompletedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds
                     {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
                   </td>
                 )}
-                <td className="px-4 py-3">
-                  <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                    <ExternalLink className="h-4 w-4" />
-                  </Link>
-                </td>
               </tr>
             ))}
           </tbody>
@@ -661,70 +751,135 @@ function CompletedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds
 
 /* ─── Declined candidates table ─── */
 function DeclinedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds, onToggleSelect, onToggleAll }: { candidates: Candidate[]; onRefresh: () => void; activeTab: string } & SelectionProps) {
+  const router = useRouter();
   if (candidates.length === 0) return <EmptyState message="No declined candidates" />;
   const allIds = candidates.map((c) => c.id);
   const allSelected = allIds.every((id) => selectedIds.has(id));
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-border bg-sidebar/50">
-            <th className="w-10 px-4 py-3">
-              <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
-                className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
-            </th>
-            <Th>Candidate</Th>
-            <Th>Client / Partner</Th>
-            <Th>Lead Coach</Th>
-            <Th>Status</Th>
-            <Th>Date Started</Th>
-            <Th>Notes</Th>
-            {isAdmin && <Th>Budget</Th>}
-            <th className="w-10 px-4 py-3" />
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {candidates.map((c) => (
-            <tr key={c.id} className={cn("group transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
-              <td className="px-4 py-3">
-                <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
+    <>
+      {/* Card view — shown on everything up to 2xl (laptops included) */}
+      <div className="flex flex-col gap-3 2xl:hidden">
+        {candidates.map((c) => (
+          <CandidateCard key={c.id} candidate={c} activeTab={activeTab} onRefresh={onRefresh}
+            selected={selectedIds.has(c.id)} onToggle={() => onToggleSelect(c.id)}>
+            {c.notes && <p className="mt-1 text-xs text-muted-foreground truncate">{c.notes}</p>}
+            {c.dateStarted && (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Started {new Date(c.dateStarted).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" })}
+              </p>
+            )}
+            {isAdmin && c.budget && (
+              <p className="mt-1 text-xs font-medium text-primary">{c.budgetCurrency ?? "AED"} {c.budget.toLocaleString()}</p>
+            )}
+          </CandidateCard>
+        ))}
+      </div>
+
+      <div className="hidden sm:block overflow-x-auto rounded-xl border border-border bg-card">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border bg-sidebar/50">
+              <th className="w-10 px-4 py-3">
+                <input type="checkbox" checked={allSelected} onChange={() => onToggleAll(allIds)}
                   className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
-              </td>
-              <td className="px-4 py-3">
-                <div className="flex items-center gap-3">
-                  <Avatar name={c.candidateName} color="rose" />
-                  <div>
-                    <p className="font-medium text-foreground">{c.candidateName}</p>
-                    <p className="text-xs text-muted-foreground">{c.email}</p>
-                  </div>
-                </div>
-              </td>
-              <td className="px-4 py-3">
-                <p className="text-foreground">{c.clientName}</p>
-                <p className="text-xs text-muted-foreground">{c.partner}</p>
-              </td>
-              <td className="px-4 py-3 text-sm text-foreground">{c.leadCoach}</td>
-              <td className="px-4 py-3">
-                <StatusSelect candidate={c} onChanged={onRefresh} />
-              </td>
-              <td className="px-4 py-3 text-xs text-muted-foreground">
-                {c.dateStarted ? new Date(c.dateStarted).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
-              </td>
-              <td className="px-4 py-3 text-xs text-muted-foreground max-w-xs truncate">{c.notes || "—"}</td>
-              {isAdmin && (
-                <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
-                  {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
-                </td>
-              )}
-              <td className="px-4 py-3">
-                <Link href={`/outplacement/candidates/${c.id}?from=${activeTab}`} className="text-primary opacity-0 group-hover:opacity-100 transition-opacity">
-                  <ExternalLink className="h-4 w-4" />
-                </Link>
-              </td>
+              </th>
+              <Th>Candidate</Th>
+              <Th>Client / Partner</Th>
+              <Th>Lead Coach</Th>
+              <Th>Status</Th>
+              <Th>Date Started</Th>
+              <Th>Notes</Th>
+              {isAdmin && <Th>Budget</Th>}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {candidates.map((c) => (
+              <tr key={c.id}
+                onClick={() => router.push(`/outplacement/candidates/${c.id}?from=${activeTab}`)}
+                className={cn("group cursor-pointer transition-colors hover:bg-sidebar-accent/40", selectedIds.has(c.id) && "bg-primary/5")}>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <input type="checkbox" checked={selectedIds.has(c.id)} onChange={() => onToggleSelect(c.id)}
+                    className="h-4 w-4 rounded border-border accent-primary cursor-pointer" />
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={c.candidateName} color="rose" />
+                    <div>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-medium text-foreground">{c.candidateName}</p>
+                        <ExternalLink className="h-3 w-3 text-primary/40 group-hover:text-primary transition-colors shrink-0" />
+                      </div>
+                      <p className="text-xs text-muted-foreground">{c.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <p className="text-foreground">{c.clientName}</p>
+                  <p className="text-xs text-muted-foreground">{c.partner}</p>
+                </td>
+                <td className="px-4 py-3 text-sm text-foreground">{c.leadCoach}</td>
+                <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  <StatusSelect candidate={c} onChanged={onRefresh} />
+                </td>
+                <td className="px-4 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                  {c.dateStarted ? new Date(c.dateStarted).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "2-digit" }) : "—"}
+                </td>
+                <td className="px-4 py-3 text-xs text-muted-foreground max-w-xs truncate">{c.notes || "—"}</td>
+                {isAdmin && (
+                  <td className="px-4 py-3 text-sm text-foreground whitespace-nowrap">
+                    {c.budget ? `${c.budgetCurrency ?? "AED"} ${c.budget.toLocaleString()}` : "—"}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </>
+  );
+}
+
+/* ─── Mobile candidate card ─── */
+function CandidateCard({ candidate: c, activeTab, onRefresh, selected, onToggle, children }: {
+  candidate: Candidate;
+  activeTab: string;
+  onRefresh: () => void;
+  selected: boolean;
+  onToggle: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className={cn(
+      "rounded-xl border border-border bg-card p-4 transition-colors",
+      selected && "border-primary/50 bg-primary/5"
+    )}>
+      <div className="flex items-start gap-3">
+        <input type="checkbox" checked={selected} onChange={onToggle}
+          className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-primary cursor-pointer" />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Avatar name={c.candidateName} color="emerald" />
+              <div className="min-w-0">
+                <p className="font-medium text-foreground truncate">{c.candidateName}</p>
+                {c.clientName && <p className="text-xs text-muted-foreground truncate">{c.clientName}{c.partner ? ` · ${c.partner}` : ""}</p>}
+              </div>
+            </div>
+            <Link
+              href={`/outplacement/candidates/${c.id}?from=${activeTab}`}
+              className="shrink-0 flex items-center gap-1 rounded-lg bg-primary/15 px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/25 transition-colors"
+              onClick={(e) => e.stopPropagation()}
+            >
+              View <ExternalLink className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            {c.leadCoach && <span className="text-xs text-muted-foreground">Coach: <span className="text-foreground">{c.leadCoach}</span></span>}
+            <StatusSelect candidate={c} onChanged={onRefresh} />
+          </div>
+          {children}
+        </div>
+      </div>
     </div>
   );
 }
@@ -732,7 +887,7 @@ function DeclinedTable({ candidates, onRefresh, activeTab, isAdmin, selectedIds,
 /* ─── Shared helpers ─── */
 function Th({ children }: { children: React.ReactNode }) {
   return (
-    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+    <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">
       {children}
     </th>
   );
@@ -754,9 +909,9 @@ function Avatar({ name, color }: { name: string; color: "emerald" | "blue" | "ro
 
 function StatPill({ label, value, color }: { label: string; value: string | number; color: string }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <p className="text-xs uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
-      <p className={cn("text-2xl font-bold", color)}>{value}</p>
+    <div className="rounded-xl border border-border bg-card p-3 sm:p-4">
+      <p className="text-[10px] sm:text-xs uppercase tracking-wider text-muted-foreground mb-1">{label}</p>
+      <p className={cn("text-xl sm:text-2xl font-bold", color)}>{value}</p>
     </div>
   );
 }

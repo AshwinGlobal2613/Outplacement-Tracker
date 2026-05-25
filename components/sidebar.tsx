@@ -7,12 +7,12 @@ import {
   LayoutDashboard,
   Users,
   Search,
-  Activity,
   ShieldCheck,
   UserCircle2,
   LogOut,
   CalendarDays,
   BookOpen,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Separator } from "@/components/ui/separator";
@@ -47,7 +47,12 @@ const adminNavItems: NavItem[] = [
   { label: "Admin Panel", href: "/outplacement/admin", icon: ShieldCheck },
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+  open?: boolean;
+  onClose?: () => void;
+}
+
+export function Sidebar({ open = false, onClose }: SidebarProps) {
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = session?.user?.role === "admin";
@@ -57,13 +62,30 @@ export function Sidebar() {
     : "?";
 
   return (
-    <aside className="flex h-screen w-64 flex-col border-r border-sidebar-border bg-sidebar">
-      {/* Logo */}
-      <div className="flex h-16 items-center px-5">
+    <aside
+      className={cn(
+        "flex h-screen w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar",
+        // Mobile: fixed overlay, slides in/out
+        "fixed inset-y-0 left-0 z-50 transition-transform duration-300 ease-in-out",
+        // Desktop: always visible, static
+        "lg:static lg:translate-x-0",
+        open ? "translate-x-0" : "-translate-x-full"
+      )}
+    >
+      {/* Logo + mobile close button */}
+      <div className="flex h-16 items-center justify-between px-5">
         <div className="min-w-0">
           <p className="text-sm font-bold text-sidebar-foreground leading-tight">Outplacement</p>
           <p className="text-[10px] text-muted-foreground leading-tight tracking-wide uppercase">Management System</p>
         </div>
+        {/* Close button — mobile only */}
+        <button
+          onClick={onClose}
+          className="lg:hidden ml-2 shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Close menu"
+        >
+          <X className="h-5 w-5" />
+        </button>
       </div>
 
       <Separator className="bg-sidebar-border" />
@@ -86,8 +108,9 @@ export function Sidebar() {
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={onClose}
                       className={cn(
-                        "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                        "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
                         isActive
                           ? "bg-primary/20 text-primary"
                           : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
@@ -120,8 +143,9 @@ export function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={onClose}
                     className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                      "flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors",
                       isActive
                         ? "bg-primary/20 text-primary"
                         : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
