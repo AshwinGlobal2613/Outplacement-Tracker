@@ -21,14 +21,20 @@ import {
   Check,
   ChevronUp,
   ChevronDown,
+  Building2,
+  UserCircle,
 } from "lucide-react";
+
+type UserRole = "admin" | "team_member" | "client" | "candidate";
 
 type User = {
   id: string;
   name: string;
   email: string;
   phone?: string;
-  role: "admin" | "team_member";
+  role: UserRole;
+  clientCompany?: string;
+  candidateId?: string;
   disabled: boolean;
   mustChangePassword?: boolean;
   createdAt: string;
@@ -36,6 +42,7 @@ type User = {
 
 type SortKey = "name" | "email" | "role" | "createdAt";
 type SortDir = "asc" | "desc";
+type CandidateOption = { id: string; candidateName: string; clientName: string };
 
 /* ─── Modal ─────────────────────────────────────────────────── */
 type ModalUser = Partial<User> & { password?: string };
@@ -53,20 +60,56 @@ function UserModal({
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [role, setRole] = useState<"admin" | "team_member">(user?.role ?? "team_member");
+  const [role, setRole] = useState<UserRole>(user?.role ?? "team_member");
+  const [clientCompany, setClientCompany] = useState(user?.clientCompany ?? "");
+  const [candidateId, setCandidateId] = useState(user?.candidateId ?? "");
+  const [candidates, setCandidates] = useState<CandidateOption[]>([]);
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (role === "candidate" && candidates.length === 0) {
+      fetch("/api/candidates")
+        .then((r) => r.json())
+        .then((data) => {
+          if (Array.isArray(data))
+            setCandidates(
+              data.map((c) => ({
+                id: c.id,
+                candidateName: c.candidateName,
+                clientName: c.clientName,
+              }))
+            );
+        })
+        .catch(() => {});
+    }
+  }, [role]);
+
   async function handleSave() {
     setError("");
-    if (!name.trim() || !email.trim()) { setError("Name and email are required."); return; }
-    // For new users, password is auto-generated — only validate if editing
-    if (!isNew && password && password.length < 8) { setError("New password must be at least 8 characters."); return; }
+    if (!name.trim() || !email.trim()) {
+      setError("Name and email are required.");
+      return;
+    }
+    if (!isNew && password && password.length < 8) {
+      setError("New password must be at least 8 characters.");
+      return;
+    }
+    if (role === "client" && !clientCompany.trim()) {
+      setError("Company name is required for client portal users.");
+      return;
+    }
+    if (role === "candidate" && !candidateId) {
+      setError("Please select a candidate profile.");
+      return;
+    }
 
     setLoading(true);
     const body: Record<string, unknown> = { name, email, phone, role };
+    if (role === "client") body.clientCompany = clientCompany;
+    if (role === "candidate") body.candidateId = candidateId;
     if (!isNew && password) body.password = password;
 
     const url = isNew ? "/api/users" : `/api/users/${user!.id}`;
@@ -93,9 +136,12 @@ function UserModal({
       <div className="w-full max-w-md rounded-xl border border-border bg-card shadow-2xl">
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h2 className="text-base font-semibold text-foreground">
-            {isNew ? "Add New Member" : "Edit Member"}
+            {isNew ? "Add New User" : "Edit User"}
           </h2>
-          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -130,7 +176,8 @@ function UserModal({
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">
-              Phone <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+              Phone{" "}
+              <span className="text-xs font-normal text-muted-foreground">(optional)</span>
             </label>
             <input
               value={phone}
@@ -144,23 +191,70 @@ function UserModal({
             <label className="text-sm font-medium text-foreground">Role</label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as "admin" | "team_member")}
+              onChange={(e) => setRole(e.target.value as UserRole)}
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="team_member">Team Member</option>
               <option value="admin">Admin</option>
+              <option value="client">Client (Company Portal)</option>
+              <option value="candidate">Candidate (Personal Portal)</option>
             </select>
           </div>
 
+          {/* Client-specific: company name */}
+          {role === "client" && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Company Name *</label>
+              <input
+                value={clientCompany}
+                onChange={(e) => setClientCompany(e.target.value)}
+                placeholder="Acme Corp"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+            </div>
+          )}
+
+          {/* Candidate-specific: candidate profile dropdown */}
+          {role === "candidate" && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Candidate Profile *</label>
+              {candidates.length === 0 ? (
+                <div className="rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-muted-foreground">
+                  Loading candidates…
+                </div>
+              ) : (
+                <select
+                  value={candidateId}
+                  onChange={(e) => setCandidateId(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  <option value="">— Select a candidate —</option>
+                  {candidates.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.candidateName} ({c.clientName})
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Links this login to a specific candidate profile in the system.
+              </p>
+            </div>
+          )}
+
           {isNew ? (
             <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
-              🔑 A secure temporary password will be <strong className="text-foreground">auto-generated and emailed</strong> to this member. They&apos;ll be asked to set a new password on first login.
+              🔑 A secure temporary password will be{" "}
+              <strong className="text-foreground">auto-generated and emailed</strong> to this user.
+              They&apos;ll be asked to set a new password on first login.
             </div>
           ) : (
             <div className="space-y-1.5">
               <label className="text-sm font-medium text-foreground">
                 New Password
-                <span className="text-xs font-normal text-muted-foreground ml-1">(leave blank to keep current)</span>
+                <span className="text-xs font-normal text-muted-foreground ml-1">
+                  (leave blank to keep current)
+                </span>
               </label>
               <div className="relative">
                 <input
@@ -194,11 +288,42 @@ function UserModal({
             disabled={loading}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
           >
-            {loading ? "Saving…" : isNew ? "Add Member" : "Save Changes"}
+            {loading ? "Saving…" : isNew ? "Add User" : "Save Changes"}
           </button>
         </div>
       </div>
     </div>
+  );
+}
+
+/* ─── Role badge helper ──────────────────────────────────────── */
+function RoleBadge({ role }: { role: UserRole }) {
+  if (role === "admin")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-violet-500/15 text-violet-400">
+        <ShieldCheck className="h-3 w-3" />
+        Admin
+      </span>
+    );
+  if (role === "client")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-sky-500/15 text-sky-400">
+        <Building2 className="h-3 w-3" />
+        Client Portal
+      </span>
+    );
+  if (role === "candidate")
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-500/15 text-emerald-400">
+        <UserCircle className="h-3 w-3" />
+        Candidate Portal
+      </span>
+    );
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-primary/10 text-primary">
+      <Users className="h-3 w-3" />
+      Team Member
+    </span>
   );
 }
 
@@ -210,8 +335,10 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "team_member">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "disabled">("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | UserRole>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "disabled">(
+    "all"
+  );
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [editUser, setEditUser] = useState<ModalUser | null>(null);
@@ -220,8 +347,14 @@ export default function AdminUsersPage() {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (status === "unauthenticated") { router.push("/login"); return; }
-    if (status === "authenticated" && session?.user?.role !== "admin") { router.push("/outplacement"); return; }
+    if (status === "unauthenticated") {
+      router.push("/login");
+      return;
+    }
+    if (status === "authenticated" && session?.user?.role !== "admin") {
+      router.push("/outplacement");
+      return;
+    }
     if (status === "authenticated") loadUsers();
   }, [status, session]);
 
@@ -258,6 +391,8 @@ export default function AdminUsersPage() {
   }
 
   async function toggleRole(user: User) {
+    // Only toggle between admin and team_member for internal staff
+    if (user.role === "client" || user.role === "candidate") return;
     setActionLoading(user.id + "-role");
     await fetch(`/api/users/${user.id}`, {
       method: "PUT",
@@ -270,15 +405,21 @@ export default function AdminUsersPage() {
 
   function handleSort(key: SortKey) {
     if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
-    else { setSortKey(key); setSortDir("asc"); }
+    else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
   }
 
   const filtered = useMemo(() => {
     let list = [...users];
-    if (search) list = list.filter((u) =>
-      u.name.toLowerCase().includes(search.toLowerCase()) ||
-      u.email.toLowerCase().includes(search.toLowerCase())
-    );
+    if (search)
+      list = list.filter(
+        (u) =>
+          u.name.toLowerCase().includes(search.toLowerCase()) ||
+          u.email.toLowerCase().includes(search.toLowerCase()) ||
+          (u.clientCompany ?? "").toLowerCase().includes(search.toLowerCase())
+      );
     if (roleFilter !== "all") list = list.filter((u) => u.role === roleFilter);
     if (statusFilter === "active") list = list.filter((u) => !u.disabled && !u.mustChangePassword);
     if (statusFilter === "pending") list = list.filter((u) => !u.disabled && u.mustChangePassword);
@@ -293,7 +434,11 @@ export default function AdminUsersPage() {
 
   function SortIcon({ k }: { k: SortKey }) {
     if (sortKey !== k) return <ChevronUp className="h-3 w-3 opacity-20" />;
-    return sortDir === "asc" ? <ChevronUp className="h-3 w-3 text-primary" /> : <ChevronDown className="h-3 w-3 text-primary" />;
+    return sortDir === "asc" ? (
+      <ChevronUp className="h-3 w-3 text-primary" />
+    ) : (
+      <ChevronDown className="h-3 w-3 text-primary" />
+    );
   }
 
   if (status === "loading" || loadingUsers) {
@@ -305,6 +450,8 @@ export default function AdminUsersPage() {
   }
 
   const adminCount = users.filter((u) => u.role === "admin").length;
+  const clientCount = users.filter((u) => u.role === "client").length;
+  const candidateCount = users.filter((u) => u.role === "candidate").length;
   const pendingCount = users.filter((u) => !u.disabled && u.mustChangePassword).length;
   const activeCount = users.filter((u) => !u.disabled && !u.mustChangePassword).length;
   const disabledCount = users.filter((u) => u.disabled).length;
@@ -316,24 +463,28 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">User Management</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Manage team members, roles, and account access
+            Manage team members, portal users, and account access
           </p>
         </div>
         <button
-          onClick={() => { setEditUser({}); setModalOpen(true); }}
+          onClick={() => {
+            setEditUser({});
+            setModalOpen(true);
+          }}
           className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity"
         >
           <Plus className="h-4 w-4" />
-          Add Member
+          Add User
         </button>
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { label: "Total Members", value: users.length, color: "text-primary" },
+          { label: "Total Users", value: users.length, color: "text-primary" },
           { label: "Active", value: activeCount, color: "text-emerald-400" },
           { label: "Pending Invite", value: pendingCount, color: "text-amber-400" },
+          { label: "Client Portals", value: clientCount + candidateCount, color: "text-sky-400" },
           { label: "Disabled", value: disabledCount, color: "text-rose-400" },
         ].map((s) => (
           <div key={s.label} className="rounded-lg border border-border bg-card px-4 py-3">
@@ -350,7 +501,7 @@ export default function AdminUsersPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name or email…"
+            placeholder="Search by name, email or company…"
             className="w-full rounded-lg border border-border bg-card pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
@@ -362,6 +513,8 @@ export default function AdminUsersPage() {
           <option value="all">All Roles</option>
           <option value="admin">Admin</option>
           <option value="team_member">Team Member</option>
+          <option value="client">Client Portal</option>
+          <option value="candidate">Candidate Portal</option>
         </select>
         <select
           value={statusFilter}
@@ -381,12 +534,14 @@ export default function AdminUsersPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border bg-sidebar">
-                {([
-                  { key: "name", label: "Member" },
-                  { key: "email", label: "Email" },
-                  { key: "role", label: "Role" },
-                  { key: "createdAt", label: "Joined" },
-                ] as { key: SortKey; label: string }[]).map((col) => (
+                {(
+                  [
+                    { key: "name", label: "User" },
+                    { key: "email", label: "Email" },
+                    { key: "role", label: "Role" },
+                    { key: "createdAt", label: "Joined" },
+                  ] as { key: SortKey; label: string }[]
+                ).map((col) => (
                   <th
                     key={col.key}
                     onClick={() => handleSort(col.key)}
@@ -411,23 +566,49 @@ export default function AdminUsersPage() {
                 <tr>
                   <td colSpan={6} className="py-12 text-center text-sm text-muted-foreground">
                     <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                    No members found
+                    No users found
                   </td>
                 </tr>
               ) : (
                 filtered.map((user) => {
-                  const initials = user.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase();
+                  const initials = user.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .slice(0, 2)
+                    .toUpperCase();
                   const isCurrentUser = user.id === session?.user?.id;
+                  const isPortalUser = user.role === "client" || user.role === "candidate";
                   return (
-                    <tr key={user.id} onMouseLeave={() => setConfirmDeleteId(null)} className={`hover:bg-sidebar-accent/40 transition-colors ${user.disabled ? "opacity-60" : ""}`}>
+                    <tr
+                      key={user.id}
+                      onMouseLeave={() => setConfirmDeleteId(null)}
+                      className={`hover:bg-sidebar-accent/40 transition-colors ${user.disabled ? "opacity-60" : ""}`}
+                    >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-bold text-primary">
+                          <div
+                            className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                              user.role === "candidate"
+                                ? "bg-emerald-500/20 text-emerald-400"
+                                : user.role === "client"
+                                ? "bg-sky-500/20 text-sky-400"
+                                : "bg-primary/20 text-primary"
+                            }`}
+                          >
                             {initials}
                           </div>
                           <div>
                             <p className="font-medium text-foreground">{user.name}</p>
-                            {user.phone && (
+                            {user.role === "client" && user.clientCompany && (
+                              <p className="text-xs text-sky-400/80">{user.clientCompany}</p>
+                            )}
+                            {user.role === "candidate" && user.candidateId && (
+                              <p className="font-mono text-xs text-emerald-400/80">
+                                {user.candidateId}
+                              </p>
+                            )}
+                            {user.phone && !user.clientCompany && !user.candidateId && (
                               <p className="text-xs text-muted-foreground">{user.phone}</p>
                             )}
                           </div>
@@ -435,18 +616,13 @@ export default function AdminUsersPage() {
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          user.role === "admin"
-                            ? "bg-violet-500/15 text-violet-400"
-                            : "bg-primary/10 text-primary"
-                        }`}>
-                          {user.role === "admin" ? <ShieldCheck className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                          {user.role === "admin" ? "Admin" : "Team Member"}
-                        </span>
+                        <RoleBadge role={user.role} />
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">
                         {new Date(user.createdAt).toLocaleDateString("en-GB", {
-                          day: "numeric", month: "short", year: "numeric",
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
                         })}
                       </td>
                       <td className="px-4 py-3">
@@ -471,24 +647,28 @@ export default function AdminUsersPage() {
                         <div className="flex items-center justify-end gap-1">
                           {/* Edit */}
                           <button
-                            onClick={() => { setEditUser(user); setModalOpen(true); }}
-                            title="Edit member"
+                            onClick={() => {
+                              setEditUser(user);
+                              setModalOpen(true);
+                            }}
+                            title="Edit user"
                             className="rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors"
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </button>
-                          {/* Toggle role — not self */}
-                          {!isCurrentUser && (
+                          {/* Toggle admin/team_member — only for internal staff, not self */}
+                          {!isCurrentUser && !isPortalUser && (
                             <button
                               onClick={() => toggleRole(user)}
                               disabled={actionLoading === user.id + "-role"}
                               title={user.role === "admin" ? "Revoke admin" : "Grant admin"}
                               className="rounded-md p-1.5 text-muted-foreground hover:bg-sidebar-accent hover:text-violet-400 transition-colors disabled:opacity-40"
                             >
-                              {user.role === "admin"
-                                ? <ShieldOff className="h-3.5 w-3.5" />
-                                : <ShieldCheck className="h-3.5 w-3.5" />
-                              }
+                              {user.role === "admin" ? (
+                                <ShieldOff className="h-3.5 w-3.5" />
+                              ) : (
+                                <ShieldCheck className="h-3.5 w-3.5" />
+                              )}
                             </button>
                           )}
                           {/* Resend invite — only for pending users */}
@@ -514,15 +694,17 @@ export default function AdminUsersPage() {
                                   : "hover:bg-rose-500/15 hover:text-rose-400"
                               }`}
                             >
-                              {user.disabled
-                                ? <UserCheck className="h-3.5 w-3.5" />
-                                : <UserX className="h-3.5 w-3.5" />
-                              }
+                              {user.disabled ? (
+                                <UserCheck className="h-3.5 w-3.5" />
+                              ) : (
+                                <UserX className="h-3.5 w-3.5" />
+                              )}
                             </button>
                           )}
                           {/* Permanent delete — only for disabled accounts */}
-                          {!isCurrentUser && user.disabled && (
-                            confirmDeleteId === user.id ? (
+                          {!isCurrentUser &&
+                            user.disabled &&
+                            (confirmDeleteId === user.id ? (
                               <button
                                 onClick={() => permanentlyDelete(user.id)}
                                 disabled={actionLoading === user.id + "-delete"}
@@ -539,8 +721,7 @@ export default function AdminUsersPage() {
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
                               </button>
-                            )
-                          )}
+                            ))}
                           {isCurrentUser && (
                             <span className="text-xs text-muted-foreground/50 px-1">(you)</span>
                           )}
@@ -554,7 +735,7 @@ export default function AdminUsersPage() {
           </table>
         </div>
         <div className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
-          Showing {filtered.length} of {users.length} members
+          Showing {filtered.length} of {users.length} users
         </div>
       </div>
 
@@ -562,7 +743,10 @@ export default function AdminUsersPage() {
       {modalOpen && (
         <UserModal
           user={editUser}
-          onClose={() => { setModalOpen(false); setEditUser(null); }}
+          onClose={() => {
+            setModalOpen(false);
+            setEditUser(null);
+          }}
           onSaved={loadUsers}
         />
       )}
