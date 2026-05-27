@@ -28,6 +28,16 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (body.email !== undefined) updates.email = body.email;
   if (body.phone !== undefined) updates.phone = body.phone;
   if (body.role !== undefined) updates.role = body.role;
+  // Sync clientCompany: set it when role is client, clear it when switching away from client
+  if (body.role === "client") {
+    updates.clientCompany = body.clientCompany ?? "";
+  } else if (body.role !== undefined) {
+    // Role changed to non-client — wipe the company association
+    updates.clientCompany = undefined;
+  } else if (body.clientCompany !== undefined) {
+    // Role unchanged, just updating the company name
+    updates.clientCompany = body.clientCompany;
+  }
   if (body.disabled !== undefined) updates.disabled = body.disabled;
 
   if (body.password && body.password.length >= 8) {

@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const isAdminInvite = session?.user?.role === "admin";
 
   const body = await req.json();
-  const { name, email, phone = "", role = "team_member" } = body;
+  const { name, email, phone = "", role = "team_member", clientCompany } = body;
 
   if (!name || !email) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -59,6 +59,7 @@ export async function POST(req: NextRequest) {
     phone,
     password: hashed,
     role,
+    clientCompany: role === "client" ? (clientCompany ?? "") : undefined,
     disabled: false,
     mustChangePassword,
     createdAt: new Date().toISOString(),

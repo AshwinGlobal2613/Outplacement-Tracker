@@ -39,7 +39,14 @@ function LoginContent() {
           : "Something went wrong. Please try again."
       );
     } else {
-      router.push("/outplacement");
+      // Fetch session to check role, then redirect appropriately
+      const { getSession } = await import("next-auth/react");
+      const session = await getSession();
+      if (session?.user?.role === "client") {
+        router.push("/portal");
+      } else {
+        router.push("/outplacement");
+      }
     }
   }
 

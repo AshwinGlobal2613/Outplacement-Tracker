@@ -28,7 +28,8 @@ type User = {
   name: string;
   email: string;
   phone?: string;
-  role: "admin" | "team_member";
+  role: "admin" | "team_member" | "client";
+  clientCompany?: string;
   disabled: boolean;
   mustChangePassword?: boolean;
   createdAt: string;
@@ -53,7 +54,8 @@ function UserModal({
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [role, setRole] = useState<"admin" | "team_member">(user?.role ?? "team_member");
+  const [role, setRole] = useState<"admin" | "team_member" | "client">(user?.role ?? "team_member");
+  const [clientCompany, setClientCompany] = useState(user?.clientCompany ?? "");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
@@ -66,7 +68,7 @@ function UserModal({
     if (!isNew && password && password.length < 8) { setError("New password must be at least 8 characters."); return; }
 
     setLoading(true);
-    const body: Record<string, unknown> = { name, email, phone, role };
+    const body: Record<string, unknown> = { name, email, phone, role, clientCompany: role === "client" ? clientCompany : undefined };
     if (!isNew && password) body.password = password;
 
     const url = isNew ? "/api/users" : `/api/users/${user!.id}`;
@@ -144,13 +146,27 @@ function UserModal({
             <label className="text-sm font-medium text-foreground">Role</label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as "admin" | "team_member")}
+              onChange={(e) => setRole(e.target.value as "admin" | "team_member" | "client")}
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="team_member">Team Member</option>
               <option value="admin">Admin</option>
+              <option value="client">Client (Portal Access)</option>
             </select>
           </div>
+
+          {role === "client" && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Client Company Name *</label>
+              <input
+                value={clientCompany}
+                onChange={(e) => setClientCompany(e.target.value)}
+                placeholder="e.g. Acme Corporation"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground">Must match exactly the Client Name on candidates in the system.</p>
+            </div>
+          )}
 
           {isNew ? (
             <div className="rounded-lg border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-muted-foreground">
@@ -210,7 +226,7 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "team_member">("all");
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "team_member" | "client">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "pending" | "disabled">("all");
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
@@ -305,6 +321,7 @@ export default function AdminUsersPage() {
   }
 
   const adminCount = users.filter((u) => u.role === "admin").length;
+  const clientCount = users.filter((u) => u.role === "client").length;
   const pendingCount = users.filter((u) => !u.disabled && u.mustChangePassword).length;
   const activeCount = users.filter((u) => !u.disabled && !u.mustChangePassword).length;
   const disabledCount = users.filter((u) => u.disabled).length;
@@ -329,10 +346,11 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
           { label: "Total Members", value: users.length, color: "text-primary" },
           { label: "Active", value: activeCount, color: "text-emerald-400" },
+          { label: "Client Portals", value: clientCount, color: "text-sky-400" },
           { label: "Pending Invite", value: pendingCount, color: "text-amber-400" },
           { label: "Disabled", value: disabledCount, color: "text-rose-400" },
         ].map((s) => (
@@ -362,6 +380,7 @@ export default function AdminUsersPage() {
           <option value="all">All Roles</option>
           <option value="admin">Admin</option>
           <option value="team_member">Team Member</option>
+          <option value="client">Client</option>
         </select>
         <select
           value={statusFilter}
@@ -427,9 +446,11 @@ export default function AdminUsersPage() {
                           </div>
                           <div>
                             <p className="font-medium text-foreground">{user.name}</p>
-                            {user.phone && (
+                            {user.role === "client" && user.clientCompany ? (
+                              <p className="text-xs text-sky-400">{user.clientCompany}</p>
+                            ) : user.phone ? (
                               <p className="text-xs text-muted-foreground">{user.phone}</p>
-                            )}
+                            ) : null}
                           </div>
                         </div>
                       </td>
@@ -438,10 +459,14 @@ export default function AdminUsersPage() {
                         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
                           user.role === "admin"
                             ? "bg-violet-500/15 text-violet-400"
+                            : user.role === "client"
+                            ? "bg-sky-500/15 text-sky-400"
                             : "bg-primary/10 text-primary"
                         }`}>
-                          {user.role === "admin" ? <ShieldCheck className="h-3 w-3" /> : <Users className="h-3 w-3" />}
-                          {user.role === "admin" ? "Admin" : "Team Member"}
+                          {user.role === "admin"
+                            ? <ShieldCheck className="h-3 w-3" />
+                            : <Users className="h-3 w-3" />}
+                          {user.role === "admin" ? "Admin" : user.role === "client" ? "Client" : "Team Member"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">
