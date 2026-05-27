@@ -44,7 +44,14 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     updates.password = await bcrypt.hash(body.password, 10);
   }
 
-  const updated = await updateUser(params.id, updates);
+  let updated;
+  try {
+    updated = await updateUser(params.id, updates);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[updateUser]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { password: _p2, ...safe } = updated;
