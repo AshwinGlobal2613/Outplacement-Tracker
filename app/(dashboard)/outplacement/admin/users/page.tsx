@@ -361,6 +361,17 @@ export default function AdminUsersPage() {
     setActionLoading(null);
   }
 
+  async function markActive(userId: string) {
+    setActionLoading(userId + "-active");
+    await fetch(`/api/users/${userId}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mustChangePassword: false }),
+    });
+    setActionLoading(null);
+    loadUsers();
+  }
+
   async function permanentlyDelete(userId: string) {
     setActionLoading(userId + "-delete");
     await fetch(`/api/users/${userId}`, { method: "DELETE" });
@@ -642,16 +653,26 @@ export default function AdminUsersPage() {
                               )}
                             </button>
                           )}
-                          {/* Resend invite — only for pending users */}
+                          {/* Resend invite + Mark Active — only for pending users */}
                           {!isCurrentUser && user.mustChangePassword && !user.disabled && (
-                            <button
-                              onClick={() => resendInvite(user.id)}
-                              disabled={actionLoading === user.id + "-resend"}
-                              title="Resend invite email"
-                              className="rounded-md p-1.5 text-muted-foreground hover:bg-amber-500/15 hover:text-amber-400 transition-colors disabled:opacity-40"
-                            >
-                              <MailCheck className="h-3.5 w-3.5" />
-                            </button>
+                            <>
+                              <button
+                                onClick={() => resendInvite(user.id)}
+                                disabled={actionLoading === user.id + "-resend"}
+                                title="Resend invite email"
+                                className="rounded-md p-1.5 text-muted-foreground hover:bg-amber-500/15 hover:text-amber-400 transition-colors disabled:opacity-40"
+                              >
+                                <MailCheck className="h-3.5 w-3.5" />
+                              </button>
+                              <button
+                                onClick={() => markActive(user.id)}
+                                disabled={actionLoading === user.id + "-active"}
+                                title="Mark as active (clear invite pending)"
+                                className="rounded-md p-1.5 text-muted-foreground hover:bg-emerald-500/15 hover:text-emerald-400 transition-colors disabled:opacity-40"
+                              >
+                                <UserCheck className="h-3.5 w-3.5" />
+                              </button>
+                            </>
                           )}
                           {/* Toggle disabled — not self */}
                           {!isCurrentUser && (

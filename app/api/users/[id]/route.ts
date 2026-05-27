@@ -45,9 +45,12 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     if (body.candidateId  !== undefined) updates.candidateId  = body.candidateId;
   }
   if (body.disabled !== undefined) updates.disabled = body.disabled;
+  if (body.mustChangePassword !== undefined) updates.mustChangePassword = body.mustChangePassword;
 
   if (body.password && body.password.length >= 8) {
     updates.password = await bcrypt.hash(body.password, 10);
+    // When admin resets a password, clear the force-change flag
+    updates.mustChangePassword = false;
   }
 
   let updated;
