@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "team_member";
+export type UserRole = "admin" | "team_member" | "client";
 
 export interface User {
   id: string;
@@ -7,6 +7,7 @@ export interface User {
   phone?: string;
   password: string;
   role: UserRole;
+  clientCompany?: string; // only for role === "client"
   disabled: boolean;
   mustChangePassword?: boolean;
   createdAt: string;
