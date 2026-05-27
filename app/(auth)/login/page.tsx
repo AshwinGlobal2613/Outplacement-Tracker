@@ -39,13 +39,15 @@ function LoginContent() {
           : "Something went wrong. Please try again."
       );
     } else {
-      // Fetch session to check role, then redirect appropriately
+      // Use window.location for a hard redirect so the browser re-reads
+      // the fresh session cookie — avoids stale cache from getSession()
       const { getSession } = await import("next-auth/react");
       const session = await getSession();
-      if (session?.user?.role === "client") {
-        router.push("/portal");
+      const role = session?.user?.role;
+      if (role === "client") {
+        window.location.href = "/portal";
       } else {
-        router.push("/outplacement");
+        window.location.href = "/outplacement";
       }
     }
   }
