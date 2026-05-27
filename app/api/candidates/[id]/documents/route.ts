@@ -31,6 +31,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const authSession = await getServerSession(authOptions);
   if (!authSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Candidates can only upload to their own profile
+  const isStaff = authSession.user.role === "admin" || authSession.user.role === "team_member";
+  const isOwner = authSession.user.role === "candidate" && authSession.user.candidateId === params.id;
+  if (!isStaff && !isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const candidate = await getCandidateById(params.id);
   if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
@@ -66,6 +71,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     storagePath,
     uploadedAt: new Date().toISOString(),
     uploadedBy: authSession.user.name || "Unknown",
+    source: isOwner ? "candidate" : "team",
   };
 
   const documents = [...(candidate.documents ?? []), newDoc];

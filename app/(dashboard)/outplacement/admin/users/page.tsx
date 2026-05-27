@@ -28,8 +28,9 @@ type User = {
   name: string;
   email: string;
   phone?: string;
-  role: "admin" | "team_member" | "client";
+  role: "admin" | "team_member" | "client" | "candidate";
   clientCompany?: string;
+  candidateId?: string;
   disabled: boolean;
   mustChangePassword?: boolean;
   createdAt: string;
@@ -54,8 +55,9 @@ function UserModal({
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [role, setRole] = useState<"admin" | "team_member" | "client">(user?.role ?? "team_member");
+  const [role, setRole] = useState<"admin" | "team_member" | "client" | "candidate">(user?.role ?? "team_member");
   const [clientCompany, setClientCompany] = useState(user?.clientCompany ?? "");
+  const [candidateId, setCandidateId] = useState(user?.candidateId ?? "");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
@@ -68,7 +70,11 @@ function UserModal({
     if (!isNew && password && password.length < 8) { setError("New password must be at least 8 characters."); return; }
 
     setLoading(true);
-    const body: Record<string, unknown> = { name, email, phone, role, clientCompany: role === "client" ? clientCompany : undefined };
+    const body: Record<string, unknown> = {
+      name, email, phone, role,
+      clientCompany: role === "client" ? clientCompany : undefined,
+      candidateId: role === "candidate" ? candidateId : undefined,
+    };
     if (!isNew && password) body.password = password;
 
     const url = isNew ? "/api/users" : `/api/users/${user!.id}`;
@@ -146,12 +152,13 @@ function UserModal({
             <label className="text-sm font-medium text-foreground">Role</label>
             <select
               value={role}
-              onChange={(e) => setRole(e.target.value as "admin" | "team_member" | "client")}
+              onChange={(e) => setRole(e.target.value as "admin" | "team_member" | "client" | "candidate")}
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             >
               <option value="team_member">Team Member</option>
               <option value="admin">Admin</option>
-              <option value="client">Client (Portal Access)</option>
+              <option value="client">Client (Company Portal)</option>
+              <option value="candidate">Candidate (Personal Portal)</option>
             </select>
           </div>
 
@@ -161,10 +168,23 @@ function UserModal({
               <input
                 value={clientCompany}
                 onChange={(e) => setClientCompany(e.target.value)}
-                placeholder="e.g. Acme Corporation"
+                placeholder="e.g. Epic Games"
                 className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
               />
               <p className="text-xs text-muted-foreground">Must match exactly the Client Name on candidates in the system.</p>
+            </div>
+          )}
+
+          {role === "candidate" && (
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">Candidate ID *</label>
+              <input
+                value={candidateId}
+                onChange={(e) => setCandidateId(e.target.value)}
+                placeholder="e.g. cand_001"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+              />
+              <p className="text-xs text-muted-foreground">The candidate&apos;s ID from the Candidates list (e.g. cand_003). This links their login to their profile.</p>
             </div>
           )}
 
@@ -448,6 +468,8 @@ export default function AdminUsersPage() {
                             <p className="font-medium text-foreground">{user.name}</p>
                             {user.role === "client" && user.clientCompany ? (
                               <p className="text-xs text-sky-400">{user.clientCompany}</p>
+                            ) : user.role === "candidate" && user.candidateId ? (
+                              <p className="text-xs text-emerald-400 font-mono">{user.candidateId}</p>
                             ) : user.phone ? (
                               <p className="text-xs text-muted-foreground">{user.phone}</p>
                             ) : null}
@@ -457,16 +479,13 @@ export default function AdminUsersPage() {
                       <td className="px-4 py-3 text-muted-foreground">{user.email}</td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                          user.role === "admin"
-                            ? "bg-violet-500/15 text-violet-400"
-                            : user.role === "client"
-                            ? "bg-sky-500/15 text-sky-400"
-                            : "bg-primary/10 text-primary"
+                          user.role === "admin"     ? "bg-violet-500/15 text-violet-400" :
+                          user.role === "client"    ? "bg-sky-500/15 text-sky-400" :
+                          user.role === "candidate" ? "bg-emerald-500/15 text-emerald-400" :
+                          "bg-primary/10 text-primary"
                         }`}>
-                          {user.role === "admin"
-                            ? <ShieldCheck className="h-3 w-3" />
-                            : <Users className="h-3 w-3" />}
-                          {user.role === "admin" ? "Admin" : user.role === "client" ? "Client" : "Team Member"}
+                          {user.role === "admin" ? <ShieldCheck className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                          {user.role === "admin" ? "Admin" : user.role === "client" ? "Client" : user.role === "candidate" ? "Candidate" : "Team Member"}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-muted-foreground text-xs">

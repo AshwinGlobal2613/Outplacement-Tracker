@@ -44,7 +44,7 @@ function LoginContent() {
       const { getSession } = await import("next-auth/react");
       const session = await getSession();
       const role = session?.user?.role;
-      if (role === "client") {
+      if (role === "client" || role === "candidate") {
         window.location.href = "/portal";
       } else {
         window.location.href = "/outplacement";

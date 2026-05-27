@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "team_member" | "client";
+export type UserRole = "admin" | "team_member" | "client" | "candidate";
 
 export interface User {
   id: string;
@@ -7,7 +7,8 @@ export interface User {
   phone?: string;
   password: string;
   role: UserRole;
-  clientCompany?: string; // only for role === "client"
+  clientCompany?: string;  // only for role === "client"
+  candidateId?: string;    // only for role === "candidate"
   disabled: boolean;
   mustChangePassword?: boolean;
   createdAt: string;
@@ -74,6 +75,19 @@ export interface CandidateDocument {
   storagePath: string;
   uploadedAt: string;
   uploadedBy: string;
+  source?: "team" | "candidate"; // who uploaded it
+}
+
+export interface CandidateResource {
+  id: string;
+  title: string;
+  description: string;
+  type: "link" | "file";
+  url: string;          // for links: URL; for files: storage path
+  fileName?: string;    // display name for files
+  addedBy: string;      // user id
+  addedByName: string;  // user display name
+  addedAt: string;
 }
 
 export interface Session {
@@ -120,6 +134,7 @@ export interface Candidate {
   sessions?: Session[];
   folders?: DocumentFolder[];
   documents?: CandidateDocument[];
+  candidateResources?: CandidateResource[];
   discDone: DiscDoneStatus;
   invoiceStatus: InvoiceStatus;
   costingStatus: CostingStatus;

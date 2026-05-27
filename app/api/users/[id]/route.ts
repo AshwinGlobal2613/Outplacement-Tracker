@@ -31,12 +31,18 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   // Sync clientCompany: set it when role is client, clear it when switching away from client
   if (body.role === "client") {
     updates.clientCompany = body.clientCompany ?? "";
-  } else if (body.role !== undefined) {
-    // Role changed to non-client — wipe the company association
+    updates.candidateId = undefined;
+  } else if (body.role === "candidate") {
+    updates.candidateId = body.candidateId ?? "";
     updates.clientCompany = undefined;
-  } else if (body.clientCompany !== undefined) {
-    // Role unchanged, just updating the company name
-    updates.clientCompany = body.clientCompany;
+  } else if (body.role !== undefined) {
+    // Switched to admin/team_member — clear both portal fields
+    updates.clientCompany = undefined;
+    updates.candidateId = undefined;
+  } else {
+    // Role unchanged — allow updating individual fields
+    if (body.clientCompany !== undefined) updates.clientCompany = body.clientCompany;
+    if (body.candidateId  !== undefined) updates.candidateId  = body.candidateId;
   }
   if (body.disabled !== undefined) updates.disabled = body.disabled;
 
