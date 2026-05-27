@@ -78,4 +78,36 @@ export async function deleteFile(storagePath: string): Promise<void> {
   }
 }
 
+/** Upload a resource file to a PUBLIC bucket. Returns the public URL. */
+export async function uploadResourceFile(
+  storagePath: string,
+  data: ArrayBuffer,
+  mimeType: string
+): Promise<string> {
+  if (useSupabase) {
+    const supabase = getSupabase();
+    const RESOURCE_BUCKET = "resource-files";
+    // Ensure public bucket exists
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const exists = buckets?.some((b) => b.name === RESOURCE_BUCKET);
+    if (!exists) {
+      await supabase.storage.createBucket(RESOURCE_BUCKET, { public: true });
+    }
+    const { error } = await supabase.storage
+      .from(RESOURCE_BUCKET)
+      .upload(storagePath, data, { contentType: mimeType, upsert: false });
+    if (error) throw new Error(error.message ?? JSON.stringify(error));
+    const { data: urlData } = supabase.storage
+      .from(RESOURCE_BUCKET)
+      .getPublicUrl(storagePath);
+    return urlData.publicUrl;
+  } else {
+    // Local fallback — serve via a static route
+    const localPath = path.join(process.cwd(), "uploads", "resource-files", storagePath);
+    await fs.mkdir(path.dirname(localPath), { recursive: true });
+    await fs.writeFile(localPath, Buffer.from(data));
+    return `/uploads/resource-files/${storagePath}`;
+  }
+}
+
 export { useSupabase };

@@ -259,6 +259,7 @@ function ResourceModal({
   const isEdit = !!resource;
   const editorRef  = useRef<HTMLDivElement>(null);
   const initMd     = useRef(resource?.content ?? "");
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     title:       resource?.title       ?? "",
     description: resource?.description ?? "",
@@ -266,6 +267,8 @@ function ResourceModal({
     type:        resource?.type        ?? ("template" as Resource["type"]),
     content:     resource?.content     ?? "",
   });
+  const [uploadingFile, setUploadingFile] = useState(false);
+  const [uploadedFileName, setUploadedFileName] = useState<string>("");
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState("");
 
@@ -401,6 +404,25 @@ function ResourceModal({
     }
   }
 
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFile(true);
+    setError("");
+    const fd = new FormData();
+    fd.append("file", file);
+    const res = await fetch("/api/resources/upload", { method: "POST", body: fd });
+    setUploadingFile(false);
+    if (res.ok) {
+      const { url, fileName } = await res.json();
+      set("content", url);
+      setUploadedFileName(fileName);
+    } else {
+      const d = await res.json();
+      setError(d.error || "Upload failed.");
+    }
+  }
+
   async function handleSave() {
     if (!form.title.trim())   { setError("Title is required.");            return; }
     if (!form.content.trim()) { setError("Content / URL is required.");    return; }
@@ -426,7 +448,7 @@ function ResourceModal({
     onSaved();
   }
 
-  const contentLabel = form.type === "template" ? "Template Content" : form.type === "link" ? "URL" : "File URL";
+  const contentLabel = form.type === "template" ? "Template Content" : form.type === "link" ? "URL *" : "Upload File or Paste URL *";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
@@ -497,6 +519,48 @@ function ResourceModal({
                     onKeyDown={handleEditorKeyDown}
                     className="min-h-[280px] w-full rounded-b-lg rounded-t-none border border-border bg-background px-4 py-3 text-sm text-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary overflow-y-auto leading-relaxed [&_strong]:font-semibold [&_em]:italic [&_u]:underline [&_s]:line-through [&_a]:text-primary [&_a]:underline [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:my-2 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:my-2 [&_li]:mb-1 [&_p]:mb-2 [&_table]:w-full [&_table]:border-collapse [&_table]:my-3 [&_table]:text-sm [&_th]:border [&_th]:border-border [&_th]:bg-muted/60 [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:font-semibold [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:min-w-[60px] empty:before:content-[attr(data-placeholder)] empty:before:text-muted-foreground/50"
                     data-placeholder="Start typing your template…"
+                  />
+                </div>
+              ) : form.type === "document" ? (
+                <div className="space-y-2">
+                  {/* File upload area */}
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-background px-4 py-6 text-center hover:border-primary/50 hover:bg-primary/5 transition-colors"
+                  >
+                    <FileText className="h-8 w-8 text-muted-foreground" />
+                    {uploadingFile ? (
+                      <p className="text-sm text-muted-foreground">Uploading…</p>
+                    ) : uploadedFileName ? (
+                      <div>
+                        <p className="text-sm font-medium text-emerald-400">✓ {uploadedFileName}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">Click to replace</p>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm font-medium text-foreground">Click to upload a file</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">PDF, Word, Excel, PowerPoint, images, ZIP…</p>
+                      </div>
+                    )}
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.zip,.txt"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                  {/* Or paste URL manually */}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex-1 border-t border-border" />
+                    <span>or paste a URL</span>
+                    <div className="flex-1 border-t border-border" />
+                  </div>
+                  <input
+                    value={form.content}
+                    onChange={(e) => { set("content", e.target.value); if (e.target.value) setUploadedFileName(""); }}
+                    placeholder="https://..."
+                    className={inputCls}
                   />
                 </div>
               ) : (
