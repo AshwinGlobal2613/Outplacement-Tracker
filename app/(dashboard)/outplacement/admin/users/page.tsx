@@ -60,7 +60,7 @@ function UserModal({
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
   const [role, setRole] = useState<UserRole>(
-    user?.role === "client" ? "team_member" : (user?.role ?? "team_member")
+    (user?.role === "admin" || user?.role === "candidate") ? user.role : "team_member"
   );
   const [candidateId, setCandidateId] = useState(user?.candidateId ?? "");
   const [candidates, setCandidates] = useState<CandidateOption[]>([]);
