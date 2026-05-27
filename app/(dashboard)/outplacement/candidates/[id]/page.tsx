@@ -8,7 +8,7 @@ import {
   Pencil, Trash2, ExternalLink, MessageCircle, CheckCircle2,
   Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText,
 } from "lucide-react";
-import { Candidate, CandidateActivity, ActivityType, CustomMilestone, Session, ActivityLog } from "@/lib/types";
+import { Candidate, CandidateActivity, CandidateResource, ActivityType, CustomMilestone, Session, ActivityLog } from "@/lib/types";
 import { ScheduleModal } from "@/components/outplacement/schedule-modal";
 import { DocumentManager } from "@/components/outplacement/document-manager";
 import Link from "next/link";
@@ -44,6 +44,172 @@ const progressSteps = [
   { key: "profiling", label: "Profiling (DiSC)" },
   { key: "networkingPersonalBranding", label: "Networking & Personal Branding" },
 ];
+
+/* ─── Resource Manager ───────────────────────────────────────── */
+function ResourceManager({ candidateId }: { candidateId: string }) {
+  const [resources, setResources] = useState<CandidateResource[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [url, setUrl] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/candidates/${candidateId}/resources`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setResources(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [candidateId]);
+
+  async function addResource() {
+    setError("");
+    if (!title.trim() || !url.trim()) { setError("Title and URL are required."); return; }
+    let fullUrl = url.trim();
+    if (!/^https?:\/\//i.test(fullUrl)) fullUrl = "https://" + fullUrl;
+    setSaving(true);
+    const res = await fetch(`/api/candidates/${candidateId}/resources`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title.trim(), description: description.trim(), url: fullUrl, type: "link" }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      const created = await res.json();
+      setResources((prev) => [...prev, created]);
+      setTitle(""); setDescription(""); setUrl(""); setShowForm(false);
+    } else {
+      const d = await res.json();
+      setError(d.error || "Failed to add resource.");
+    }
+  }
+
+  async function deleteResource(id: string) {
+    await fetch(`/api/candidates/${candidateId}/resources`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resourceId: id }),
+    });
+    setResources((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold text-foreground flex items-center gap-2">
+          <Link2 className="h-4 w-4 text-primary" />
+          Resources
+          {resources.length > 0 && (
+            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">
+              {resources.length}
+            </span>
+          )}
+        </h2>
+        <button
+          onClick={() => { setShowForm(!showForm); setError(""); }}
+          className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add Resource
+        </button>
+      </div>
+
+      {/* Add form */}
+      {showForm && (
+        <div className="mb-4 rounded-lg border border-border bg-background p-4 space-y-3">
+          {error && (
+            <p className="text-xs text-destructive">{error}</p>
+          )}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">Title *</label>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Interview Preparation Guide"
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">URL *</label>
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://..."
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-foreground">
+              Description <span className="font-normal text-muted-foreground">(optional)</span>
+            </label>
+            <input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief note for the candidate"
+              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button
+              onClick={() => { setShowForm(false); setError(""); setTitle(""); setUrl(""); setDescription(""); }}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={addResource}
+              disabled={saving}
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+            >
+              {saving ? "Saving…" : "Add Resource"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Resource list */}
+      {resources.length === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No resources added yet. Click &quot;Add Resource&quot; to share a link with this candidate.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {resources.map((r) => (
+            <div key={r.id} className="flex items-start gap-3 rounded-lg border border-border bg-background px-4 py-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                <Link2 className="h-4 w-4 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <a
+                  href={r.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm font-medium text-foreground hover:text-primary transition-colors flex items-center gap-1"
+                >
+                  {r.title}
+                  <ExternalLink className="h-3 w-3 shrink-0" />
+                </a>
+                {r.description && (
+                  <p className="text-xs text-muted-foreground mt-0.5">{r.description}</p>
+                )}
+                <p className="text-xs text-muted-foreground/60 mt-1">
+                  Added by {r.addedByName} · {new Date(r.addedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                </p>
+              </div>
+              <button
+                onClick={() => deleteResource(r.id)}
+                title="Remove resource"
+                className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-rose-500/15 hover:text-rose-400 transition-colors"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function CandidateDetailContent({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -281,6 +447,9 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
             candidate={candidate}
             onUpdated={(updated) => setCandidate(updated)}
           />
+
+          {/* Resources */}
+          <ResourceManager candidateId={candidate.id} />
 
           {/* Activity Log */}
           <CandidateActivityLog logs={activityLog} />
