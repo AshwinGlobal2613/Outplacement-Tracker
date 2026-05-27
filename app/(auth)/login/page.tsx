@@ -44,7 +44,11 @@ function LoginContent() {
       const { getSession } = await import("next-auth/react");
       const session = await getSession();
       const role = session?.user?.role;
-      if (role === "client" || role === "candidate") {
+      const mustChange = session?.user?.mustChangePassword;
+      if (mustChange) {
+        // First login with temp password — force password change
+        window.location.href = "/change-password";
+      } else if (role === "candidate") {
         window.location.href = "/portal";
       } else {
         window.location.href = "/outplacement";

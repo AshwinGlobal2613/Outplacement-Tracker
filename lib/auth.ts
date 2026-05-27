@@ -1,7 +1,7 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
-import { getUserByEmail } from "./db";
+import { getUserByEmail, updateUser } from "./db";
 
 declare module "next-auth" {
   interface User {
@@ -49,7 +49,15 @@ export const authOptions: NextAuthOptions = {
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
         if (user.disabled) return null;
-        return { id: user.id, name: user.name, email: user.email, role: user.role, clientCompany: user.clientCompany, candidateId: user.candidateId, mustChangePassword: user.mustChangePassword ?? false };
+        const mustChange = user.mustChangePassword ?? false;
+        // Clear invite-pending flag in DB immediately on login so admin sees "Active"
+        // We still pass mustChange=true in the token so the UI redirects to change-password
+        if (mustChange) {
+          updateUser(user.id, { mustChangePassword: false }).catch((err) =>
+            console.error("[auth] clearMustChangePassword:", err)
+          );
+        }
+        return { id: user.id, name: user.name, email: user.email, role: user.role, clientCompany: user.clientCompany, candidateId: user.candidateId, mustChangePassword: mustChange };
       },
     }),
   ],
