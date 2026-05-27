@@ -382,7 +382,7 @@ export default function AdminUsersPage() {
 
   async function toggleRole(user: User) {
     // Only toggle between admin and team_member for internal staff
-    if (user.role === "client" || user.role === "candidate") return;
+    if (user.role === "candidate") return;
     setActionLoading(user.id + "-role");
     await fetch(`/api/users/${user.id}`, {
       method: "PUT",
