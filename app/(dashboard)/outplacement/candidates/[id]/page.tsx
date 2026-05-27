@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
   Pencil, Trash2, ExternalLink, MessageCircle, CheckCircle2,
-  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText,
+  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText, Search,
 } from "lucide-react";
 import { Candidate, CandidateActivity, CandidateResource, ActivityType, CustomMilestone, Session, ActivityLog } from "@/lib/types";
 import { ScheduleModal } from "@/components/outplacement/schedule-modal";
@@ -46,12 +46,22 @@ const progressSteps = [
 ];
 
 /* ─── Resource Manager ───────────────────────────────────────── */
+type LibraryResource = { id: string; title: string; description: string; type: string; content: string; category: string };
+
 function ResourceManager({ candidateId }: { candidateId: string }) {
   const [resources, setResources] = useState<CandidateResource[]>([]);
   const [showForm, setShowForm] = useState(false);
+  const [tab, setTab] = useState<"library" | "manual">("library");
+  // Manual form
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [url, setUrl] = useState("");
+  // Library
+  const [library, setLibrary] = useState<LibraryResource[]>([]);
+  const [libSearch, setLibSearch] = useState("");
+  const [libLoading, setLibLoading] = useState(false);
+  const [adding, setAdding] = useState<string | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -62,26 +72,51 @@ function ResourceManager({ candidateId }: { candidateId: string }) {
       .catch(() => {});
   }, [candidateId]);
 
-  async function addResource() {
+  useEffect(() => {
+    if (showForm && tab === "library" && library.length === 0) {
+      setLibLoading(true);
+      fetch("/api/resources")
+        .then((r) => r.ok ? r.json() : [])
+        .then((data) => setLibrary(Array.isArray(data) ? data : []))
+        .catch(() => {})
+        .finally(() => setLibLoading(false));
+    }
+  }, [showForm, tab]);
+
+  async function postResource(body: Record<string, string>) {
+    const res = await fetch(`/api/candidates/${candidateId}/resources`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      const created = await res.json();
+      setResources((prev) => [...prev, created]);
+      return true;
+    }
+    const d = await res.json();
+    setError(d.error || "Failed to add resource.");
+    return false;
+  }
+
+  async function addFromLibrary(item: LibraryResource) {
+    setError("");
+    const url = item.type === "link" || item.type === "document" ? item.content : "";
+    if (!url) { setError("This resource has no URL to share."); return; }
+    setAdding(item.id);
+    await postResource({ title: item.title, description: item.description, url, type: "link" });
+    setAdding(null);
+  }
+
+  async function addManual() {
     setError("");
     if (!title.trim() || !url.trim()) { setError("Title and URL are required."); return; }
     let fullUrl = url.trim();
     if (!/^https?:\/\//i.test(fullUrl)) fullUrl = "https://" + fullUrl;
     setSaving(true);
-    const res = await fetch(`/api/candidates/${candidateId}/resources`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: title.trim(), description: description.trim(), url: fullUrl, type: "link" }),
-    });
+    const ok = await postResource({ title: title.trim(), description: description.trim(), url: fullUrl, type: "link" });
     setSaving(false);
-    if (res.ok) {
-      const created = await res.json();
-      setResources((prev) => [...prev, created]);
-      setTitle(""); setDescription(""); setUrl(""); setShowForm(false);
-    } else {
-      const d = await res.json();
-      setError(d.error || "Failed to add resource.");
-    }
+    if (ok) { setTitle(""); setDescription(""); setUrl(""); setShowForm(false); }
   }
 
   async function deleteResource(id: string) {
@@ -92,6 +127,13 @@ function ResourceManager({ candidateId }: { candidateId: string }) {
     });
     setResources((prev) => prev.filter((r) => r.id !== id));
   }
+
+  const alreadyAdded = new Set(resources.map((r) => r.url));
+  const filteredLib = library.filter((item) => {
+    const hasUrl = item.type === "link" || item.type === "document";
+    const matchSearch = !libSearch || item.title.toLowerCase().includes(libSearch.toLowerCase()) || item.category.toLowerCase().includes(libSearch.toLowerCase());
+    return hasUrl && matchSearch;
+  });
 
   return (
     <div className="rounded-xl border border-border bg-card p-5">
@@ -114,55 +156,129 @@ function ResourceManager({ candidateId }: { candidateId: string }) {
         </button>
       </div>
 
-      {/* Add form */}
+      {/* Add panel */}
       {showForm && (
-        <div className="mb-4 rounded-lg border border-border bg-background p-4 space-y-3">
-          {error && (
-            <p className="text-xs text-destructive">{error}</p>
-          )}
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">Title *</label>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Interview Preparation Guide"
-              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
+        <div className="mb-4 rounded-lg border border-border bg-background overflow-hidden">
+          {/* Tabs */}
+          <div className="flex border-b border-border">
+            {(["library", "manual"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => { setTab(t); setError(""); }}
+                className={`flex-1 px-4 py-2.5 text-xs font-medium transition-colors ${
+                  tab === t
+                    ? "bg-primary/10 text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {t === "library" ? "📚 Pick from Resource Library" : "🔗 Add New Link"}
+              </button>
+            ))}
           </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">URL *</label>
-            <input
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              placeholder="https://..."
-              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div className="space-y-1">
-            <label className="text-xs font-medium text-foreground">
-              Description <span className="font-normal text-muted-foreground">(optional)</span>
-            </label>
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief note for the candidate"
-              className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-            />
-          </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <button
-              onClick={() => { setShowForm(false); setError(""); setTitle(""); setUrl(""); setDescription(""); }}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={addResource}
-              disabled={saving}
-              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
-            >
-              {saving ? "Saving…" : "Add Resource"}
-            </button>
+
+          <div className="p-4">
+            {error && <p className="mb-3 text-xs text-destructive">{error}</p>}
+
+            {tab === "library" ? (
+              <div className="space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <input
+                    value={libSearch}
+                    onChange={(e) => setLibSearch(e.target.value)}
+                    placeholder="Search resources…"
+                    className="w-full rounded-lg border border-border bg-card pl-8 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                {libLoading ? (
+                  <p className="text-xs text-muted-foreground py-2">Loading library…</p>
+                ) : filteredLib.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-2">
+                    {library.length === 0 ? "No resources in your library yet." : "No matching resources found."}
+                  </p>
+                ) : (
+                  <div className="max-h-64 overflow-y-auto space-y-1.5 pr-1">
+                    {filteredLib.map((item) => {
+                      const isAdded = alreadyAdded.has(item.content);
+                      return (
+                        <div key={item.id} className="flex items-center gap-3 rounded-lg border border-border bg-card px-3 py-2.5">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{item.title}</p>
+                            <p className="text-xs text-muted-foreground">{item.category}</p>
+                          </div>
+                          <button
+                            onClick={() => addFromLibrary(item)}
+                            disabled={isAdded || adding === item.id}
+                            className={`shrink-0 rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                              isAdded
+                                ? "bg-emerald-500/10 text-emerald-400 cursor-default"
+                                : "bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+                            }`}
+                          >
+                            {adding === item.id ? "Adding…" : isAdded ? "✓ Added" : "Add"}
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex justify-end pt-1">
+                  <button
+                    onClick={() => { setShowForm(false); setError(""); setLibSearch(""); }}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">Title *</label>
+                  <input
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Interview Preparation Guide"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">URL *</label>
+                  <input
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    placeholder="https://..."
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-foreground">
+                    Description <span className="font-normal text-muted-foreground">(optional)</span>
+                  </label>
+                  <input
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Brief note for the candidate"
+                    className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    onClick={() => { setShowForm(false); setError(""); setTitle(""); setUrl(""); setDescription(""); }}
+                    className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={addManual}
+                    disabled={saving}
+                    className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+                  >
+                    {saving ? "Saving…" : "Add Resource"}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -170,7 +286,7 @@ function ResourceManager({ candidateId }: { candidateId: string }) {
       {/* Resource list */}
       {resources.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          No resources added yet. Click &quot;Add Resource&quot; to share a link with this candidate.
+          No resources added yet. Click &quot;Add Resource&quot; to share content with this candidate.
         </p>
       ) : (
         <div className="space-y-2">
