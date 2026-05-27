@@ -6,6 +6,8 @@ import { getUserByEmail } from "./db";
 declare module "next-auth" {
   interface User {
     role?: string;
+    clientCompany?: string;
+    candidateId?: string;
     mustChangePassword?: boolean;
   }
   interface Session {
@@ -15,6 +17,8 @@ declare module "next-auth" {
       email?: string | null;
       image?: string | null;
       role?: string;
+      clientCompany?: string;
+      candidateId?: string;
       mustChangePassword?: boolean;
     };
   }
@@ -24,6 +28,8 @@ declare module "next-auth/jwt" {
   interface JWT {
     id?: string;
     role?: string;
+    clientCompany?: string;
+    candidateId?: string;
     mustChangePassword?: boolean;
   }
 }
@@ -43,7 +49,7 @@ export const authOptions: NextAuthOptions = {
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;
         if (user.disabled) return null;
-        return { id: user.id, name: user.name, email: user.email, role: user.role, mustChangePassword: user.mustChangePassword ?? false };
+        return { id: user.id, name: user.name, email: user.email, role: user.role, clientCompany: user.clientCompany, candidateId: user.candidateId, mustChangePassword: user.mustChangePassword ?? false };
       },
     }),
   ],
@@ -54,6 +60,8 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id;
         token.role = user.role;
+        token.clientCompany = user.clientCompany;
+        token.candidateId = user.candidateId;
         token.mustChangePassword = user.mustChangePassword;
       }
       return token;
@@ -62,6 +70,8 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         session.user.id = token.id as string;
         session.user.role = token.role as string;
+        session.user.clientCompany = token.clientCompany as string | undefined;
+        session.user.candidateId = token.candidateId as string | undefined;
         session.user.mustChangePassword = token.mustChangePassword;
       }
       return session;

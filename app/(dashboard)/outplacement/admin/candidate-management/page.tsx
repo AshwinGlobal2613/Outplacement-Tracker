@@ -61,8 +61,18 @@ export default function CandidateManagementPage() {
   }, [session, status, router]);
 
   async function load() {
-    const res = await fetch("/api/candidates");
-    setCandidates(await res.json());
+    try {
+      const res = await fetch("/api/candidates");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+        console.error("[load candidates]", err);
+        setLoading(false);
+        return;
+      }
+      setCandidates(await res.json());
+    } catch (err) {
+      console.error("[load candidates]", err);
+    }
     setLoading(false);
   }
 

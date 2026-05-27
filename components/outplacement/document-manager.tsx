@@ -181,11 +181,11 @@ export function DocumentManager({
   const [showNewFolder, setShowNewFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [menuDocId, setMenuDocId] = useState<string | null>(null);
   const [moving, setMoving] = useState<string | null>(null);
   const [previewDoc, setPreviewDoc] = useState<CandidateDocument | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [previewLoading, setPreviewLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentFolder = folders.find((f) => f.id === activeFolder) ?? null;
@@ -230,50 +230,53 @@ export function DocumentManager({
   async function handleUpload(files: FileList | null) {
     if (!files || files.length === 0) return;
     setUploading(true);
+    setUploadError(null);
+    const errors: string[] = [];
     for (const file of Array.from(files)) {
       const form = new FormData();
       form.append("file", file);
       if (activeFolder) form.append("folderId", activeFolder);
-      await fetch(`/api/candidates/${candidate.id}/documents`, {
+      const res = await fetch(`/api/candidates/${candidate.id}/documents`, {
         method: "POST",
         body: form,
       });
+      if (!res.ok) {
+        let msg = `Failed to upload "${file.name}"`;
+        try {
+          const data = await res.json();
+          if (data?.error) msg = data.error;
+        } catch { /* ignore parse errors */ }
+        errors.push(msg);
+      }
     }
-    const res = await fetch(`/api/candidates/${candidate.id}`);
-    if (res.ok) onUpdated(await res.json());
+    if (errors.length > 0) {
+      setUploadError(errors.join(" · "));
+    }
+    const refreshed = await fetch(`/api/candidates/${candidate.id}`);
+    if (refreshed.ok) onUpdated(await refreshed.json());
     setUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  /* ── Get signed URL ── */
-  async function getSignedUrl(doc: CandidateDocument): Promise<string | null> {
-    const res = await fetch(`/api/candidates/${candidate.id}/documents/${doc.id}/download`);
-    if (!res.ok) return null;
-    const { url } = await res.json();
-    return url;
+  /* ── Build file URL ── */
+  function docUrl(doc: CandidateDocument, forDownload = false) {
+    const base = `/api/candidates/${candidate.id}/documents/${doc.id}/download`;
+    return forDownload ? `${base}?attachment=1` : base;
   }
 
   /* ── Preview ── */
-  async function handlePreview(doc: CandidateDocument) {
+  function handlePreview(doc: CandidateDocument) {
     setMenuDocId(null);
-    setPreviewLoading(true);
-    const url = await getSignedUrl(doc);
-    setPreviewLoading(false);
-    if (!url) { alert("Could not load preview."); return; }
     setPreviewDoc(doc);
-    setPreviewUrl(url);
+    setPreviewUrl(docUrl(doc));
   }
 
   /* ── Download ── */
-  async function handleDownload(doc: CandidateDocument) {
+  function handleDownload(doc: CandidateDocument) {
     setMenuDocId(null);
-    const url = await getSignedUrl(doc);
-    if (!url) { alert("Could not generate download link."); return; }
     const a = document.createElement("a");
-    a.href = url;
+    a.href = docUrl(doc, true);
     a.download = doc.name;
-    a.target = "_blank";
-    a.rel = "noopener noreferrer";
     a.click();
   }
 
@@ -355,6 +358,17 @@ export function DocumentManager({
               onChange={(e) => handleUpload(e.target.files)} />
           </div>
         </div>
+
+        {/* Upload error banner */}
+        {uploadError && (
+          <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/10 px-3 py-2.5">
+            <X className="mt-0.5 h-4 w-4 shrink-0 text-rose-400" />
+            <p className="flex-1 text-xs text-rose-400">{uploadError}</p>
+            <button onClick={() => setUploadError(null)} className="shrink-0 text-rose-400/60 hover:text-rose-400 transition-colors">
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* New folder input */}
         {showNewFolder && (
@@ -453,7 +467,6 @@ export function DocumentManager({
                   folders={folders}
                   isMenuOpen={menuDocId === doc.id}
                   isMoving={moving === doc.id}
-                  previewLoading={previewLoading && previewDoc?.id === doc.id}
                   onPreview={() => handlePreview(doc)}
                   onMenuToggle={() => setMenuDocId(menuDocId === doc.id ? null : doc.id)}
                   onDownload={() => handleDownload(doc)}
@@ -517,14 +530,13 @@ function FolderRow({
 
 /* ─── Document Row ─── */
 function DocumentRow({
-  doc, folders, isMenuOpen, isMoving, previewLoading,
+  doc, folders, isMenuOpen, isMoving,
   onPreview, onMenuToggle, onDownload, onDelete, onMoveStart,
 }: {
   doc: CandidateDocument;
   folders: DocumentFolder[];
   isMenuOpen: boolean;
   isMoving: boolean;
-  previewLoading: boolean;
   onPreview: () => void;
   onMenuToggle: () => void;
   onDownload: () => void;
@@ -545,13 +557,8 @@ function DocumentRow({
       <button
         onClick={canPreview ? onPreview : onDownload}
         className="flex flex-1 items-center gap-3 text-left min-w-0"
-        disabled={previewLoading}
       >
-        {previewLoading ? (
-          <Loader2 className="h-5 w-5 shrink-0 animate-spin text-muted-foreground" />
-        ) : (
-          <Icon className={cn("h-5 w-5 shrink-0", iconColor)} />
-        )}
+        <Icon className={cn("h-5 w-5 shrink-0", iconColor)} />
         <div className="min-w-0">
           <p className={cn(
             "text-sm font-medium truncate transition-colors",
@@ -571,7 +578,6 @@ function DocumentRow({
         {canPreview && (
           <button
             onClick={onPreview}
-            disabled={previewLoading}
             className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-primary hover:bg-primary/10 transition-all"
             title="Preview"
           >

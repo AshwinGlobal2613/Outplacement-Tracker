@@ -13,8 +13,14 @@ import { Candidate } from "@/lib/types";
 import { sendCandidateAssignedEmail } from "@/lib/email";
 
 export async function GET() {
-  const candidates = await getCandidates();
-  return NextResponse.json(candidates);
+  try {
+    const candidates = await getCandidates();
+    return NextResponse.json(candidates);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[GET /api/candidates]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
 }
 
 export async function POST(req: NextRequest) {

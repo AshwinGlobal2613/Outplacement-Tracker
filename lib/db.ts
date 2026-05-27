@@ -22,6 +22,8 @@ function toUser(r: Record<string, unknown>): User {
     phone: (r.phone as string) ?? "",
     password: r.password as string,
     role: r.role as User["role"],
+    clientCompany: (r.client_company as string) ?? undefined,
+    candidateId: (r.candidate_id as string) ?? undefined,
     disabled: r.disabled as boolean,
     mustChangePassword: (r.must_change_password as boolean) ?? false,
     createdAt: r.created_at as string,
@@ -65,6 +67,7 @@ function toCandidate(r: Record<string, unknown>): Candidate {
     sessions: (r.sessions as Candidate["sessions"]) ?? [],
     folders: (r.folders as Candidate["folders"]) ?? [],
     documents: (r.documents as Candidate["documents"]) ?? [],
+    candidateResources: (r.candidate_resources as Candidate["candidateResources"]) ?? [],
     discDone: (r.disc_done as Candidate["discDone"]) ?? "Not Done",
     invoiceStatus: (r.invoice_status as Candidate["invoiceStatus"]) ?? "Not Raised",
     costingStatus: (r.costing_status as Candidate["costingStatus"]) ?? "Not Done",
@@ -188,6 +191,8 @@ export async function createUser(user: User): Promise<User> {
       phone: user.phone ?? "",
       password: user.password,
       role: user.role,
+      client_company: user.clientCompany ?? null,
+      candidate_id: user.candidateId ?? null,
       disabled: user.disabled,
       must_change_password: user.mustChangePassword ?? false,
       created_at: user.createdAt,
@@ -206,6 +211,8 @@ export async function updateUser(id: string, updates: Partial<User>): Promise<Us
   if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
   if (updates.password !== undefined) dbUpdates.password = updates.password;
   if (updates.role !== undefined) dbUpdates.role = updates.role;
+  if (updates.clientCompany !== undefined) dbUpdates.client_company = updates.clientCompany ?? null;
+  if (updates.candidateId !== undefined) dbUpdates.candidate_id = updates.candidateId ?? null;
   if (updates.disabled !== undefined) dbUpdates.disabled = updates.disabled;
   if (updates.mustChangePassword !== undefined) dbUpdates.must_change_password = updates.mustChangePassword;
   if (updates.lastLoginAt !== undefined) dbUpdates.last_login_at = updates.lastLoginAt;
@@ -373,6 +380,7 @@ export async function updateCandidate(
   if (updates.budget !== undefined) dbUpdates.budget = updates.budget;
   if (updates.budgetCurrency !== undefined) dbUpdates.budget_currency = updates.budgetCurrency;
   if (updates.adminNotes !== undefined) dbUpdates.admin_notes = updates.adminNotes;
+  if (updates.candidateResources !== undefined) dbUpdates.candidate_resources = updates.candidateResources;
   if (updates.updatedBy !== undefined) dbUpdates.updated_by = updates.updatedBy;
 
   const { data, error } = await supabase

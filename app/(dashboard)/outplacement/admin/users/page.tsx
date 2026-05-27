@@ -107,9 +107,14 @@ function UserModal({
     }
 
     setLoading(true);
-    const body: Record<string, unknown> = { name, email, phone, role };
-    if (role === "client") body.clientCompany = clientCompany;
-    if (role === "candidate") body.candidateId = candidateId;
+    const body: Record<string, unknown> = {
+      name,
+      email,
+      phone,
+      role,
+      clientCompany: role === "client" ? clientCompany : undefined,
+      candidateId: role === "candidate" ? candidateId : undefined,
+    };
     if (!isNew && password) body.password = password;
 
     const url = isNew ? "/api/users" : `/api/users/${user!.id}`;
@@ -449,7 +454,6 @@ export default function AdminUsersPage() {
     );
   }
 
-  const adminCount = users.filter((u) => u.role === "admin").length;
   const clientCount = users.filter((u) => u.role === "client").length;
   const candidateCount = users.filter((u) => u.role === "candidate").length;
   const pendingCount = users.filter((u) => !u.disabled && u.mustChangePassword).length;
@@ -608,7 +612,7 @@ export default function AdminUsersPage() {
                                 {user.candidateId}
                               </p>
                             )}
-                            {user.phone && !user.clientCompany && !user.candidateId && (
+                            {!user.clientCompany && !user.candidateId && user.phone && (
                               <p className="text-xs text-muted-foreground">{user.phone}</p>
                             )}
                           </div>

@@ -1,24 +1,40 @@
+import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { v4 as uuidv4 } from "uuid";
 import { authOptions } from "@/lib/auth";
 import { getCandidateById, updateCandidate } from "@/lib/db";
-import { supabase } from "@/lib/supabase";
+import { uploadFile, deleteFile } from "@/lib/file-storage";
 import { CandidateDocument } from "@/lib/types";
 
-const BUCKET = "candidate-docs";
+export const maxDuration = 60;
+export const dynamic = "force-dynamic";
 
-async function ensureBucket() {
-  const { data: buckets } = await supabase.storage.listBuckets();
-  const exists = buckets?.some((b) => b.name === BUCKET);
-  if (!exists) {
-    await supabase.storage.createBucket(BUCKET, { public: false });
-  }
-}
+const EXT_MIME: Record<string, string> = {
+  pdf:  "application/pdf",
+  doc:  "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls:  "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt:  "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  png:  "image/png",
+  jpg:  "image/jpeg",
+  jpeg: "image/jpeg",
+  gif:  "image/gif",
+  webp: "image/webp",
+  zip:  "application/zip",
+  txt:  "text/plain",
+};
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const authSession = await getServerSession(authOptions);
   if (!authSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  // Candidates can only upload to their own profile
+  const isStaff = authSession.user.role === "admin" || authSession.user.role === "team_member";
+  const isOwner = authSession.user.role === "candidate" && authSession.user.candidateId === params.id;
+  if (!isStaff && !isOwner) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const candidate = await getCandidateById(params.id);
   if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -29,19 +45,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 });
 
+  const ext = path.extname(file.name).toLowerCase();
+  const extKey = ext.replace(".", "");
+  const mimeType = file.type || EXT_MIME[extKey] || "application/octet-stream";
+
   const docId = `doc_${uuidv4().slice(0, 8)}`;
-  const storagePath = `candidates/${params.id}/${docId}/${file.name}`;
+  // Use docId+ext as filename to avoid path issues with spaces/special chars
+  const storagePath = `candidates/${params.id}/${docId}${ext}`;
 
-  await ensureBucket();
-
-  const arrayBuffer = await file.arrayBuffer();
-  const { error: uploadError } = await supabase.storage
-    .from(BUCKET)
-    .upload(storagePath, arrayBuffer, { contentType: file.type, upsert: false });
-
-  if (uploadError) {
-    console.error("[documents] Upload error:", uploadError);
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    await uploadFile(storagePath, arrayBuffer, mimeType);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("[documents] Upload error:", message);
+    return NextResponse.json({ error: `Upload failed: ${message}` }, { status: 500 });
   }
 
   const newDoc: CandidateDocument = {
@@ -49,10 +67,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     name: file.name,
     folderId: folderId || null,
     size: file.size,
-    mimeType: file.type || "application/octet-stream",
+    mimeType,
     storagePath,
     uploadedAt: new Date().toISOString(),
     uploadedBy: authSession.user.name || "Unknown",
+    source: isOwner ? "candidate" : "team",
   };
 
   const documents = [...(candidate.documents ?? []), newDoc];
@@ -72,10 +91,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const doc = (candidate.documents ?? []).find((d) => d.id === documentId);
 
   if (doc) {
-    // Remove from storage (fire-and-forget — don't block on it)
-    supabase.storage.from(BUCKET).remove([doc.storagePath]).catch((err) =>
-      console.error("[documents] Storage delete error:", err)
-    );
+    deleteFile(doc.storagePath).catch(() => {}); // fire-and-forget
   }
 
   const documents = (candidate.documents ?? []).filter((d) => d.id !== documentId);

@@ -28,13 +28,36 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (body.email !== undefined) updates.email = body.email;
   if (body.phone !== undefined) updates.phone = body.phone;
   if (body.role !== undefined) updates.role = body.role;
+  // Sync clientCompany: set it when role is client, clear it when switching away from client
+  if (body.role === "client") {
+    updates.clientCompany = body.clientCompany ?? "";
+    updates.candidateId = undefined;
+  } else if (body.role === "candidate") {
+    updates.candidateId = body.candidateId ?? "";
+    updates.clientCompany = undefined;
+  } else if (body.role !== undefined) {
+    // Switched to admin/team_member — clear both portal fields
+    updates.clientCompany = undefined;
+    updates.candidateId = undefined;
+  } else {
+    // Role unchanged — allow updating individual fields
+    if (body.clientCompany !== undefined) updates.clientCompany = body.clientCompany;
+    if (body.candidateId  !== undefined) updates.candidateId  = body.candidateId;
+  }
   if (body.disabled !== undefined) updates.disabled = body.disabled;
 
   if (body.password && body.password.length >= 8) {
     updates.password = await bcrypt.hash(body.password, 10);
   }
 
-  const updated = await updateUser(params.id, updates);
+  let updated;
+  try {
+    updated = await updateUser(params.id, updates);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[updateUser]", msg);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
   if (!updated) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const { password: _p2, ...safe } = updated;
