@@ -21,11 +21,10 @@ import {
   Check,
   ChevronUp,
   ChevronDown,
-  Building2,
   UserCircle,
 } from "lucide-react";
 
-type UserRole = "admin" | "team_member" | "client" | "candidate";
+type UserRole = "admin" | "team_member" | "candidate";
 
 type User = {
   id: string;
@@ -60,8 +59,9 @@ function UserModal({
   const [name, setName] = useState(user?.name ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState(user?.phone ?? "");
-  const [role, setRole] = useState<UserRole>(user?.role ?? "team_member");
-  const [clientCompany, setClientCompany] = useState(user?.clientCompany ?? "");
+  const [role, setRole] = useState<UserRole>(
+    user?.role === "client" ? "team_member" : (user?.role ?? "team_member")
+  );
   const [candidateId, setCandidateId] = useState(user?.candidateId ?? "");
   const [candidates, setCandidates] = useState<CandidateOption[]>([]);
   const [password, setPassword] = useState("");
@@ -97,10 +97,6 @@ function UserModal({
       setError("New password must be at least 8 characters.");
       return;
     }
-    if (role === "client" && !clientCompany.trim()) {
-      setError("Company name is required for client portal users.");
-      return;
-    }
     if (role === "candidate" && !candidateId) {
       setError("Please select a candidate profile.");
       return;
@@ -112,7 +108,6 @@ function UserModal({
       email,
       phone,
       role,
-      clientCompany: role === "client" ? clientCompany : undefined,
       candidateId: role === "candidate" ? candidateId : undefined,
     };
     if (!isNew && password) body.password = password;
@@ -201,23 +196,9 @@ function UserModal({
             >
               <option value="team_member">Team Member</option>
               <option value="admin">Admin</option>
-              <option value="client">Client (Company Portal)</option>
               <option value="candidate">Candidate (Personal Portal)</option>
             </select>
           </div>
-
-          {/* Client-specific: company name */}
-          {role === "client" && (
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">Company Name *</label>
-              <input
-                value={clientCompany}
-                onChange={(e) => setClientCompany(e.target.value)}
-                placeholder="Acme Corp"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
-          )}
 
           {/* Candidate-specific: candidate profile dropdown */}
           {role === "candidate" && (
@@ -308,13 +289,6 @@ function RoleBadge({ role }: { role: UserRole }) {
       <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-violet-500/15 text-violet-400">
         <ShieldCheck className="h-3 w-3" />
         Admin
-      </span>
-    );
-  if (role === "client")
-    return (
-      <span className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium bg-sky-500/15 text-sky-400">
-        <Building2 className="h-3 w-3" />
-        Client Portal
       </span>
     );
   if (role === "candidate")
@@ -454,7 +428,6 @@ export default function AdminUsersPage() {
     );
   }
 
-  const clientCount = users.filter((u) => u.role === "client").length;
   const candidateCount = users.filter((u) => u.role === "candidate").length;
   const pendingCount = users.filter((u) => !u.disabled && u.mustChangePassword).length;
   const activeCount = users.filter((u) => !u.disabled && !u.mustChangePassword).length;
@@ -488,7 +461,7 @@ export default function AdminUsersPage() {
           { label: "Total Users", value: users.length, color: "text-primary" },
           { label: "Active", value: activeCount, color: "text-emerald-400" },
           { label: "Pending Invite", value: pendingCount, color: "text-amber-400" },
-          { label: "Client Portals", value: clientCount + candidateCount, color: "text-sky-400" },
+          { label: "Candidate Portals", value: candidateCount, color: "text-sky-400" },
           { label: "Disabled", value: disabledCount, color: "text-rose-400" },
         ].map((s) => (
           <div key={s.label} className="rounded-lg border border-border bg-card px-4 py-3">
@@ -517,7 +490,6 @@ export default function AdminUsersPage() {
           <option value="all">All Roles</option>
           <option value="admin">Admin</option>
           <option value="team_member">Team Member</option>
-          <option value="client">Client Portal</option>
           <option value="candidate">Candidate Portal</option>
         </select>
         <select
@@ -582,7 +554,7 @@ export default function AdminUsersPage() {
                     .slice(0, 2)
                     .toUpperCase();
                   const isCurrentUser = user.id === session?.user?.id;
-                  const isPortalUser = user.role === "client" || user.role === "candidate";
+                  const isPortalUser = user.role === "candidate";
                   return (
                     <tr
                       key={user.id}
@@ -595,8 +567,6 @@ export default function AdminUsersPage() {
                             className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
                               user.role === "candidate"
                                 ? "bg-emerald-500/20 text-emerald-400"
-                                : user.role === "client"
-                                ? "bg-sky-500/20 text-sky-400"
                                 : "bg-primary/20 text-primary"
                             }`}
                           >
@@ -604,9 +574,6 @@ export default function AdminUsersPage() {
                           </div>
                           <div>
                             <p className="font-medium text-foreground">{user.name}</p>
-                            {user.role === "client" && user.clientCompany && (
-                              <p className="text-xs text-sky-400/80">{user.clientCompany}</p>
-                            )}
                             {user.role === "candidate" && user.candidateId && (
                               <p className="font-mono text-xs text-emerald-400/80">
                                 {user.candidateId}
