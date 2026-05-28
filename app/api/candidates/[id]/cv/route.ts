@@ -38,5 +38,6 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   };
 
   const updated = await updateCandidate(params.id, { cvProfile });
+  if (!updated) return NextResponse.json({ error: "Update failed" }, { status: 500 });
   return NextResponse.json(updated.cvProfile);
 }
