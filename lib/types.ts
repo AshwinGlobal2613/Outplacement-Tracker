@@ -78,6 +78,48 @@ export interface CandidateDocument {
   source?: "team" | "candidate"; // who uploaded it
 }
 
+export interface WeeklyGoal {
+  id: string;
+  title: string;
+  description?: string;
+  targetCount: number;
+  currentCount: number;
+  weekLabel: string;   // e.g. "Week of 26 May 2026"
+  dueDate?: string;    // YYYY-MM-DD
+  completed: boolean;
+  createdAt: string;
+  createdBy: string;
+}
+
+export interface CVExperience {
+  id: string;
+  company: string;
+  role: string;
+  from: string;
+  to: string;
+  current: boolean;
+  description: string;
+}
+
+export interface CVEducation {
+  id: string;
+  institution: string;
+  degree: string;
+  field: string;
+  from: string;
+  to: string;
+}
+
+export interface CVProfile {
+  headline: string;
+  summary: string;
+  linkedinAbout: string;
+  skills: string[];
+  experience: CVExperience[];
+  education: CVEducation[];
+  updatedAt?: string;
+}
+
 export interface CandidateResource {
   id: string;
   title: string;
@@ -135,6 +177,8 @@ export interface Candidate {
   folders?: DocumentFolder[];
   documents?: CandidateDocument[];
   candidateResources?: CandidateResource[];
+  goals?: WeeklyGoal[];
+  cvProfile?: CVProfile;
   discDone: DiscDoneStatus;
   invoiceStatus: InvoiceStatus;
   costingStatus: CostingStatus;

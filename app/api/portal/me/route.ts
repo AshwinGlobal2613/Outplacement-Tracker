@@ -39,5 +39,7 @@ export async function GET() {
     ...safe,
     documents: safeDocuments,
     candidateResources: candidate.candidateResources ?? [],
+    goals: candidate.goals ?? [],
+    cvProfile: candidate.cvProfile ?? null,
   });
 }

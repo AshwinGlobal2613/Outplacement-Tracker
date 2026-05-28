@@ -560,12 +560,19 @@ function DocumentRow({
       >
         <Icon className={cn("h-5 w-5 shrink-0", iconColor)} />
         <div className="min-w-0">
-          <p className={cn(
-            "text-sm font-medium truncate transition-colors",
-            canPreview ? "text-foreground group-hover:text-primary" : "text-foreground"
-          )}>
-            {doc.name}
-          </p>
+          <div className="flex items-center gap-2 min-w-0">
+            <p className={cn(
+              "text-sm font-medium truncate transition-colors",
+              canPreview ? "text-foreground group-hover:text-primary" : "text-foreground"
+            )}>
+              {doc.name}
+            </p>
+            {doc.source === "candidate" && (
+              <span className="shrink-0 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-400 border border-emerald-500/25">
+                Candidate
+              </span>
+            )}
+          </div>
           <p className="text-xs text-muted-foreground">
             {formatBytes(doc.size)} · {formatDate(doc.uploadedAt)} · {doc.uploadedBy}
             {inFolder && <span className="ml-1 text-amber-400/70">· {inFolder.name}</span>}

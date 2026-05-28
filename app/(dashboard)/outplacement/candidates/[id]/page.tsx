@@ -6,9 +6,9 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
   Pencil, Trash2, ExternalLink, MessageCircle, CheckCircle2,
-  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText, Search,
+  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText, Search, Target,
 } from "lucide-react";
-import { Candidate, CandidateActivity, CandidateResource, ActivityType, CustomMilestone, Session, ActivityLog } from "@/lib/types";
+import { Candidate, CandidateActivity, CandidateResource, ActivityType, CustomMilestone, Session, ActivityLog, WeeklyGoal } from "@/lib/types";
 import { ScheduleModal } from "@/components/outplacement/schedule-modal";
 import { DocumentManager } from "@/components/outplacement/document-manager";
 import Link from "next/link";
@@ -327,6 +327,163 @@ function ResourceManager({ candidateId }: { candidateId: string }) {
   );
 }
 
+/* ─── Goals Manager (admin side) ─── */
+function GoalsManager({ candidateId }: { candidateId: string }) {
+  const [goals, setGoals] = useState<WeeklyGoal[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  // Form state
+  const [gTitle, setGTitle] = useState("");
+  const [gDescription, setGDescription] = useState("");
+  const [gTarget, setGTarget] = useState("1");
+  const [gWeek, setGWeek] = useState("");
+  const [gDue, setGDue] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch(`/api/candidates/${candidateId}/goals`)
+      .then((r) => r.ok ? r.json() : [])
+      .then((data) => setGoals(Array.isArray(data) ? data : []))
+      .catch(() => {});
+  }, [candidateId]);
+
+  async function createGoal() {
+    setError("");
+    if (!gTitle.trim()) { setError("Title is required."); return; }
+    setSaving(true);
+    const res = await fetch(`/api/candidates/${candidateId}/goals`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title: gTitle.trim(),
+        description: gDescription.trim(),
+        targetCount: parseInt(gTarget) || 1,
+        weekLabel: gWeek.trim(),
+        dueDate: gDue || undefined,
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) { const d = await res.json(); setError(d.error || "Failed"); return; }
+    const { goal } = await res.json();
+    setGoals((p) => [...p, goal]);
+    setGTitle(""); setGDescription(""); setGTarget("1"); setGWeek(""); setGDue("");
+    setShowForm(false);
+  }
+
+  async function deleteGoal(goalId: string) {
+    setDeleting(goalId);
+    await fetch(`/api/candidates/${candidateId}/goals`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ goalId }),
+    });
+    setGoals((p) => p.filter((g) => g.id !== goalId));
+    setDeleting(null);
+  }
+
+  const inputCls = "w-full rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary";
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-semibold text-foreground flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" />
+          Weekly Goals
+          {goals.length > 0 && (
+            <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-medium text-primary">{goals.length}</span>
+          )}
+        </h2>
+        <button onClick={() => { setShowForm(!showForm); setError(""); }}
+          className="flex items-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors">
+          <Plus className="h-3.5 w-3.5" /> Add Goal
+        </button>
+      </div>
+
+      {showForm && (
+        <div className="mb-4 rounded-lg border border-border bg-background p-4 space-y-3">
+          {error && <p className="text-xs text-destructive">{error}</p>}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Goal Title *</label>
+              <input value={gTitle} onChange={(e) => setGTitle(e.target.value)}
+                placeholder="e.g. Apply to 5 roles this week" className={inputCls} />
+            </div>
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Description</label>
+              <input value={gDescription} onChange={(e) => setGDescription(e.target.value)}
+                placeholder="Optional details for the candidate" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Target Count *</label>
+              <input type="number" min="1" value={gTarget} onChange={(e) => setGTarget(e.target.value)}
+                className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Week Label</label>
+              <input value={gWeek} onChange={(e) => setGWeek(e.target.value)}
+                placeholder="e.g. Week of 26 May 2026" className={inputCls} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Due Date</label>
+              <input type="date" value={gDue} onChange={(e) => setGDue(e.target.value)} className={inputCls} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 pt-1">
+            <button onClick={() => { setShowForm(false); setError(""); }}
+              className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Cancel
+            </button>
+            <button onClick={createGoal} disabled={saving}
+              className="rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity">
+              {saving ? "Saving…" : "Create Goal"}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {goals.length === 0 ? (
+        <p className="text-sm text-muted-foreground">No goals set. Click &quot;Add Goal&quot; to assign a weekly target to this candidate.</p>
+      ) : (
+        <div className="space-y-2">
+          {goals.map((goal) => {
+            const pct = goal.targetCount > 0 ? Math.round((goal.currentCount / goal.targetCount) * 100) : 0;
+            return (
+              <div key={goal.id} className="rounded-lg border border-border bg-background px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-medium text-foreground">{goal.title}</p>
+                      {goal.completed && (
+                        <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-400">Completed</span>
+                      )}
+                    </div>
+                    {goal.description && <p className="text-xs text-muted-foreground mt-0.5">{goal.description}</p>}
+                    <div className="flex items-center gap-3 mt-1.5">
+                      <p className="text-xs text-muted-foreground">
+                        Progress: {goal.currentCount}/{goal.targetCount}
+                        {goal.weekLabel && <span className="ml-2 text-muted-foreground/60">· {goal.weekLabel}</span>}
+                      </p>
+                    </div>
+                    <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                      <div className={cn("h-full rounded-full transition-all", goal.completed ? "bg-emerald-500" : "bg-primary")}
+                        style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                  <button onClick={() => deleteGoal(goal.id)} disabled={deleting === goal.id}
+                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-rose-500/15 hover:text-rose-400 transition-colors disabled:opacity-40">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CandidateDetailContent({ params }: { params: { id: string } }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -563,6 +720,9 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
             candidate={candidate}
             onUpdated={(updated) => setCandidate(updated)}
           />
+
+          {/* Goals */}
+          <GoalsManager candidateId={candidate.id} />
 
           {/* Resources */}
           <ResourceManager candidateId={candidate.id} />
