@@ -32,8 +32,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     summary: body.summary ?? "",
     linkedinAbout: body.linkedinAbout ?? "",
     skills: body.skills ?? [],
+    languages: body.languages ?? [],
+    certifications: body.certifications ?? [],
     experience: body.experience ?? [],
     education: body.education ?? [],
+    sectionOrder: body.sectionOrder ?? undefined,
+    style: body.style ?? undefined,
+    contact: body.contact ?? {},
     updatedAt: new Date().toISOString(),
   };
 

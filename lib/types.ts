@@ -118,6 +118,13 @@ export interface CVCertification {
   date: string;
 }
 
+export interface CVContact {
+  email?: string;
+  phone?: string;
+  location?: string;
+  website?: string;
+}
+
 export interface CVStyle {
   accentColor: string;                          // hex e.g. "#e11d48"
   fontFamily: string;                           // css font-family string
@@ -136,6 +143,7 @@ export interface CVProfile {
   education: CVEducation[];
   sectionOrder?: string[];                      // ordered section IDs
   style?: CVStyle;
+  contact?: CVContact;
   updatedAt?: string;
 }
 
