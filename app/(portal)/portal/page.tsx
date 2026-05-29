@@ -8,7 +8,7 @@ import {
   User, Building2, GraduationCap, X, Target, Plus, Minus, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { WeeklyGoal } from "@/lib/types";
+import { WeeklyGoal, CVProfile } from "@/lib/types";
 import { CVBuilder } from "@/components/portal/cv-builder";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
