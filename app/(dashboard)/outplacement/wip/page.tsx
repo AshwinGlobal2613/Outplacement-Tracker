@@ -41,7 +41,11 @@ export default function WipPage() {
         <div className="flex h-48 items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /></div>
       ) : (
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((c) => (
+          {filtered.map((c) => {
+            const p = c.progress;
+            const milestoneDone = [p?.introductorySession, p?.cvSessions, p?.linkedinProfile, p?.profiling, p?.networkingPersonalBranding].filter(Boolean).length
+              + (p?.custom ?? []).filter((m) => m.done).length;
+            return (
             <Link
               key={c.id}
               href={`/outplacement/candidates/${c.id}`}
@@ -78,10 +82,11 @@ export default function WipPage() {
 
               <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
                 <span>{c.leadCoach}</span>
-                <span>{(c.sessions ?? []).length || c.sessionsCompleted} sessions done</span>
+                <span>{milestoneDone} sessions done</span>
               </div>
             </Link>
-          ))}
+            );
+          })}
 
           {filtered.length === 0 && (
             <div className="col-span-full flex h-48 items-center justify-center rounded-xl border border-dashed border-border">
