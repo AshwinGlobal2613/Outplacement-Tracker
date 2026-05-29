@@ -57,7 +57,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   const sessions = [...(candidate.sessions ?? []), newSession];
-  const updated = await updateCandidate(params.id, { sessions });
+  const now = new Date();
+  const sessionsCompleted = sessions.filter(
+    (s) => new Date(`${s.date}T${s.time || "00:00"}`) < now
+  ).length;
+  const updated = await updateCandidate(params.id, { sessions, sessionsCompleted });
 
   // Fire-and-forget: also send email invites (with .ics) regardless of Google Calendar
   getUsers()
@@ -129,7 +133,11 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   const sessions = (candidate.sessions ?? []).filter((s) => s.id !== sessionId);
-  const updated = await updateCandidate(params.id, { sessions });
+  const now = new Date();
+  const sessionsCompleted = sessions.filter(
+    (s) => new Date(`${s.date}T${s.time || "00:00"}`) < now
+  ).length;
+  const updated = await updateCandidate(params.id, { sessions, sessionsCompleted });
 
   // Fire-and-forget: send cancellation emails
   if (sessionToDelete) {

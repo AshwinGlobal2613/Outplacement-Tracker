@@ -151,7 +151,7 @@ export default function OutplacementOverview() {
                     </div>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="text-xs text-muted-foreground">{c.sessionsCompleted} sessions</p>
+                    <p className="text-xs text-muted-foreground">{(c.sessions ?? []).length || c.sessionsCompleted} sessions</p>
                     {c.endDate && (
                       <p className="text-[10px] text-muted-foreground">
                         Ends {new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}

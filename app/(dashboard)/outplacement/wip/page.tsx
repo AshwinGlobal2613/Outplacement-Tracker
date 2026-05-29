@@ -78,7 +78,7 @@ export default function WipPage() {
 
               <div className="mt-auto flex items-center justify-between border-t border-border pt-3 text-xs text-muted-foreground">
                 <span>{c.leadCoach}</span>
-                <span>{c.sessionsCompleted} sessions done</span>
+                <span>{(c.sessions ?? []).length || c.sessionsCompleted} sessions done</span>
               </div>
             </Link>
           ))}

@@ -234,7 +234,7 @@ export default function MyDashboardPage() {
                       )}
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-xs text-muted-foreground">{c.sessionsCompleted} sessions</p>
+                      <p className="text-xs text-muted-foreground">{(c.sessions ?? []).length || c.sessionsCompleted} sessions</p>
                       {c.endDate && (
                         <p className="text-[10px] text-muted-foreground">
                           Ends {new Date(c.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
