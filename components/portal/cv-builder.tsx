@@ -9,6 +9,7 @@ import {
   Zap, Award, AlignLeft, Camera, Palette, CalendarDays,
   Heart, FolderOpen, BookOpen, Trophy,
   FileText, UserCheck, PenLine, Puzzle,
+  Bold, Italic, Underline, List, ListOrdered, Upload,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -404,6 +405,83 @@ function ChipInput({ chips, placeholder, onChange }: { chips: string[]; placehol
   );
 }
 
+// ─── Rich Text Area ───────────────────────────────────────────────────────────
+
+function RichTextArea({ value, onChange, placeholder, minRows = 4 }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  minRows?: number;
+}) {
+  const editorRef = useRef<HTMLDivElement>(null);
+  const [empty, setEmpty] = useState(!value?.trim());
+
+  // Sync external value into editor without cursor reset
+  useEffect(() => {
+    if (!editorRef.current) return;
+    if (editorRef.current.innerHTML !== (value ?? "")) {
+      editorRef.current.innerHTML = value ?? "";
+      setEmpty(!value?.trim());
+    }
+  }, [value]);
+
+  function handleInput() {
+    if (!editorRef.current) return;
+    const html = editorRef.current.innerHTML;
+    onChange(html);
+    setEmpty(!editorRef.current.textContent?.trim());
+  }
+
+  function execFmt(cmd: string) {
+    editorRef.current?.focus();
+    // eslint-disable-next-line @typescript-eslint/no-deprecated
+    document.execCommand(cmd, false, undefined);
+    handleInput();
+  }
+
+  const tools = [
+    { icon: Bold,         cmd: "bold",                 title: "Bold" },
+    { icon: Italic,       cmd: "italic",               title: "Italic" },
+    { icon: Underline,    cmd: "underline",             title: "Underline" },
+    { icon: List,         cmd: "insertUnorderedList",   title: "Bullet list" },
+    { icon: ListOrdered,  cmd: "insertOrderedList",     title: "Numbered list" },
+  ];
+
+  return (
+    <div className="rounded-lg border border-border/60 bg-muted/30 focus-within:ring-2 focus-within:ring-primary/30 focus-within:border-primary/40 transition-colors overflow-hidden">
+      {/* Toolbar */}
+      <div className="flex items-center gap-0.5 px-2 py-1.5 border-b border-border/40 bg-muted/40">
+        {tools.map(({ icon: Icon, cmd, title }, i) => (
+          <>
+            {i === 3 && <div key="sep" className="w-px h-3.5 bg-border/60 mx-1" />}
+            <button key={cmd} type="button" title={title}
+              onMouseDown={(e) => { e.preventDefault(); execFmt(cmd); }}
+              className="rounded p-1.5 text-muted-foreground hover:bg-card hover:text-foreground transition-colors">
+              <Icon className="h-3.5 w-3.5" />
+            </button>
+          </>
+        ))}
+      </div>
+      {/* Editable area */}
+      <div className="relative">
+        {empty && (
+          <p className="absolute top-0 left-0 px-3 py-2 text-sm text-muted-foreground/40 pointer-events-none select-none">
+            {placeholder}
+          </p>
+        )}
+        <div
+          ref={editorRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={handleInput}
+          className="px-3 py-2 text-sm text-foreground focus:outline-none [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:my-1 [&_ol]:list-decimal [&_ol]:ml-4 [&_ol]:my-1 [&_li]:mb-0.5"
+          style={{ minHeight: `${minRows * 1.6}rem` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 // ─── Personal Info Card ───────────────────────────────────────────────────────
 
 function PersonalInfoCard({ name, headline, contact, accentColor, onHeadlineChange, onContactChange }: {
@@ -557,19 +635,50 @@ function SectionRow({ sectionId, isOpen, isHidden, onToggle, onToggleVisibility,
 
 // ─── Add Content Modal ────────────────────────────────────────────────────────
 
-function AddContentModal({ addedSections, onAdd, onClose }: {
+function AddContentModal({ addedSections, onAdd, onClose, onUploadResume }: {
   addedSections: string[]; onAdd: (id: string) => void; onClose: () => void;
+  onUploadResume: (file: File) => Promise<void>;
 }) {
   const available = ALL_SECTIONS.filter((s) => !addedSections.includes(s.id));
+  const [uploading, setUploading] = useState(false);
+  const [uploaded, setUploaded]   = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    await onUploadResume(file);
+    setUploading(false);
+    setUploaded(true);
+    setTimeout(() => setUploaded(false), 3000);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.65)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
         <div className="flex items-center justify-between px-8 pt-8 pb-5">
-          <h2 className="text-3xl font-bold text-gray-900">Add content</h2>
-          <button onClick={onClose} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
-            <X className="h-5 w-5" />
-          </button>
+          <div>
+            <h2 className="text-3xl font-bold text-gray-900">Add content</h2>
+            <p className="text-sm text-gray-500 mt-1">Quick start:</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Upload Resume */}
+            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleFile} />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-2 rounded-xl bg-violet-50 border border-violet-200 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors disabled:opacity-60"
+            >
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {uploaded ? "Uploaded!" : uploading ? "Uploading…" : "Import Resume"}
+            </button>
+            <button onClick={onClose} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         <div className="px-8 pb-8">
           {available.length > 0 ? (
@@ -596,7 +705,11 @@ function AddContentModal({ addedSections, onAdd, onClose }: {
   );
 }
 
-function AddContentButton({ addedSections, onAdd }: { addedSections: string[]; onAdd: (id: string) => void }) {
+function AddContentButton({ addedSections, onAdd, onUploadResume }: {
+  addedSections: string[];
+  onAdd: (id: string) => void;
+  onUploadResume: (file: File) => Promise<void>;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -605,12 +718,38 @@ function AddContentButton({ addedSections, onAdd }: { addedSections: string[]; o
         style={{ background: "linear-gradient(135deg, #f43f5e 0%, #ec4899 100%)" }}>
         <Plus className="h-4 w-4" /> Add Content
       </button>
-      {open && <AddContentModal addedSections={addedSections} onAdd={onAdd} onClose={() => setOpen(false)} />}
+      {open && (
+        <AddContentModal
+          addedSections={addedSections}
+          onAdd={onAdd}
+          onClose={() => setOpen(false)}
+          onUploadResume={onUploadResume}
+        />
+      )}
     </>
   );
 }
 
 // ─── CV Preview ───────────────────────────────────────────────────────────────
+
+// Render plain text or HTML content in the white CV preview
+function HtmlOrText({ html, style }: { html: string; style: React.CSSProperties }) {
+  const isHtml = /<[a-z][\s\S]*>/i.test(html ?? "");
+  if (isHtml) {
+    return (
+      <div
+        dangerouslySetInnerHTML={{ __html: html }}
+        style={{
+          ...style,
+          // Reset list styles for the white preview
+        }}
+        // eslint-disable-next-line tailwindcss/no-custom-classname
+        className="cv-rich-content"
+      />
+    );
+  }
+  return <p style={{ ...style, whiteSpace: "pre-line" }}>{html}</p>;
+}
 
 function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
   cv: CVProfile; name: string; addedSections: string[]; hiddenFromPreview: Set<string>;
@@ -642,7 +781,12 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
     switch (id) {
       case "summary":
         if (!cv.summary) return null;
-        return <div key="summary" style={{ marginBottom: px(gap) }}><SH title="Professional Summary" /><p style={{ fontSize: em(basePx), lineHeight: 1.6, color: "#374151", whiteSpace: "pre-line" }}>{cv.summary}</p></div>;
+        return (
+          <div key="summary" style={{ marginBottom: px(gap) }}>
+            <SH title="Professional Summary" />
+            <HtmlOrText html={cv.summary} style={{ fontSize: em(basePx), lineHeight: 1.6, color: "#374151" }} />
+          </div>
+        );
 
       case "experience":
         if (!cv.experience?.length) return null;
@@ -671,7 +815,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
                         ))}
                       </ul>
                     )}
-                    {!bullets.length && exp.description && <p style={{ marginTop: "4px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{exp.description}</p>}
+                    {exp.description && <HtmlOrText html={exp.description} style={{ marginTop: "4px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }} />}
                   </div>
                 );
               })}
@@ -694,7 +838,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
                     </div>
                     {(e.from || e.to) && <p style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", whiteSpace: "nowrap", marginTop: "2px" }}>{e.from}{e.to ? ` – ${e.to}` : ""}</p>}
                   </div>
-                  {e.description && <p style={{ marginTop: "4px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{e.description}</p>}
+                  {e.description && <HtmlOrText html={e.description} style={{ marginTop: "4px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }} />}
                 </div>
               ))}
             </div>
@@ -756,7 +900,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
                     <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{p.title || "Project"}</p>
                     {(p.from || p.to) && <p style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", whiteSpace: "nowrap" }}>{p.from}{p.to ? ` – ${p.to}` : ""}</p>}
                   </div>
-                  {p.description && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{p.description}</p>}
+                  {p.description && <HtmlOrText html={p.description} style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }} />}
                   {p.link && <p style={{ marginTop: "2px", fontSize: em(basePx * 0.85), color: accent }}>{p.link}</p>}
                 </div>
               ))}
@@ -798,7 +942,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
                     </div>
                     {a.date && <span style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", flexShrink: 0 }}>{a.date}</span>}
                   </div>
-                  {a.description && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{a.description}</p>}
+                  {a.description && <HtmlOrText html={a.description} style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }} />}
                 </div>
               ))}
             </div>
@@ -820,7 +964,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
                     </div>
                     {p.date && <span style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", flexShrink: 0 }}>{p.date}</span>}
                   </div>
-                  {p.description && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{p.description}</p>}
+                  {p.description && <HtmlOrText html={p.description} style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }} />}
                 </div>
               ))}
             </div>
@@ -849,7 +993,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
       case "declaration":
         if (!cv.declaration) return null;
-        return <div key="declaration" style={{ marginBottom: px(gap) }}><SH title="Declaration" /><p style={{ fontSize: em(basePx), color: "#374151", lineHeight: 1.6, whiteSpace: "pre-line" }}>{cv.declaration}</p></div>;
+        return <div key="declaration" style={{ marginBottom: px(gap) }}><SH title="Declaration" /><HtmlOrText html={cv.declaration ?? ""} style={{ fontSize: em(basePx), color: "#374151", lineHeight: 1.6 }} /></div>;
 
       case "custom":
         if (!cv.customSections?.length) return null;
@@ -874,7 +1018,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
                           )}
                         </div>
                       )}
-                      {entry.description && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6, whiteSpace: "pre-line" }}>{entry.description}</p>}
+                      {entry.description && <HtmlOrText html={entry.description} style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }} />}
                     </div>
                   ))}
                 </div>
@@ -975,6 +1119,13 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
     setAddedSections(next); setDragItem(null); setDragOver(null);
   }
 
+  async function uploadResume(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    form.append("source", "candidate");
+    await fetch(`/api/candidates/${candidateId}/documents`, { method: "POST", body: form }).catch(() => {});
+  }
+
   async function save() {
     setSaving(true);
     await fetch(`/api/candidates/${candidateId}/cv`, {
@@ -1041,7 +1192,14 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
     switch (id) {
 
       case "summary":
-        return <textarea value={cv.summary} onChange={(e) => setCv((p) => ({ ...p, summary: e.target.value }))} rows={4} placeholder="A concise paragraph describing your career, key strengths, and what you bring to the table…" className={cn(inputCls, "resize-none text-sm")} />;
+        return (
+          <RichTextArea
+            value={cv.summary}
+            onChange={(v) => setCv((p) => ({ ...p, summary: v }))}
+            placeholder="A concise paragraph describing your career, key strengths, and what you bring to the table…"
+            minRows={4}
+          />
+        );
 
       case "experience":
         return (
@@ -1058,6 +1216,15 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
                       <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer shrink-0"><input type="checkbox" checked={e.current} onChange={(ev) => expH.update(e.id, { current: ev.target.checked })} /> Now</label>
                     </div>
                   </div>
+                </div>
+                <div>
+                  <label className={labelCls}>Description</label>
+                  <RichTextArea
+                    value={e.description}
+                    onChange={(v) => expH.update(e.id, { description: v })}
+                    placeholder="Describe your responsibilities, achievements, and impact…"
+                    minRows={3}
+                  />
                 </div>
                 <BulletListInput bullets={e.bullets ?? [""]} onChange={(b) => expH.update(e.id, { bullets: b })} />
               </EntryCard>
@@ -1081,7 +1248,7 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
                   </div>
                   <div className="col-span-2">
                     <label className={labelCls}>Description (optional)</label>
-                    <textarea value={e.description ?? ""} onChange={(ev) => eduH.update(e.id, { description: ev.target.value })} rows={2} placeholder="Relevant modules, honours, exchange terms…" className={cn(inputCls, "resize-none text-xs py-1.5")} />
+                    <RichTextArea value={e.description ?? ""} onChange={(v) => eduH.update(e.id, { description: v })} placeholder="Relevant modules, honours, exchange terms…" minRows={2} />
                   </div>
                 </div>
               </EntryCard>
@@ -1146,7 +1313,7 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
                   <div><label className={labelCls}>From</label><MonthYearPicker value={p.from ?? ""} onChange={(v) => projH.update(p.id, { from: v })} /></div>
                   <div><label className={labelCls}>To</label><MonthYearPicker value={p.to ?? ""} onChange={(v) => projH.update(p.id, { to: v })} /></div>
                   <div className="col-span-2"><label className={labelCls}>Link</label><input value={p.link ?? ""} onChange={(e) => projH.update(p.id, { link: e.target.value })} placeholder="https://github.com/…" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div className="col-span-2"><label className={labelCls}>Description</label><textarea value={p.description} onChange={(e) => projH.update(p.id, { description: e.target.value })} rows={2} placeholder="Your role and impact…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Description</label><RichTextArea value={p.description} onChange={(v) => projH.update(p.id, { description: v })} placeholder="Your role and impact…" minRows={2} /></div>
                 </div>
               </EntryCard>
             ))}
@@ -1179,7 +1346,7 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
                   <div className="col-span-2"><label className={labelCls}>Award Title</label><input value={a.title} onChange={(e) => awdH.update(a.id, { title: e.target.value })} placeholder="e.g. Employee of the Year" className={cn(inputCls, "text-xs py-1.5")} /></div>
                   <div><label className={labelCls}>Issuer</label><input value={a.issuer} onChange={(e) => awdH.update(a.id, { issuer: e.target.value })} placeholder="e.g. Acme Corp" className={cn(inputCls, "text-xs py-1.5")} /></div>
                   <div><label className={labelCls}>Date</label><MonthYearPicker value={a.date ?? ""} onChange={(v) => awdH.update(a.id, { date: v })} /></div>
-                  <div className="col-span-2"><label className={labelCls}>Description</label><textarea value={a.description ?? ""} onChange={(e) => awdH.update(a.id, { description: e.target.value })} rows={2} placeholder="Brief description…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Description</label><RichTextArea value={a.description ?? ""} onChange={(v) => awdH.update(a.id, { description: v })} placeholder="Brief description…" minRows={2} /></div>
                 </div>
               </EntryCard>
             ))}
@@ -1223,7 +1390,14 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         );
 
       case "declaration":
-        return <textarea value={cv.declaration ?? ""} onChange={(e) => setCv((p) => ({ ...p, declaration: e.target.value }))} rows={4} placeholder="I hereby declare that the information provided is true and accurate to the best of my knowledge…" className={cn(inputCls, "resize-none text-sm")} />;
+        return (
+          <RichTextArea
+            value={cv.declaration ?? ""}
+            onChange={(v) => setCv((p) => ({ ...p, declaration: v }))}
+            placeholder="I hereby declare that the information provided is true and accurate to the best of my knowledge…"
+            minRows={4}
+          />
+        );
 
       case "custom":
         return (
@@ -1251,7 +1425,7 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
                       <div><label className={labelCls}>Subtitle</label><input value={entry.subtitle ?? ""} onChange={(e) => updateCustomEntry(cs.id, entry.id, { subtitle: e.target.value })} placeholder="e.g. Organisation" className={cn(inputCls, "text-xs py-1.5")} /></div>
                       <div><label className={labelCls}>From</label><MonthYearPicker value={entry.from ?? ""} onChange={(v) => updateCustomEntry(cs.id, entry.id, { from: v })} /></div>
                       <div><label className={labelCls}>To</label><MonthYearPicker value={entry.to ?? ""} onChange={(v) => updateCustomEntry(cs.id, entry.id, { to: v })} /></div>
-                      <div className="col-span-2"><label className={labelCls}>Description</label><textarea value={entry.description ?? ""} onChange={(e) => updateCustomEntry(cs.id, entry.id, { description: e.target.value })} rows={2} placeholder="Details…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
+                      <div className="col-span-2"><label className={labelCls}>Description</label><RichTextArea value={entry.description ?? ""} onChange={(v) => updateCustomEntry(cs.id, entry.id, { description: v })} placeholder="Details…" minRows={2} /></div>
                     </div>
                   </div>
                 ))}
@@ -1310,7 +1484,7 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
             </SectionRow>
           ))}
 
-          <AddContentButton addedSections={addedSections} onAdd={addSection} />
+          <AddContentButton addedSections={addedSections} onAdd={addSection} onUploadResume={uploadResume} />
         </div>
 
         <div className="lg:sticky lg:top-24 lg:self-start">
