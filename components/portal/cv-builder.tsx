@@ -115,6 +115,34 @@ const inputCls =
   "focus:border-primary/40 transition-colors";
 const labelCls = "block text-[11px] font-medium text-muted-foreground mb-1";
 
+// ─── Shared: fixed-position dropdown hook ────────────────────────────────────
+// Positions a dropdown using fixed coords derived from the trigger element,
+// so it breaks out of every overflow/scroll container.
+
+type DropPos = { top: number; left: number; width: number };
+
+function useFixedDropdown(open: boolean, triggerRef: React.RefObject<HTMLElement>) {
+  const [pos, setPos] = useState<DropPos>({ top: 0, left: 0, width: 0 });
+
+  useEffect(() => {
+    if (!open || !triggerRef.current) return;
+    function recalc() {
+      if (!triggerRef.current) return;
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    recalc();
+    window.addEventListener("scroll", recalc, true);
+    window.addEventListener("resize", recalc);
+    return () => {
+      window.removeEventListener("scroll", recalc, true);
+      window.removeEventListener("resize", recalc);
+    };
+  }, [open, triggerRef]);
+
+  return pos;
+}
+
 // ─── Proficiency Select ───────────────────────────────────────────────────────
 
 function ProficiencySelect({ value, onChange }: {
@@ -122,20 +150,27 @@ function ProficiencySelect({ value, onChange }: {
   onChange: (v: CVLanguage["proficiency"]) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropRef    = useRef<HTMLDivElement>(null);
+  const pos = useFixedDropdown(open, triggerRef as React.RefObject<HTMLElement>);
 
   useEffect(() => {
     if (!open) return;
-    function down(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function down(e: MouseEvent) {
+      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (dropRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    }
     document.addEventListener("mousedown", down);
     return () => document.removeEventListener("mousedown", down);
   }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
+    <div className="relative">
       <button
+        ref={triggerRef}
         type="button"
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen((o) => !o)}
         className={cn(inputCls, "text-xs py-1.5 flex items-center justify-between text-left cursor-pointer")}
       >
         <span className="text-foreground">{value}</span>
@@ -143,17 +178,15 @@ function ProficiencySelect({ value, onChange }: {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl overflow-hidden">
+        <div
+          ref={dropRef}
+          style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width, zIndex: 9999 }}
+          className="rounded-xl border border-border/60 bg-card shadow-xl overflow-hidden"
+        >
           {PROFICIENCY_LEVELS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              onClick={() => { onChange(p); setOpen(false); }}
-              className={cn(
-                "w-full px-3 py-2 text-xs text-left transition-colors hover:bg-primary/10",
-                value === p ? "bg-primary/15 text-primary font-semibold" : "text-foreground"
-              )}
-            >
+            <button key={p} type="button" onClick={() => { onChange(p); setOpen(false); }}
+              className={cn("w-full px-3 py-2.5 text-sm text-left transition-colors hover:bg-primary/10",
+                value === p ? "bg-primary/15 text-primary font-semibold" : "text-foreground")}>
               {p}
             </button>
           ))}
@@ -171,7 +204,9 @@ function MonthYearPicker({ value, onChange, placeholder }: {
   const [open, setOpen]         = useState(false);
   const [selMonth, setSelMonth] = useState(new Date().getMonth() + 1);
   const [selYear,  setSelYear]  = useState(new Date().getFullYear());
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropRef    = useRef<HTMLDivElement>(null);
+  const pos = useFixedDropdown(open, triggerRef as React.RefObject<HTMLElement>);
 
   function parseValue() {
     const m = value?.match(/([A-Za-z]+)\s+(\d{4})/);
@@ -191,24 +226,30 @@ function MonthYearPicker({ value, onChange, placeholder }: {
 
   useEffect(() => {
     if (!open) return;
-    function down(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function down(e: MouseEvent) {
+      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (dropRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    }
     document.addEventListener("mousedown", down);
     return () => document.removeEventListener("mousedown", down);
   }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
-      <div className="flex items-center gap-1.5">
-        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? "e.g. Jan 2020"}
-          className={cn(inputCls, "text-xs py-1.5")} />
-        <button type="button" onClick={handleOpen}
-          className="shrink-0 rounded-lg border border-border/60 bg-muted/30 p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-          <CalendarDays className="h-3.5 w-3.5" />
-        </button>
-      </div>
+    <div className="flex items-center gap-1.5">
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? "e.g. Jan 2020"}
+        className={cn(inputCls, "text-xs py-1.5")} />
+      <button ref={triggerRef} type="button" onClick={handleOpen}
+        className="shrink-0 rounded-lg border border-border/60 bg-muted/30 p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+        <CalendarDays className="h-3.5 w-3.5" />
+      </button>
+
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 rounded-xl border border-border bg-card shadow-xl p-3 w-52">
-          {/* Month grid */}
+        <div
+          ref={dropRef}
+          style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="rounded-xl border border-border bg-card shadow-2xl p-3 w-52"
+        >
           <div className="grid grid-cols-4 gap-1 mb-3">
             {MONTHS.map((m, i) => (
               <button key={m} type="button" onClick={() => setSelMonth(i + 1)}
@@ -218,7 +259,6 @@ function MonthYearPicker({ value, onChange, placeholder }: {
               </button>
             ))}
           </div>
-          {/* Year */}
           <div className="flex items-center gap-2 mb-3">
             <button type="button" onClick={() => setSelYear((y) => y - 1)}
               className="rounded-lg px-2 py-1 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors text-base leading-none">‹</button>
@@ -242,34 +282,43 @@ function YearPicker({ value, onChange, placeholder }: {
   value: string; onChange: (v: string) => void; placeholder?: string;
 }) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const dropRef    = useRef<HTMLDivElement>(null);
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1950 + 6 }, (_, i) => currentYear + 5 - i);
+  const pos = useFixedDropdown(open, triggerRef as React.RefObject<HTMLElement>);
 
   useEffect(() => {
     if (!open) return;
-    function down(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    function down(e: MouseEvent) {
+      if (triggerRef.current?.contains(e.target as Node)) return;
+      if (dropRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    }
     document.addEventListener("mousedown", down);
     return () => document.removeEventListener("mousedown", down);
   }, [open]);
 
   return (
-    <div className="relative" ref={ref}>
-      <div className="flex items-center gap-1.5">
-        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? "Year"}
-          className={cn(inputCls, "text-xs py-1.5")} />
-        <button type="button" onClick={() => setOpen(!open)}
-          className="shrink-0 rounded-lg border border-border/60 bg-muted/30 p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-          <CalendarDays className="h-3.5 w-3.5" />
-        </button>
-      </div>
+    <div className="flex items-center gap-1.5">
+      <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? "Year"}
+        className={cn(inputCls, "text-xs py-1.5")} />
+      <button ref={triggerRef} type="button" onClick={() => setOpen((o) => !o)}
+        className="shrink-0 rounded-lg border border-border/60 bg-muted/30 p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+        <CalendarDays className="h-3.5 w-3.5" />
+      </button>
+
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-50 rounded-xl border border-border bg-card shadow-xl overflow-hidden w-32">
+        <div
+          ref={dropRef}
+          style={{ position: "fixed", top: pos.top, left: pos.left, zIndex: 9999 }}
+          className="rounded-xl border border-border bg-card shadow-2xl overflow-hidden w-32"
+        >
           <div className="max-h-52 overflow-y-auto">
             {years.map((y) => (
               <button key={y} type="button"
                 onClick={() => { onChange(String(y)); setOpen(false); }}
-                className={cn("w-full px-3 py-1.5 text-sm text-left transition-colors hover:bg-muted/60",
+                className={cn("w-full px-3 py-2 text-sm text-left transition-colors hover:bg-muted/60",
                   String(y) === value ? "bg-primary/10 text-primary font-semibold" : "text-foreground")}>
                 {y}
               </button>
