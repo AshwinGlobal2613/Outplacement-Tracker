@@ -115,6 +115,54 @@ const inputCls =
   "focus:border-primary/40 transition-colors";
 const labelCls = "block text-[11px] font-medium text-muted-foreground mb-1";
 
+// ─── Proficiency Select ───────────────────────────────────────────────────────
+
+function ProficiencySelect({ value, onChange }: {
+  value: CVLanguage["proficiency"];
+  onChange: (v: CVLanguage["proficiency"]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function down(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", down);
+    return () => document.removeEventListener("mousedown", down);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className={cn(inputCls, "text-xs py-1.5 flex items-center justify-between text-left cursor-pointer")}
+      >
+        <span className="text-foreground">{value}</span>
+        <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground transition-transform", open && "rotate-180")} />
+      </button>
+
+      {open && (
+        <div className="absolute top-full left-0 right-0 mt-1 z-20 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl overflow-hidden">
+          {PROFICIENCY_LEVELS.map((p) => (
+            <button
+              key={p}
+              type="button"
+              onClick={() => { onChange(p); setOpen(false); }}
+              className={cn(
+                "w-full px-3 py-2 text-xs text-left transition-colors hover:bg-primary/10",
+                value === p ? "bg-primary/15 text-primary font-semibold" : "text-foreground"
+              )}
+            >
+              {p}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Month/Year Picker ────────────────────────────────────────────────────────
 
 function MonthYearPicker({ value, onChange, placeholder }: {
@@ -993,10 +1041,10 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
                   </div>
                   <div>
                     <label className={labelCls}>Proficiency</label>
-                    <select value={l.proficiency} onChange={(e) => langH.update(l.id, { proficiency: e.target.value as CVLanguage["proficiency"] })}
-                      className={cn(inputCls, "text-xs py-1.5")}>
-                      {PROFICIENCY_LEVELS.map((p) => <option key={p} value={p}>{p}</option>)}
-                    </select>
+                    <ProficiencySelect
+                      value={l.proficiency}
+                      onChange={(v) => langH.update(l.id, { proficiency: v })}
+                    />
                   </div>
                 </div>
               </EntryCard>
