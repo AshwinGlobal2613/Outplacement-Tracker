@@ -143,7 +143,7 @@ function ProficiencySelect({ value, onChange }: {
       </button>
 
       {open && (
-        <div className="absolute top-full left-0 right-0 mt-1 z-20 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl overflow-hidden">
+        <div className="absolute top-full left-0 right-0 mt-1 z-50 rounded-xl border border-border/60 bg-card/95 backdrop-blur-sm shadow-xl overflow-hidden">
           {PROFICIENCY_LEVELS.map((p) => (
             <button
               key={p}
@@ -207,7 +207,7 @@ function MonthYearPicker({ value, onChange, placeholder }: {
         </button>
       </div>
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-30 rounded-xl border border-border bg-card shadow-xl p-3 w-52">
+        <div className="absolute top-full left-0 mt-1 z-50 rounded-xl border border-border bg-card shadow-xl p-3 w-52">
           {/* Month grid */}
           <div className="grid grid-cols-4 gap-1 mb-3">
             {MONTHS.map((m, i) => (
@@ -264,7 +264,7 @@ function YearPicker({ value, onChange, placeholder }: {
         </button>
       </div>
       {open && (
-        <div className="absolute top-full left-0 mt-1 z-30 rounded-xl border border-border bg-card shadow-xl overflow-hidden w-32">
+        <div className="absolute top-full left-0 mt-1 z-50 rounded-xl border border-border bg-card shadow-xl overflow-hidden w-32">
           <div className="max-h-52 overflow-y-auto">
             {years.map((y) => (
               <button key={y} type="button"
@@ -461,7 +461,7 @@ function SectionRow({ sectionId, isOpen, isHidden, onToggle, onToggleVisibility,
   const Icon = def?.icon ?? AlignLeft;
   return (
     <div onDragOver={onDragOver} onDrop={onDrop}
-      className={cn("rounded-2xl border bg-card overflow-hidden shadow-sm transition-all",
+      className={cn("rounded-2xl border bg-card shadow-sm transition-all",
         isDraggingOver ? "border-primary/50 bg-primary/5 shadow-md -translate-y-0.5" : "border-border/60 hover:border-border",
         isHidden && "opacity-60")}>
       <div className="flex items-center gap-3 px-4 py-3">
