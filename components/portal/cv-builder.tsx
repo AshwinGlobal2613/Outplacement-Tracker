@@ -5,15 +5,15 @@ import {
   Save, Printer, Plus, X, GripVertical, Loader2,
   ChevronDown, ChevronUp, Eye, EyeOff, Sparkles, Download,
   Mail, Phone, MapPin, Globe, Briefcase, GraduationCap,
-  Zap, Award, AlignLeft, Camera, Palette,
-  Heart, FolderOpen, BookOpen, Trophy, Building2,
+  Zap, Award, AlignLeft, Camera, Palette, CalendarDays,
+  Heart, FolderOpen, BookOpen, Trophy,
   FileText, UserCheck, PenLine, Puzzle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   CVProfile, CVExperience, CVEducation, CVCertification, CVStyle, CVContact,
-  CVProject, CVCourse, CVAward, CVOrganisation, CVPublication, CVReference,
-  CVCustomSection,
+  CVLanguage, CVProject, CVCourse, CVAward,
+  CVPublication, CVReference, CVCustomSection, CVCustomEntry,
 } from "@/lib/types";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -26,29 +26,27 @@ const FONT_OPTIONS = [
 ];
 
 const ACCENT_PRESETS = [
-  "#e11d48", "#2563eb", "#16a34a", "#7c3aed",
-  "#ea580c", "#0891b2", "#1d4ed8", "#374151",
+  "#e11d48","#2563eb","#16a34a","#7c3aed",
+  "#ea580c","#0891b2","#1d4ed8","#374151",
 ];
 
-const ALL_SECTIONS: {
-  id: string; label: string; icon: React.ElementType; description: string; dashed?: boolean;
-}[] = [
-  { id: "summary",        label: "Professional Summary",  icon: AlignLeft,     description: "Add a brief overview of your professional background and key strengths." },
-  { id: "experience",     label: "Professional Experience",icon: Briefcase,     description: "Add your professional roles and employer history including internships." },
-  { id: "education",      label: "Education",             icon: GraduationCap, description: "Add your degrees and schools. Include your focus, honours, or exchange terms." },
-  { id: "skills",         label: "Skills",                icon: Zap,           description: "Add your hard and soft skills that help you stand out from the crowd." },
-  { id: "languages",      label: "Languages",             icon: Globe,         description: "Add your languages and proficiency level to show your communication range." },
-  { id: "certifications", label: "Certificates",          icon: Award,         description: "Add your industry certificates or licences. Include issuer and date earned." },
-  { id: "interests",      label: "Interests",             icon: Heart,         description: "Add relevant personal interests that support your career story and cultural fit." },
-  { id: "projects",       label: "Projects",              icon: FolderOpen,    description: "Add key projects you participated in and highlight your challenges, role, and impact." },
-  { id: "courses",        label: "Courses",               icon: BookOpen,      description: "Add online or in-person courses and trainings you joined and completed." },
-  { id: "awards",         label: "Awards",                icon: Trophy,        description: "Add your awards and recognitions from industry, competitions, or academia." },
-  { id: "organisations",  label: "Organisations",         icon: Building2,     description: "Add your memberships or volunteering with organisations including your role." },
-  { id: "publications",   label: "Publications",          icon: FileText,      description: "Add publications, articles, or books you wrote or contributed to." },
-  { id: "references",     label: "References",            icon: UserCheck,     description: "Add your references from managers or coworkers, including their contact details." },
-  { id: "declaration",    label: "Declaration",           icon: PenLine,       description: "Add your declaration by creating or uploading your personal signature." },
-  { id: "linkedin",       label: "LinkedIn About",        icon: Sparkles,      description: "Craft a compelling LinkedIn About section to complement your CV." },
-  { id: "custom",         label: "Custom",                icon: Puzzle,        description: "Add a custom section for anything else, or combine sections cleanly.", dashed: true },
+const PROFICIENCY_LEVELS = ["Native","Fluent","Advanced","Intermediate","Basic"] as const;
+
+const ALL_SECTIONS: { id: string; label: string; icon: React.ElementType; description: string; dashed?: boolean }[] = [
+  { id: "summary",        label: "Professional Summary",   icon: AlignLeft,     description: "A brief overview of your professional background and key strengths." },
+  { id: "experience",     label: "Professional Experience", icon: Briefcase,     description: "Your professional roles and employer history including internships." },
+  { id: "education",      label: "Education",              icon: GraduationCap, description: "Degrees and schools — include your focus, honours, or exchange terms." },
+  { id: "skills",         label: "Skills",                 icon: Zap,           description: "Hard and soft skills that help you stand out from the crowd." },
+  { id: "languages",      label: "Languages",              icon: Globe,         description: "Languages and proficiency level to show your communication range." },
+  { id: "certifications", label: "Certificates",           icon: Award,         description: "Industry certificates or licences — include issuer and date earned." },
+  { id: "interests",      label: "Interests",              icon: Heart,         description: "Personal interests that support your career story and cultural fit." },
+  { id: "projects",       label: "Projects",               icon: FolderOpen,    description: "Key projects you participated in — highlight your role and impact." },
+  { id: "courses",        label: "Courses",                icon: BookOpen,      description: "Online or in-person courses and trainings you completed." },
+  { id: "awards",         label: "Awards",                 icon: Trophy,        description: "Awards and recognitions from industry, competitions, or academia." },
+  { id: "publications",   label: "Publications",           icon: FileText,      description: "Publications, articles, or books you wrote or contributed to." },
+  { id: "references",     label: "References",             icon: UserCheck,     description: "References from managers or coworkers, including contact details." },
+  { id: "declaration",    label: "Declaration",            icon: PenLine,       description: "A personal declaration statement for your CV." },
+  { id: "custom",         label: "Custom",                 icon: Puzzle,        description: "A fully custom section for anything else — add dates, titles, and more.", dashed: true },
 ];
 
 const DEFAULT_STYLE: CVStyle = {
@@ -63,38 +61,177 @@ const EMPTY_CV: CVProfile = {
   skills: [], languages: [], certifications: [],
   experience: [], education: [],
   interests: [], projects: [], courses: [], awards: [],
-  organisations: [], publications: [], references: [],
+  publications: [], references: [],
   declaration: "", customSections: [],
-  sectionOrder: [],
-  style:   DEFAULT_STYLE,
-  contact: {},
+  sectionOrder: [], style: DEFAULT_STYLE, contact: {},
 };
 
 const FONT_SIZE_PX: Record<string, number> = { sm: 12.5, md: 13.5, lg: 15 };
 const SPACING_GAP: Record<string, number>  = { compact: 10, normal: 18, relaxed: 28 };
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
 function uid() { return `cv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`; }
 
+// Migrate old string[] languages from existing saved CVs
+function migrateLangs(raw: unknown): CVLanguage[] {
+  if (!Array.isArray(raw) || !raw.length) return [];
+  if (typeof raw[0] === "string") return (raw as string[]).map((n) => ({ id: uid(), name: n, proficiency: "Fluent" as const }));
+  return raw as CVLanguage[];
+}
+
+// Migrate old CVCustomSection format (title + content string)
+function migrateCustom(raw: unknown): CVCustomSection[] {
+  if (!Array.isArray(raw) || !raw.length) return [];
+  return (raw as CVCustomSection[]).map((s) => {
+    if (Array.isArray(s.entries)) return s; // already new format
+    const old = s as unknown as { id: string; title: string; content: string };
+    return {
+      id: old.id ?? uid(),
+      sectionTitle: old.title ?? "Custom Section",
+      entries: old.content ? [{ id: uid(), description: old.content }] : [],
+    };
+  });
+}
+
 const newExp    = (): CVExperience    => ({ id: uid(), company: "", role: "", from: "", to: "", current: false, description: "", bullets: [""] });
-const newEdu    = (): CVEducation     => ({ id: uid(), institution: "", degree: "", field: "", from: "", to: "" });
+const newEdu    = (): CVEducation     => ({ id: uid(), institution: "", degree: "", field: "", from: "", to: "", description: "" });
 const newCert   = (): CVCertification => ({ id: uid(), name: "", issuer: "", date: "" });
+const newLang   = (): CVLanguage      => ({ id: uid(), name: "", proficiency: "Fluent" });
 const newProj   = (): CVProject       => ({ id: uid(), title: "", description: "", link: "", from: "", to: "" });
 const newCourse = (): CVCourse        => ({ id: uid(), name: "", provider: "", date: "", link: "" });
 const newAward  = (): CVAward         => ({ id: uid(), title: "", issuer: "", date: "", description: "" });
-const newOrg    = (): CVOrganisation  => ({ id: uid(), name: "", role: "", from: "", to: "", description: "" });
 const newPub    = (): CVPublication   => ({ id: uid(), title: "", publisher: "", date: "", link: "", description: "" });
 const newRef    = (): CVReference     => ({ id: uid(), name: "", jobTitle: "", company: "", email: "", phone: "" });
-const newCustom = (): CVCustomSection => ({ id: uid(), title: "Custom Section", content: "" });
+const newCustomSection = (): CVCustomSection => ({ id: uid(), sectionTitle: "Custom Section", entries: [] });
+const newCustomEntry   = (): CVCustomEntry   => ({ id: uid(), title: "", subtitle: "", from: "", to: "", description: "" });
 
-// ─── Shared field styles ──────────────────────────────────────────────────────
+// ─── Shared styles ────────────────────────────────────────────────────────────
 
 const inputCls =
   "w-full rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-sm text-foreground " +
   "placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-primary/30 " +
   "focus:border-primary/40 transition-colors";
 const labelCls = "block text-[11px] font-medium text-muted-foreground mb-1";
+
+// ─── Month/Year Picker ────────────────────────────────────────────────────────
+
+function MonthYearPicker({ value, onChange, placeholder }: {
+  value: string; onChange: (v: string) => void; placeholder?: string;
+}) {
+  const [open, setOpen]         = useState(false);
+  const [selMonth, setSelMonth] = useState(new Date().getMonth() + 1);
+  const [selYear,  setSelYear]  = useState(new Date().getFullYear());
+  const ref = useRef<HTMLDivElement>(null);
+
+  function parseValue() {
+    const m = value?.match(/([A-Za-z]+)\s+(\d{4})/);
+    if (m) {
+      const idx = MONTHS.findIndex((mo) => mo.toLowerCase() === m[1].toLowerCase().slice(0, 3));
+      return { month: idx + 1 || 1, year: parseInt(m[2]) };
+    }
+    return { month: new Date().getMonth() + 1, year: new Date().getFullYear() };
+  }
+
+  function handleOpen() {
+    const { month, year } = parseValue();
+    setSelMonth(month);
+    setSelYear(year);
+    setOpen(true);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function down(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", down);
+    return () => document.removeEventListener("mousedown", down);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <div className="flex items-center gap-1.5">
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? "e.g. Jan 2020"}
+          className={cn(inputCls, "text-xs py-1.5")} />
+        <button type="button" onClick={handleOpen}
+          className="shrink-0 rounded-lg border border-border/60 bg-muted/30 p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+          <CalendarDays className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-30 rounded-xl border border-border bg-card shadow-xl p-3 w-52">
+          {/* Month grid */}
+          <div className="grid grid-cols-4 gap-1 mb-3">
+            {MONTHS.map((m, i) => (
+              <button key={m} type="button" onClick={() => setSelMonth(i + 1)}
+                className={cn("rounded-lg py-1.5 text-xs font-medium transition-colors",
+                  selMonth === i + 1 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/60 hover:text-foreground")}>
+                {m}
+              </button>
+            ))}
+          </div>
+          {/* Year */}
+          <div className="flex items-center gap-2 mb-3">
+            <button type="button" onClick={() => setSelYear((y) => y - 1)}
+              className="rounded-lg px-2 py-1 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors text-base leading-none">‹</button>
+            <span className="flex-1 text-center text-sm font-semibold text-foreground">{selYear}</span>
+            <button type="button" onClick={() => setSelYear((y) => y + 1)}
+              className="rounded-lg px-2 py-1 text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors text-base leading-none">›</button>
+          </div>
+          <button type="button" onClick={() => { onChange(`${MONTHS[selMonth - 1]} ${selYear}`); setOpen(false); }}
+            className="w-full rounded-lg bg-primary py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 transition-opacity">
+            Select
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Year Picker ──────────────────────────────────────────────────────────────
+
+function YearPicker({ value, onChange, placeholder }: {
+  value: string; onChange: (v: string) => void; placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1950 + 6 }, (_, i) => currentYear + 5 - i);
+
+  useEffect(() => {
+    if (!open) return;
+    function down(e: MouseEvent) { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); }
+    document.addEventListener("mousedown", down);
+    return () => document.removeEventListener("mousedown", down);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <div className="flex items-center gap-1.5">
+        <input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder ?? "Year"}
+          className={cn(inputCls, "text-xs py-1.5")} />
+        <button type="button" onClick={() => setOpen(!open)}
+          className="shrink-0 rounded-lg border border-border/60 bg-muted/30 p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+          <CalendarDays className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-30 rounded-xl border border-border bg-card shadow-xl overflow-hidden w-32">
+          <div className="max-h-52 overflow-y-auto">
+            {years.map((y) => (
+              <button key={y} type="button"
+                onClick={() => { onChange(String(y)); setOpen(false); }}
+                className={cn("w-full px-3 py-1.5 text-sm text-left transition-colors hover:bg-muted/60",
+                  String(y) === value ? "bg-primary/10 text-primary font-semibold" : "text-foreground")}>
+                {y}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Bullet List Input ────────────────────────────────────────────────────────
 
@@ -116,7 +253,7 @@ function BulletListInput({ bullets = [""], onChange }: { bullets?: string[]; onC
           <input ref={(el) => { refs.current[i] = el; }} value={b}
             onChange={(e) => update(i, e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(i); } if (e.key === "Backspace" && b === "" && bullets.length > 1) { e.preventDefault(); del(i); } }}
-            placeholder="Achievement or responsibility… (Enter for new line)"
+            placeholder="Achievement or responsibility…"
             className={cn(inputCls, "text-xs py-1.5")} />
           <button onClick={() => del(i)} className="text-muted-foreground/30 hover:text-rose-400 transition-colors"><X className="h-3.5 w-3.5" /></button>
         </div>
@@ -140,16 +277,13 @@ function ChipInput({ chips, placeholder, onChange }: { chips: string[]; placehol
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           placeholder={placeholder} className={cn(inputCls, "text-xs py-1.5")} />
         <button onClick={add} disabled={!input.trim()}
-          className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-40 transition-colors">
-          Add
-        </button>
+          className="rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-40 transition-colors">Add</button>
       </div>
       {chips.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {chips.map((c) => (
             <span key={c} className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-2.5 py-0.5 text-xs text-foreground">
-              {c}
-              <button onClick={() => onChange(chips.filter((x) => x !== c))} className="text-muted-foreground/40 hover:text-rose-400 transition-colors"><X className="h-2.5 w-2.5" /></button>
+              {c}<button onClick={() => onChange(chips.filter((x) => x !== c))} className="text-muted-foreground/40 hover:text-rose-400 transition-colors"><X className="h-2.5 w-2.5" /></button>
             </span>
           ))}
         </div>
@@ -190,8 +324,7 @@ function PersonalInfoCard({ name, headline, contact, accentColor, onHeadlineChan
           ] as { icon: React.ElementType; key: string; ph: string }[]).map(({ icon: Icon, key, ph }) => (
             <div key={key} className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/30 px-3 py-1.5 focus-within:ring-2 focus-within:ring-primary/30 transition-colors">
               <Icon className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-              <input value={(contact as Record<string, string>)[key] ?? ""}
-                onChange={(e) => onContactChange({ ...contact, [key]: e.target.value })}
+              <input value={(contact as Record<string, string>)[key] ?? ""} onChange={(e) => onContactChange({ ...contact, [key]: e.target.value })}
                 placeholder={ph} className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none" />
             </div>
           ))}
@@ -245,7 +378,7 @@ function AppearancePanel({ currentStyle, onStyleChange }: { currentStyle: CVStyl
                 {(["sm","md","lg"] as const).map((s) => (
                   <button key={s} onClick={() => onStyleChange({ fontSize: s })}
                     className={cn("flex-1 py-1.5 text-xs font-medium transition-colors", currentStyle.fontSize === s ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted/40")}>
-                    {s === "sm" ? "S" : s === "md" ? "M" : "L"}
+                    {s==="sm"?"S":s==="md"?"M":"L"}
                   </button>
                 ))}
               </div>
@@ -268,14 +401,13 @@ function AppearancePanel({ currentStyle, onStyleChange }: { currentStyle: CVStyl
   );
 }
 
-// ─── Section Editor Row ───────────────────────────────────────────────────────
+// ─── Section Row ──────────────────────────────────────────────────────────────
 
 function SectionRow({ sectionId, isOpen, isHidden, onToggle, onToggleVisibility, onRemove, onDragStart, onDragOver, onDrop, onDragEnd, isDraggingOver, children }: {
   sectionId: string; isOpen: boolean; isHidden: boolean;
   onToggle: () => void; onToggleVisibility: () => void; onRemove: () => void;
   onDragStart: () => void; onDragOver: (e: React.DragEvent) => void;
-  onDrop: () => void; onDragEnd: () => void; isDraggingOver: boolean;
-  children: React.ReactNode;
+  onDrop: () => void; onDragEnd: () => void; isDraggingOver: boolean; children: React.ReactNode;
 }) {
   const def  = ALL_SECTIONS.find((s) => s.id === sectionId);
   const Icon = def?.icon ?? AlignLeft;
@@ -334,12 +466,8 @@ function AddContentModal({ addedSections, onAdd, onClose }: {
                 const Icon = s.icon;
                 return (
                   <button key={s.id} onClick={() => { onAdd(s.id); onClose(); }}
-                    className={cn(
-                      "flex flex-col items-start gap-2 rounded-xl p-4 text-left hover:bg-gray-100 hover:shadow-sm transition-all",
-                      s.dashed
-                        ? "border-2 border-dashed border-gray-300 bg-gray-50 hover:border-gray-400"
-                        : "border border-gray-200 bg-gray-50 hover:border-gray-300"
-                    )}>
+                    className={cn("flex flex-col items-start gap-2 rounded-xl p-4 text-left hover:bg-gray-100 hover:shadow-sm transition-all",
+                      s.dashed ? "border-2 border-dashed border-gray-300 bg-gray-50 hover:border-gray-400" : "border border-gray-200 bg-gray-50 hover:border-gray-300")}>
                     <Icon className="h-5 w-5 text-gray-600" />
                     <p className="font-bold text-gray-900 text-sm leading-tight">{s.label}</p>
                     <p className="text-xs text-gray-500 leading-relaxed">{s.description}</p>
@@ -348,7 +476,7 @@ function AddContentModal({ addedSections, onAdd, onClose }: {
               })}
             </div>
           ) : (
-            <p className="py-12 text-center text-sm text-gray-500">All available sections have been added to your CV.</p>
+            <p className="py-12 text-center text-sm text-gray-500">All available sections have been added.</p>
           )}
         </div>
       </div>
@@ -380,13 +508,13 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
   const ff     = style.fontFamily;
   const basePx = FONT_SIZE_PX[style.fontSize ?? "md"];
   const gap    = SPACING_GAP[style.spacing ?? "normal"];
-  const visibleSections = addedSections.filter((id) => id !== "linkedin" && !hiddenFromPreview.has(id));
+  const visible = addedSections.filter((id) => !hiddenFromPreview.has(id));
   const contact = cv.contact ?? {};
 
   const px = (n: number) => `${n}px`;
   const em = (n: number) => `${(n / basePx).toFixed(3)}em`;
 
-  function SectionHeading({ title }: { title: string }) {
+  function SH({ title }: { title: string }) {
     return (
       <div style={{ marginBottom: px(gap * 0.5) }}>
         <p style={{ fontSize: em(basePx * 0.72), fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: accent, marginBottom: "4px" }}>{title}</p>
@@ -394,7 +522,6 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
       </div>
     );
   }
-
   const chip = (label: string) => (
     <span key={label} style={{ padding: "3px 10px", borderRadius: "999px", border: `1px solid ${accent}40`, backgroundColor: `${accent}0d`, fontSize: em(basePx * 0.88), color: "#374151" }}>{label}</span>
   );
@@ -403,18 +530,13 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
     switch (id) {
       case "summary":
         if (!cv.summary) return null;
-        return (
-          <div key="summary" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Professional Summary" />
-            <p style={{ fontSize: em(basePx), lineHeight: 1.6, color: "#374151", whiteSpace: "pre-line" }}>{cv.summary}</p>
-          </div>
-        );
+        return <div key="summary" style={{ marginBottom: px(gap) }}><SH title="Professional Summary" /><p style={{ fontSize: em(basePx), lineHeight: 1.6, color: "#374151", whiteSpace: "pre-line" }}>{cv.summary}</p></div>;
 
       case "experience":
         if (!cv.experience?.length) return null;
         return (
           <div key="experience" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Professional Experience" />
+            <SH title="Professional Experience" />
             <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.8) }}>
               {cv.experience.map((exp) => {
                 const bullets = exp.bullets?.filter(Boolean) ?? [];
@@ -437,7 +559,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
                         ))}
                       </ul>
                     )}
-                    {!bullets.length && exp.description && <p style={{ marginTop: "4px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6, whiteSpace: "pre-line" }}>{exp.description}</p>}
+                    {!bullets.length && exp.description && <p style={{ marginTop: "4px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{exp.description}</p>}
                   </div>
                 );
               })}
@@ -449,15 +571,18 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         if (!cv.education?.length) return null;
         return (
           <div key="education" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Education" />
+            <SH title="Education" />
             <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.6) }}>
-              {cv.education.map((edu) => (
-                <div key={edu.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                  <div>
-                    <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{edu.degree || "Degree"}{edu.field ? ` in ${edu.field}` : ""}</p>
-                    {edu.institution && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{edu.institution}</p>}
+              {cv.education.map((e) => (
+                <div key={e.id}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{e.degree || "Degree"}{e.field ? ` in ${e.field}` : ""}</p>
+                      {e.institution && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{e.institution}</p>}
+                    </div>
+                    {(e.from || e.to) && <p style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", whiteSpace: "nowrap", marginTop: "2px" }}>{e.from}{e.to ? ` – ${e.to}` : ""}</p>}
                   </div>
-                  {(edu.from || edu.to) && <p style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", whiteSpace: "nowrap", marginTop: "2px" }}>{edu.from}{edu.to ? ` – ${edu.to}` : ""}</p>}
+                  {e.description && <p style={{ marginTop: "4px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{e.description}</p>}
                 </div>
               ))}
             </div>
@@ -466,19 +591,21 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
       case "skills":
         if (!cv.skills?.length) return null;
-        return (
-          <div key="skills" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Skills" />
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>{cv.skills.map(chip)}</div>
-          </div>
-        );
+        return <div key="skills" style={{ marginBottom: px(gap) }}><SH title="Skills" /><div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>{cv.skills.map(chip)}</div></div>;
 
       case "languages":
         if (!cv.languages?.length) return null;
         return (
           <div key="languages" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Languages" />
-            <p style={{ fontSize: em(basePx), color: "#374151" }}>{cv.languages.join(" · ")}</p>
+            <SH title="Languages" />
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {(cv.languages as CVLanguage[]).map((l) => (
+                <span key={l.id} style={{ fontSize: em(basePx), color: "#374151" }}>
+                  <span style={{ fontWeight: 600, color: "#111827" }}>{l.name}</span>
+                  {l.proficiency && <span style={{ color: "#9ca3af" }}> · {l.proficiency}</span>}
+                </span>
+              ))}
+            </div>
           </div>
         );
 
@@ -486,7 +613,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         if (!cv.certifications?.length) return null;
         return (
           <div key="certifications" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Certificates" />
+            <SH title="Certificates" />
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               {cv.certifications.map((c) => (
                 <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
@@ -503,18 +630,13 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
       case "interests":
         if (!cv.interests?.length) return null;
-        return (
-          <div key="interests" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Interests" />
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>{cv.interests.map(chip)}</div>
-          </div>
-        );
+        return <div key="interests" style={{ marginBottom: px(gap) }}><SH title="Interests" /><div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>{cv.interests.map(chip)}</div></div>;
 
       case "projects":
         if (!cv.projects?.length) return null;
         return (
           <div key="projects" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Projects" />
+            <SH title="Projects" />
             <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.7) }}>
               {cv.projects.map((p) => (
                 <div key={p.id}>
@@ -523,7 +645,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
                     {(p.from || p.to) && <p style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", whiteSpace: "nowrap" }}>{p.from}{p.to ? ` – ${p.to}` : ""}</p>}
                   </div>
                   {p.description && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{p.description}</p>}
-                  {p.link && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.85), color: accent }}>{p.link}</p>}
+                  {p.link && <p style={{ marginTop: "2px", fontSize: em(basePx * 0.85), color: accent }}>{p.link}</p>}
                 </div>
               ))}
             </div>
@@ -534,8 +656,8 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         if (!cv.courses?.length) return null;
         return (
           <div key="courses" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Courses" />
-            <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.5) }}>
+            <SH title="Courses" />
+            <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.4) }}>
               {cv.courses.map((c) => (
                 <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                   <div>
@@ -553,38 +675,18 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         if (!cv.awards?.length) return null;
         return (
           <div key="awards" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Awards" />
+            <SH title="Awards" />
             <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.6) }}>
               {cv.awards.map((a) => (
                 <div key={a.id}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{a.title || "Award"}</p>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{a.title || "Award"}</p>
+                      {a.issuer && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{a.issuer}</p>}
+                    </div>
                     {a.date && <span style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", flexShrink: 0 }}>{a.date}</span>}
                   </div>
-                  {a.issuer && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{a.issuer}</p>}
                   {a.description && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{a.description}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-
-      case "organisations":
-        if (!cv.organisations?.length) return null;
-        return (
-          <div key="organisations" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Organisations" />
-            <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.7) }}>
-              {cv.organisations.map((o) => (
-                <div key={o.id}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                    <div>
-                      <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{o.name || "Organisation"}</p>
-                      {o.role && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{o.role}</p>}
-                    </div>
-                    {(o.from || o.to) && <p style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", whiteSpace: "nowrap" }}>{o.from}{o.to ? ` – ${o.to}` : ""}</p>}
-                  </div>
-                  {o.description && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{o.description}</p>}
                 </div>
               ))}
             </div>
@@ -595,15 +697,17 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         if (!cv.publications?.length) return null;
         return (
           <div key="publications" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Publications" />
+            <SH title="Publications" />
             <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.6) }}>
               {cv.publications.map((p) => (
                 <div key={p.id}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{p.title || "Publication"}</p>
+                    <div>
+                      <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{p.title || "Publication"}</p>
+                      {p.publisher && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{p.publisher}</p>}
+                    </div>
                     {p.date && <span style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", flexShrink: 0 }}>{p.date}</span>}
                   </div>
-                  {p.publisher && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{p.publisher}</p>}
                   {p.description && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }}>{p.description}</p>}
                 </div>
               ))}
@@ -615,13 +719,13 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         if (!cv.references?.length) return null;
         return (
           <div key="references" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="References" />
-            <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.6) }}>
+            <SH title="References" />
+            <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.5) }}>
               {cv.references.map((r) => (
                 <div key={r.id}>
                   <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{r.name || "Reference"}</p>
                   {(r.jobTitle || r.company) && <p style={{ fontSize: em(basePx * 0.9), color: "#6b7280" }}>{[r.jobTitle, r.company].filter(Boolean).join(", ")}</p>}
-                  <div style={{ display: "flex", gap: "12px", marginTop: "2px" }}>
+                  <div style={{ display: "flex", gap: "12px" }}>
                     {r.email && <span style={{ fontSize: em(basePx * 0.85), color: "#9ca3af" }}>{r.email}</span>}
                     {r.phone && <span style={{ fontSize: em(basePx * 0.85), color: "#9ca3af" }}>{r.phone}</span>}
                   </div>
@@ -633,21 +737,35 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
       case "declaration":
         if (!cv.declaration) return null;
-        return (
-          <div key="declaration" style={{ marginBottom: px(gap) }}>
-            <SectionHeading title="Declaration" />
-            <p style={{ fontSize: em(basePx), color: "#374151", lineHeight: 1.6, whiteSpace: "pre-line" }}>{cv.declaration}</p>
-          </div>
-        );
+        return <div key="declaration" style={{ marginBottom: px(gap) }}><SH title="Declaration" /><p style={{ fontSize: em(basePx), color: "#374151", lineHeight: 1.6, whiteSpace: "pre-line" }}>{cv.declaration}</p></div>;
 
       case "custom":
         if (!cv.customSections?.length) return null;
         return (
           <div key="custom">
-            {cv.customSections.map((cs) => (
+            {(cv.customSections as CVCustomSection[]).map((cs) => (
               <div key={cs.id} style={{ marginBottom: px(gap) }}>
-                <SectionHeading title={cs.title || "Custom Section"} />
-                <p style={{ fontSize: em(basePx), color: "#374151", lineHeight: 1.6, whiteSpace: "pre-line" }}>{cs.content}</p>
+                <SH title={cs.sectionTitle || "Custom Section"} />
+                <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.6) }}>
+                  {(cs.entries ?? []).map((entry) => (
+                    <div key={entry.id}>
+                      {(entry.title || entry.from || entry.to) && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                          <div>
+                            {entry.title && <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{entry.title}</p>}
+                            {entry.subtitle && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{entry.subtitle}</p>}
+                          </div>
+                          {(entry.from || entry.to) && (
+                            <p style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", whiteSpace: "nowrap" }}>
+                              {entry.from}{entry.to ? ` – ${entry.to}` : ""}
+                            </p>
+                          )}
+                        </div>
+                      )}
+                      {entry.description && <p style={{ marginTop: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6, whiteSpace: "pre-line" }}>{entry.description}</p>}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
           </div>
@@ -658,7 +776,6 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
   };
 
   const hasContact = contact.email || contact.phone || contact.location || contact.website;
-  const showLinkedIn = addedSections.includes("linkedin") && !hiddenFromPreview.has("linkedin") && !!cv.linkedinAbout;
 
   return (
     <div id="cv-preview-panel" style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#111827", minHeight: "700px", boxShadow: "0 4px 32px rgba(0,0,0,0.15)", borderRadius: "8px", overflow: "hidden" }}>
@@ -674,15 +791,21 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
           </div>
         )}
       </div>
-      <div style={{ padding: "24px 32px" }}>
-        {visibleSections.map((id) => renderSection(id))}
+      <div style={{ padding: "24px 32px" }}>{visible.map((id) => renderSection(id))}</div>
+    </div>
+  );
+}
+
+// ─── Entry Card ───────────────────────────────────────────────────────────────
+
+function EntryCard({ label, onRemove, children }: { label: string; onRemove: () => void; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-muted-foreground">{label}</p>
+        <button onClick={onRemove} className="text-muted-foreground/30 hover:text-rose-400 transition-colors"><X className="h-3.5 w-3.5" /></button>
       </div>
-      {showLinkedIn && (
-        <div style={{ borderTop: "1px dashed #e5e7eb", margin: "0 32px", padding: "18px 0" }}>
-          <p style={{ fontSize: px(basePx * 0.72), fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: accent, marginBottom: "8px" }}>LinkedIn About</p>
-          <p style={{ fontSize: px(basePx * 0.92), color: "#374151", lineHeight: 1.6, whiteSpace: "pre-line" }}>{cv.linkedinAbout}</p>
-        </div>
-      )}
+      {children}
     </div>
   );
 }
@@ -692,14 +815,21 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 export function CVBuilder({ candidateId, candidateName, initialCv }: {
   candidateId: string; candidateName: string; initialCv: CVProfile | null;
 }) {
-  const [cv,               setCv]              = useState<CVProfile>(initialCv ?? EMPTY_CV);
-  const [saving,           setSaving]          = useState(false);
-  const [saved,            setSaved]           = useState(false);
-  const [addedSections,    setAddedSections]   = useState<string[]>(() => initialCv?.sectionOrder ?? []);
-  const [hiddenFromPreview,setHiddenFromPreview] = useState<Set<string>>(new Set());
-  const [openSection,      setOpenSection]     = useState<string | null>(null);
-  const [dragItem,         setDragItem]        = useState<string | null>(null);
-  const [dragOver,         setDragOver]        = useState<string | null>(null);
+  const [cv, setCv] = useState<CVProfile>(() => {
+    if (!initialCv) return EMPTY_CV;
+    return {
+      ...initialCv,
+      languages:      migrateLangs(initialCv.languages ?? []),
+      customSections: migrateCustom(initialCv.customSections ?? []),
+    };
+  });
+  const [saving,            setSaving]           = useState(false);
+  const [saved,             setSaved]            = useState(false);
+  const [addedSections,     setAddedSections]    = useState<string[]>(() => initialCv?.sectionOrder ?? []);
+  const [hiddenFromPreview, setHiddenFromPreview]= useState<Set<string>>(new Set());
+  const [openSection,       setOpenSection]      = useState<string | null>(null);
+  const [dragItem,          setDragItem]         = useState<string | null>(null);
+  const [dragOver,          setDragOver]         = useState<string | null>(null);
 
   useEffect(() => {
     const el = document.createElement("style");
@@ -744,8 +874,7 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
     setTimeout(() => setSaved(false), 2500);
   }
 
-  // ── Array helpers ─────────────────────────────────────────────────────────────
-
+  // Generic array CRUD factory
   function listHelpers<T extends { id: string }>(key: keyof CVProfile) {
     return {
       update: (id: string, patch: Partial<T>) =>
@@ -757,69 +886,71 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
     };
   }
 
-  const exp  = listHelpers<CVExperience>("experience");
-  const edu  = listHelpers<CVEducation>("education");
-  const cert = listHelpers<CVCertification>("certifications");
-  const proj = listHelpers<CVProject>("projects");
-  const crs  = listHelpers<CVCourse>("courses");
-  const awd  = listHelpers<CVAward>("awards");
-  const org  = listHelpers<CVOrganisation>("organisations");
-  const pub  = listHelpers<CVPublication>("publications");
-  const ref  = listHelpers<CVReference>("references");
-  const cust = listHelpers<CVCustomSection>("customSections");
+  const expH  = listHelpers<CVExperience>("experience");
+  const eduH  = listHelpers<CVEducation>("education");
+  const certH = listHelpers<CVCertification>("certifications");
+  const langH = listHelpers<CVLanguage>("languages");
+  const projH = listHelpers<CVProject>("projects");
+  const crsH  = listHelpers<CVCourse>("courses");
+  const awdH  = listHelpers<CVAward>("awards");
+  const pubH  = listHelpers<CVPublication>("publications");
+  const refH  = listHelpers<CVReference>("references");
+  const custH = listHelpers<CVCustomSection>("customSections");
 
-  function generateLinkedIn() {
-    const latest = cv.experience[0];
-    const role   = latest ? `Currently ${latest.role} at ${latest.company}. ` : "";
-    const skills = cv.skills.length > 0 ? `\n\nCore skills: ${cv.skills.slice(0, 6).join(", ")}.` : "";
-    setCv((p) => ({ ...p, linkedinAbout: [cv.headline, "\n\n", cv.summary, "\n\n", role, skills].join("").trim().slice(0, 2000) }));
+  // Custom section entry helpers
+  function updateCustomEntry(sectionId: string, entryId: string, patch: Partial<CVCustomEntry>) {
+    setCv((p) => ({
+      ...p,
+      customSections: (p.customSections ?? []).map((s) =>
+        s.id === sectionId ? { ...s, entries: s.entries.map((e) => e.id === entryId ? { ...e, ...patch } : e) } : s
+      ),
+    }));
+  }
+  function removeCustomEntry(sectionId: string, entryId: string) {
+    setCv((p) => ({
+      ...p,
+      customSections: (p.customSections ?? []).map((s) =>
+        s.id === sectionId ? { ...s, entries: s.entries.filter((e) => e.id !== entryId) } : s
+      ),
+    }));
+  }
+  function addCustomEntry(sectionId: string) {
+    setCv((p) => ({
+      ...p,
+      customSections: (p.customSections ?? []).map((s) =>
+        s.id === sectionId ? { ...s, entries: [...s.entries, newCustomEntry()] } : s
+      ),
+    }));
   }
 
-  // ── Entry card wrapper ────────────────────────────────────────────────────────
-
-  function EntryCard({ label, onRemove, children }: { label: string; onRemove: () => void; children: React.ReactNode }) {
-    return (
-      <div className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
-        <div className="flex items-center justify-between">
-          <p className="text-xs font-semibold text-muted-foreground">{label}</p>
-          <button onClick={onRemove} className="text-muted-foreground/30 hover:text-rose-400 transition-colors"><X className="h-3.5 w-3.5" /></button>
-        </div>
-        {children}
-      </div>
-    );
-  }
-
-  // ── Section editor renderers ──────────────────────────────────────────────────
+  // ── Section editors ───────────────────────────────────────────────────────────
 
   function renderSectionEditor(id: string) {
     switch (id) {
+
       case "summary":
-        return (
-          <textarea value={cv.summary} onChange={(e) => setCv((p) => ({ ...p, summary: e.target.value }))}
-            rows={4} placeholder="A concise paragraph describing your career, key strengths, and what you bring to the table…"
-            className={cn(inputCls, "resize-none text-sm")} />
-        );
+        return <textarea value={cv.summary} onChange={(e) => setCv((p) => ({ ...p, summary: e.target.value }))} rows={4} placeholder="A concise paragraph describing your career, key strengths, and what you bring to the table…" className={cn(inputCls, "resize-none text-sm")} />;
 
       case "experience":
         return (
           <div className="space-y-4">
             {cv.experience.map((e, i) => (
-              <EntryCard key={e.id} label={`Position ${i + 1}`} onRemove={() => exp.remove(e.id)}>
+              <EntryCard key={e.id} label={`Position ${i + 1}`} onRemove={() => expH.remove(e.id)}>
                 <div className="grid grid-cols-2 gap-2">
-                  <div><label className={labelCls}>Job Title</label><input value={e.role} onChange={(ev) => exp.update(e.id, { role: ev.target.value })} placeholder="e.g. Product Manager" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Company</label><input value={e.company} onChange={(ev) => exp.update(e.id, { company: ev.target.value })} placeholder="e.g. Acme Corp" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>From</label><input value={e.from} onChange={(ev) => exp.update(e.id, { from: ev.target.value })} placeholder="Jan 2020" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Job Title</label><input value={e.role} onChange={(ev) => expH.update(e.id, { role: ev.target.value })} placeholder="e.g. Product Manager" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Company</label><input value={e.company} onChange={(ev) => expH.update(e.id, { company: ev.target.value })} placeholder="e.g. Acme Corp" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>From</label><MonthYearPicker value={e.from} onChange={(v) => expH.update(e.id, { from: v })} /></div>
                   <div><label className={labelCls}>To</label>
                     <div className="flex items-center gap-1.5">
-                      <input value={e.current ? "" : e.to} onChange={(ev) => exp.update(e.id, { to: ev.target.value })} placeholder={e.current ? "Present" : "Dec 2023"} disabled={e.current} className={cn(inputCls, "flex-1 text-xs py-1.5")} />
-                      <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer shrink-0"><input type="checkbox" checked={e.current} onChange={(ev) => exp.update(e.id, { current: ev.target.checked })} /> Now</label>
+                      <div className="flex-1"><MonthYearPicker value={e.current ? "" : e.to} onChange={(v) => expH.update(e.id, { to: v })} placeholder={e.current ? "Present" : "e.g. Dec 2023"} /></div>
+                      <label className="flex items-center gap-1 text-[11px] text-muted-foreground cursor-pointer shrink-0"><input type="checkbox" checked={e.current} onChange={(ev) => expH.update(e.id, { current: ev.target.checked })} /> Now</label>
                     </div>
                   </div>
                 </div>
-                <BulletListInput bullets={e.bullets ?? [""]} onChange={(b) => exp.update(e.id, { bullets: b })} />
+                <BulletListInput bullets={e.bullets ?? [""]} onChange={(b) => expH.update(e.id, { bullets: b })} />
               </EntryCard>
             ))}
-            <button onClick={() => exp.add(newExp())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Position</button>
+            <button onClick={() => expH.add(newExp())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Position</button>
           </div>
         );
 
@@ -827,19 +958,23 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         return (
           <div className="space-y-4">
             {cv.education.map((e, i) => (
-              <EntryCard key={e.id} label={`Entry ${i + 1}`} onRemove={() => edu.remove(e.id)}>
+              <EntryCard key={e.id} label={`Entry ${i + 1}`} onRemove={() => eduH.remove(e.id)}>
                 <div className="grid grid-cols-2 gap-2">
-                  <div><label className={labelCls}>Institution</label><input value={e.institution} onChange={(ev) => edu.update(e.id, { institution: ev.target.value })} placeholder="e.g. University of Manchester" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Degree</label><input value={e.degree} onChange={(ev) => edu.update(e.id, { degree: ev.target.value })} placeholder="e.g. BSc, MBA" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Field of Study</label><input value={e.field} onChange={(ev) => edu.update(e.id, { field: ev.target.value })} placeholder="e.g. Computer Science" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Institution</label><input value={e.institution} onChange={(ev) => eduH.update(e.id, { institution: ev.target.value })} placeholder="e.g. University of Manchester" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Degree</label><input value={e.degree} onChange={(ev) => eduH.update(e.id, { degree: ev.target.value })} placeholder="e.g. BSc, MBA" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Field of Study</label><input value={e.field} onChange={(ev) => eduH.update(e.id, { field: ev.target.value })} placeholder="e.g. Computer Science" className={cn(inputCls, "text-xs py-1.5")} /></div>
                   <div className="grid grid-cols-2 gap-1.5">
-                    <div><label className={labelCls}>From</label><input value={e.from} onChange={(ev) => edu.update(e.id, { from: ev.target.value })} placeholder="2018" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                    <div><label className={labelCls}>To</label><input value={e.to} onChange={(ev) => edu.update(e.id, { to: ev.target.value })} placeholder="2021" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                    <div><label className={labelCls}>From</label><YearPicker value={e.from} onChange={(v) => eduH.update(e.id, { from: v })} /></div>
+                    <div><label className={labelCls}>To</label><YearPicker value={e.to} onChange={(v) => eduH.update(e.id, { to: v })} /></div>
+                  </div>
+                  <div className="col-span-2">
+                    <label className={labelCls}>Description (optional)</label>
+                    <textarea value={e.description ?? ""} onChange={(ev) => eduH.update(e.id, { description: ev.target.value })} rows={2} placeholder="Relevant modules, honours, exchange terms…" className={cn(inputCls, "resize-none text-xs py-1.5")} />
                   </div>
                 </div>
               </EntryCard>
             ))}
-            <button onClick={() => edu.add(newEdu())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Education</button>
+            <button onClick={() => eduH.add(newEdu())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Education</button>
           </div>
         );
 
@@ -847,21 +982,42 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         return <ChipInput chips={cv.skills} placeholder="Type a skill and press Enter…" onChange={(c) => setCv((p) => ({ ...p, skills: c }))} />;
 
       case "languages":
-        return <ChipInput chips={cv.languages ?? []} placeholder="e.g. English (Fluent)…" onChange={(c) => setCv((p) => ({ ...p, languages: c }))} />;
+        return (
+          <div className="space-y-3">
+            {(cv.languages as CVLanguage[] ?? []).map((l, i) => (
+              <EntryCard key={l.id} label={`Language ${i + 1}`} onRemove={() => langH.remove(l.id)}>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className={labelCls}>Language</label>
+                    <input value={l.name} onChange={(e) => langH.update(l.id, { name: e.target.value })} placeholder="e.g. English" className={cn(inputCls, "text-xs py-1.5")} />
+                  </div>
+                  <div>
+                    <label className={labelCls}>Proficiency</label>
+                    <select value={l.proficiency} onChange={(e) => langH.update(l.id, { proficiency: e.target.value as CVLanguage["proficiency"] })}
+                      className={cn(inputCls, "text-xs py-1.5")}>
+                      {PROFICIENCY_LEVELS.map((p) => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </EntryCard>
+            ))}
+            <button onClick={() => langH.add(newLang())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Language</button>
+          </div>
+        );
 
       case "certifications":
         return (
           <div className="space-y-3">
             {(cv.certifications ?? []).map((c, i) => (
-              <EntryCard key={c.id} label={`Cert ${i + 1}`} onRemove={() => cert.remove(c.id)}>
+              <EntryCard key={c.id} label={`Cert ${i + 1}`} onRemove={() => certH.remove(c.id)}>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="col-span-2"><label className={labelCls}>Certification Name</label><input value={c.name} onChange={(e) => cert.update(c.id, { name: e.target.value })} placeholder="e.g. AWS Solutions Architect" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Issuer</label><input value={c.issuer} onChange={(e) => cert.update(c.id, { issuer: e.target.value })} placeholder="e.g. Amazon Web Services" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Date</label><input value={c.date} onChange={(e) => cert.update(c.id, { date: e.target.value })} placeholder="e.g. June 2023" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Certification Name</label><input value={c.name} onChange={(e) => certH.update(c.id, { name: e.target.value })} placeholder="e.g. AWS Solutions Architect" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Issuer</label><input value={c.issuer} onChange={(e) => certH.update(c.id, { issuer: e.target.value })} placeholder="e.g. Amazon Web Services" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Date</label><MonthYearPicker value={c.date} onChange={(v) => certH.update(c.id, { date: v })} /></div>
                 </div>
               </EntryCard>
             ))}
-            <button onClick={() => cert.add(newCert())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Certification</button>
+            <button onClick={() => certH.add(newCert())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Certification</button>
           </div>
         );
 
@@ -872,17 +1028,17 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         return (
           <div className="space-y-4">
             {(cv.projects ?? []).map((p, i) => (
-              <EntryCard key={p.id} label={`Project ${i + 1}`} onRemove={() => proj.remove(p.id)}>
+              <EntryCard key={p.id} label={`Project ${i + 1}`} onRemove={() => projH.remove(p.id)}>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="col-span-2"><label className={labelCls}>Project Title</label><input value={p.title} onChange={(e) => proj.update(p.id, { title: e.target.value })} placeholder="e.g. E-commerce Platform" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>From</label><input value={p.from ?? ""} onChange={(e) => proj.update(p.id, { from: e.target.value })} placeholder="Jan 2023" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>To</label><input value={p.to ?? ""} onChange={(e) => proj.update(p.id, { to: e.target.value })} placeholder="Jun 2023" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div className="col-span-2"><label className={labelCls}>Link</label><input value={p.link ?? ""} onChange={(e) => proj.update(p.id, { link: e.target.value })} placeholder="https://github.com/…" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div className="col-span-2"><label className={labelCls}>Description</label><textarea value={p.description} onChange={(e) => proj.update(p.id, { description: e.target.value })} rows={2} placeholder="Describe the project, your role, and impact…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Project Title</label><input value={p.title} onChange={(e) => projH.update(p.id, { title: e.target.value })} placeholder="e.g. E-commerce Platform" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>From</label><MonthYearPicker value={p.from ?? ""} onChange={(v) => projH.update(p.id, { from: v })} /></div>
+                  <div><label className={labelCls}>To</label><MonthYearPicker value={p.to ?? ""} onChange={(v) => projH.update(p.id, { to: v })} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Link</label><input value={p.link ?? ""} onChange={(e) => projH.update(p.id, { link: e.target.value })} placeholder="https://github.com/…" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Description</label><textarea value={p.description} onChange={(e) => projH.update(p.id, { description: e.target.value })} rows={2} placeholder="Your role and impact…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
                 </div>
               </EntryCard>
             ))}
-            <button onClick={() => proj.add(newProj())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Project</button>
+            <button onClick={() => projH.add(newProj())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Project</button>
           </div>
         );
 
@@ -890,15 +1046,15 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         return (
           <div className="space-y-3">
             {(cv.courses ?? []).map((c, i) => (
-              <EntryCard key={c.id} label={`Course ${i + 1}`} onRemove={() => crs.remove(c.id)}>
+              <EntryCard key={c.id} label={`Course ${i + 1}`} onRemove={() => crsH.remove(c.id)}>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="col-span-2"><label className={labelCls}>Course Name</label><input value={c.name} onChange={(e) => crs.update(c.id, { name: e.target.value })} placeholder="e.g. Machine Learning Specialization" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Provider</label><input value={c.provider} onChange={(e) => crs.update(c.id, { provider: e.target.value })} placeholder="e.g. Coursera" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Date</label><input value={c.date ?? ""} onChange={(e) => crs.update(c.id, { date: e.target.value })} placeholder="e.g. 2023" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Course Name</label><input value={c.name} onChange={(e) => crsH.update(c.id, { name: e.target.value })} placeholder="e.g. Machine Learning Specialization" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Provider</label><input value={c.provider} onChange={(e) => crsH.update(c.id, { provider: e.target.value })} placeholder="e.g. Coursera" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Date</label><MonthYearPicker value={c.date ?? ""} onChange={(v) => crsH.update(c.id, { date: v })} /></div>
                 </div>
               </EntryCard>
             ))}
-            <button onClick={() => crs.add(newCourse())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Course</button>
+            <button onClick={() => crsH.add(newCourse())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Course</button>
           </div>
         );
 
@@ -906,34 +1062,16 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         return (
           <div className="space-y-3">
             {(cv.awards ?? []).map((a, i) => (
-              <EntryCard key={a.id} label={`Award ${i + 1}`} onRemove={() => awd.remove(a.id)}>
+              <EntryCard key={a.id} label={`Award ${i + 1}`} onRemove={() => awdH.remove(a.id)}>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="col-span-2"><label className={labelCls}>Award Title</label><input value={a.title} onChange={(e) => awd.update(a.id, { title: e.target.value })} placeholder="e.g. Employee of the Year" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Issuer</label><input value={a.issuer} onChange={(e) => awd.update(a.id, { issuer: e.target.value })} placeholder="e.g. Acme Corp" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Date</label><input value={a.date ?? ""} onChange={(e) => awd.update(a.id, { date: e.target.value })} placeholder="e.g. 2022" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div className="col-span-2"><label className={labelCls}>Description</label><textarea value={a.description ?? ""} onChange={(e) => awd.update(a.id, { description: e.target.value })} rows={2} placeholder="Brief description…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Award Title</label><input value={a.title} onChange={(e) => awdH.update(a.id, { title: e.target.value })} placeholder="e.g. Employee of the Year" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Issuer</label><input value={a.issuer} onChange={(e) => awdH.update(a.id, { issuer: e.target.value })} placeholder="e.g. Acme Corp" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Date</label><MonthYearPicker value={a.date ?? ""} onChange={(v) => awdH.update(a.id, { date: v })} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Description</label><textarea value={a.description ?? ""} onChange={(e) => awdH.update(a.id, { description: e.target.value })} rows={2} placeholder="Brief description…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
                 </div>
               </EntryCard>
             ))}
-            <button onClick={() => awd.add(newAward())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Award</button>
-          </div>
-        );
-
-      case "organisations":
-        return (
-          <div className="space-y-3">
-            {(cv.organisations ?? []).map((o, i) => (
-              <EntryCard key={o.id} label={`Organisation ${i + 1}`} onRemove={() => org.remove(o.id)}>
-                <div className="grid grid-cols-2 gap-2">
-                  <div><label className={labelCls}>Organisation Name</label><input value={o.name} onChange={(e) => org.update(o.id, { name: e.target.value })} placeholder="e.g. Rotary Club" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Your Role</label><input value={o.role} onChange={(e) => org.update(o.id, { role: e.target.value })} placeholder="e.g. Volunteer" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>From</label><input value={o.from ?? ""} onChange={(e) => org.update(o.id, { from: e.target.value })} placeholder="2020" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>To</label><input value={o.to ?? ""} onChange={(e) => org.update(o.id, { to: e.target.value })} placeholder="Present" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div className="col-span-2"><label className={labelCls}>Description</label><textarea value={o.description ?? ""} onChange={(e) => org.update(o.id, { description: e.target.value })} rows={2} placeholder="Your contribution and activities…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
-                </div>
-              </EntryCard>
-            ))}
-            <button onClick={() => org.add(newOrg())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Organisation</button>
+            <button onClick={() => awdH.add(newAward())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Award</button>
           </div>
         );
 
@@ -941,16 +1079,16 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         return (
           <div className="space-y-3">
             {(cv.publications ?? []).map((p, i) => (
-              <EntryCard key={p.id} label={`Publication ${i + 1}`} onRemove={() => pub.remove(p.id)}>
+              <EntryCard key={p.id} label={`Publication ${i + 1}`} onRemove={() => pubH.remove(p.id)}>
                 <div className="grid grid-cols-2 gap-2">
-                  <div className="col-span-2"><label className={labelCls}>Title</label><input value={p.title} onChange={(e) => pub.update(p.id, { title: e.target.value })} placeholder="e.g. The Future of AI in Healthcare" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Publisher / Journal</label><input value={p.publisher} onChange={(e) => pub.update(p.id, { publisher: e.target.value })} placeholder="e.g. Nature" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Date</label><input value={p.date ?? ""} onChange={(e) => pub.update(p.id, { date: e.target.value })} placeholder="e.g. Mar 2024" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div className="col-span-2"><label className={labelCls}>Link</label><input value={p.link ?? ""} onChange={(e) => pub.update(p.id, { link: e.target.value })} placeholder="https://…" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Title</label><input value={p.title} onChange={(e) => pubH.update(p.id, { title: e.target.value })} placeholder="e.g. The Future of AI in Healthcare" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Publisher / Journal</label><input value={p.publisher} onChange={(e) => pubH.update(p.id, { publisher: e.target.value })} placeholder="e.g. Nature" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Date</label><MonthYearPicker value={p.date ?? ""} onChange={(v) => pubH.update(p.id, { date: v })} /></div>
+                  <div className="col-span-2"><label className={labelCls}>Link</label><input value={p.link ?? ""} onChange={(e) => pubH.update(p.id, { link: e.target.value })} placeholder="https://…" className={cn(inputCls, "text-xs py-1.5")} /></div>
                 </div>
               </EntryCard>
             ))}
-            <button onClick={() => pub.add(newPub())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Publication</button>
+            <button onClick={() => pubH.add(newPub())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Publication</button>
           </div>
         );
 
@@ -958,54 +1096,59 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         return (
           <div className="space-y-3">
             {(cv.references ?? []).map((r, i) => (
-              <EntryCard key={r.id} label={`Reference ${i + 1}`} onRemove={() => ref.remove(r.id)}>
+              <EntryCard key={r.id} label={`Reference ${i + 1}`} onRemove={() => refH.remove(r.id)}>
                 <div className="grid grid-cols-2 gap-2">
-                  <div><label className={labelCls}>Full Name</label><input value={r.name} onChange={(e) => ref.update(r.id, { name: e.target.value })} placeholder="e.g. Jane Smith" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Job Title</label><input value={r.jobTitle ?? ""} onChange={(e) => ref.update(r.id, { jobTitle: e.target.value })} placeholder="e.g. Head of Engineering" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Company</label><input value={r.company ?? ""} onChange={(e) => ref.update(r.id, { company: e.target.value })} placeholder="e.g. Acme Corp" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Email</label><input value={r.email ?? ""} onChange={(e) => ref.update(r.id, { email: e.target.value })} placeholder="jane@acme.com" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Phone</label><input value={r.phone ?? ""} onChange={(e) => ref.update(r.id, { phone: e.target.value })} placeholder="+44 7700 900000" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Full Name</label><input value={r.name} onChange={(e) => refH.update(r.id, { name: e.target.value })} placeholder="e.g. Jane Smith" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Job Title</label><input value={r.jobTitle ?? ""} onChange={(e) => refH.update(r.id, { jobTitle: e.target.value })} placeholder="e.g. Head of Engineering" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Company</label><input value={r.company ?? ""} onChange={(e) => refH.update(r.id, { company: e.target.value })} placeholder="e.g. Acme Corp" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Email</label><input value={r.email ?? ""} onChange={(e) => refH.update(r.id, { email: e.target.value })} placeholder="jane@acme.com" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                  <div><label className={labelCls}>Phone</label><input value={r.phone ?? ""} onChange={(e) => refH.update(r.id, { phone: e.target.value })} placeholder="+44 7700 900000" className={cn(inputCls, "text-xs py-1.5")} /></div>
                 </div>
               </EntryCard>
             ))}
-            <button onClick={() => ref.add(newRef())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Reference</button>
+            <button onClick={() => refH.add(newRef())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Reference</button>
           </div>
         );
 
       case "declaration":
-        return (
-          <textarea value={cv.declaration ?? ""} onChange={(e) => setCv((p) => ({ ...p, declaration: e.target.value }))}
-            rows={4} placeholder="I hereby declare that the information provided is true and accurate to the best of my knowledge…"
-            className={cn(inputCls, "resize-none text-sm")} />
-        );
-
-      case "linkedin":
-        return (
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">2,000 character LinkedIn &ldquo;About&rdquo; section</p>
-              <button onClick={generateLinkedIn} className="flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 transition-colors">
-                <Sparkles className="h-3 w-3" /> Auto-generate
-              </button>
-            </div>
-            <textarea value={cv.linkedinAbout} onChange={(e) => setCv((p) => ({ ...p, linkedinAbout: e.target.value.slice(0, 2000) }))}
-              rows={7} placeholder="Write a compelling LinkedIn About section…" className={cn(inputCls, "resize-none text-sm")} />
-            <p className="text-right text-[10px] text-muted-foreground">{cv.linkedinAbout.length}/2000</p>
-          </div>
-        );
+        return <textarea value={cv.declaration ?? ""} onChange={(e) => setCv((p) => ({ ...p, declaration: e.target.value }))} rows={4} placeholder="I hereby declare that the information provided is true and accurate to the best of my knowledge…" className={cn(inputCls, "resize-none text-sm")} />;
 
       case "custom":
         return (
-          <div className="space-y-4">
-            {(cv.customSections ?? []).map((cs, i) => (
-              <EntryCard key={cs.id} label={`Section ${i + 1}`} onRemove={() => cust.remove(cs.id)}>
-                <div className="space-y-2">
-                  <div><label className={labelCls}>Section Title</label><input value={cs.title} onChange={(e) => cust.update(cs.id, { title: e.target.value })} placeholder="e.g. Volunteering" className={cn(inputCls, "text-xs py-1.5")} /></div>
-                  <div><label className={labelCls}>Content</label><textarea value={cs.content} onChange={(e) => cust.update(cs.id, { content: e.target.value })} rows={3} placeholder="Add any content for this section…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
+          <div className="space-y-5">
+            {(cv.customSections ?? []).map((cs, si) => (
+              <div key={cs.id} className="rounded-xl border border-border/50 bg-muted/20 p-3.5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-muted-foreground">Custom Block {si + 1}</p>
+                  <button onClick={() => custH.remove(cs.id)} className="text-muted-foreground/30 hover:text-rose-400 transition-colors"><X className="h-3.5 w-3.5" /></button>
                 </div>
-              </EntryCard>
+                {/* Section title */}
+                <div>
+                  <label className={labelCls}>Section Heading</label>
+                  <input value={cs.sectionTitle} onChange={(e) => custH.update(cs.id, { sectionTitle: e.target.value })} placeholder="e.g. Volunteering, Hobbies…" className={cn(inputCls, "text-xs py-1.5")} />
+                </div>
+                {/* Entries */}
+                {cs.entries.map((entry, ei) => (
+                  <div key={entry.id} className="rounded-lg border border-border/40 bg-background/40 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[11px] text-muted-foreground">Entry {ei + 1}</p>
+                      <button onClick={() => removeCustomEntry(cs.id, entry.id)} className="text-muted-foreground/30 hover:text-rose-400 transition-colors"><X className="h-3 w-3" /></button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><label className={labelCls}>Title</label><input value={entry.title ?? ""} onChange={(e) => updateCustomEntry(cs.id, entry.id, { title: e.target.value })} placeholder="e.g. Role or Topic" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                      <div><label className={labelCls}>Subtitle</label><input value={entry.subtitle ?? ""} onChange={(e) => updateCustomEntry(cs.id, entry.id, { subtitle: e.target.value })} placeholder="e.g. Organisation" className={cn(inputCls, "text-xs py-1.5")} /></div>
+                      <div><label className={labelCls}>From</label><MonthYearPicker value={entry.from ?? ""} onChange={(v) => updateCustomEntry(cs.id, entry.id, { from: v })} /></div>
+                      <div><label className={labelCls}>To</label><MonthYearPicker value={entry.to ?? ""} onChange={(v) => updateCustomEntry(cs.id, entry.id, { to: v })} /></div>
+                      <div className="col-span-2"><label className={labelCls}>Description</label><textarea value={entry.description ?? ""} onChange={(e) => updateCustomEntry(cs.id, entry.id, { description: e.target.value })} rows={2} placeholder="Details…" className={cn(inputCls, "resize-none text-xs py-1.5")} /></div>
+                    </div>
+                  </div>
+                ))}
+                <button onClick={() => addCustomEntry(cs.id)} className="flex items-center gap-1.5 text-xs font-medium text-primary/70 hover:text-primary transition-colors">
+                  <Plus className="h-3.5 w-3.5" /> Add Entry
+                </button>
+              </div>
             ))}
-            <button onClick={() => cust.add(newCustom())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Custom Section</button>
+            <button onClick={() => custH.add(newCustomSection())} className="flex items-center gap-1.5 text-xs font-medium text-primary hover:opacity-80 transition-opacity"><Plus className="h-3.5 w-3.5" /> Add Custom Block</button>
           </div>
         );
 
@@ -1019,7 +1162,6 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
 
   return (
     <div className="space-y-5">
-      {/* Action bar */}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-foreground">CV Builder</h2>
@@ -1036,7 +1178,6 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         </div>
       </div>
 
-      {/* Split layout */}
       <div className="grid gap-6 lg:grid-cols-[1fr,440px]">
         <div className="space-y-3">
           <PersonalInfoCard name={candidateName} headline={cv.headline} contact={cv.contact ?? {}} accentColor={currentStyle.accentColor}

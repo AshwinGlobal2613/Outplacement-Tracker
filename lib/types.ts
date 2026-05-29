@@ -109,6 +109,13 @@ export interface CVEducation {
   field: string;
   from: string;
   to: string;
+  description?: string;
+}
+
+export interface CVLanguage {
+  id: string;
+  name: string;
+  proficiency: "Native" | "Fluent" | "Advanced" | "Intermediate" | "Basic";
 }
 
 export interface CVCertification {
@@ -177,10 +184,19 @@ export interface CVReference {
   phone?: string;
 }
 
+export interface CVCustomEntry {
+  id: string;
+  title?: string;
+  subtitle?: string;
+  from?: string;
+  to?: string;
+  description?: string;
+}
+
 export interface CVCustomSection {
   id: string;
-  title: string;
-  content: string;
+  sectionTitle: string;
+  entries: CVCustomEntry[];
 }
 
 export interface CVStyle {
@@ -195,7 +211,7 @@ export interface CVProfile {
   summary: string;
   linkedinAbout: string;
   skills: string[];
-  languages?: string[];
+  languages?: CVLanguage[];
   certifications?: CVCertification[];
   experience: CVExperience[];
   education: CVEducation[];
