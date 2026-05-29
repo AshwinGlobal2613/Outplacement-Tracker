@@ -26,15 +26,50 @@ const ACCENT_PRESETS = [
   "#ea580c", "#0891b2", "#1d4ed8", "#374151",
 ];
 
-// All addable sections — order matters (used by Add Content list)
-const ALL_SECTIONS: { id: string; label: string; icon: React.ElementType }[] = [
-  { id: "summary",        label: "Professional Summary", icon: AlignLeft     },
-  { id: "experience",     label: "Work Experience",      icon: Briefcase     },
-  { id: "education",      label: "Education",            icon: GraduationCap },
-  { id: "skills",         label: "Skills",               icon: Zap           },
-  { id: "languages",      label: "Languages",            icon: Globe         },
-  { id: "certifications", label: "Certifications",       icon: Award         },
-  { id: "linkedin",       label: "LinkedIn About",       icon: Sparkles      },
+// All addable sections — order matters (used by Add Content modal)
+const ALL_SECTIONS: { id: string; label: string; icon: React.ElementType; description: string }[] = [
+  {
+    id: "summary",
+    label: "Professional Summary",
+    icon: AlignLeft,
+    description: "Add a brief overview of your professional background and key strengths.",
+  },
+  {
+    id: "experience",
+    label: "Work Experience",
+    icon: Briefcase,
+    description: "Add your professional roles and employer history including internships.",
+  },
+  {
+    id: "education",
+    label: "Education",
+    icon: GraduationCap,
+    description: "Add your degrees and schools. Include your focus, honours, or exchange terms.",
+  },
+  {
+    id: "skills",
+    label: "Skills",
+    icon: Zap,
+    description: "Add your hard and soft skills that help you stand out from the crowd.",
+  },
+  {
+    id: "languages",
+    label: "Languages",
+    icon: Globe,
+    description: "Add your languages and proficiency level to show your communication range.",
+  },
+  {
+    id: "certifications",
+    label: "Certifications",
+    icon: Award,
+    description: "Add your industry certificates or licences. Include issuer and date earned.",
+  },
+  {
+    id: "linkedin",
+    label: "LinkedIn About",
+    icon: Sparkles,
+    description: "Craft a compelling LinkedIn About section to complement your CV.",
+  },
 ];
 
 const DEFAULT_STYLE: CVStyle = {
@@ -463,6 +498,72 @@ function SectionRow({
   );
 }
 
+// ─── Add Content Modal ────────────────────────────────────────────────────────
+
+function AddContentModal({
+  addedSections,
+  onAdd,
+  onClose,
+}: {
+  addedSections: string[];
+  onAdd: (id: string) => void;
+  onClose: () => void;
+}) {
+  const availableSections = ALL_SECTIONS.filter((s) => !addedSections.includes(s.id));
+
+  // Close on backdrop click
+  function handleBackdrop(e: React.MouseEvent<HTMLDivElement>) {
+    if (e.target === e.currentTarget) onClose();
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ background: "rgba(0,0,0,0.65)" }}
+      onClick={handleBackdrop}
+    >
+      <div className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        {/* Header */}
+        <div className="flex items-center justify-between px-8 pt-8 pb-5">
+          <h2 className="text-3xl font-bold text-gray-900">Add content</h2>
+          <button
+            onClick={onClose}
+            className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        {/* Section grid */}
+        <div className="px-8 pb-8">
+          {availableSections.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {availableSections.map((s) => {
+                const Icon = s.icon;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => { onAdd(s.id); onClose(); }}
+                    className="flex flex-col items-start gap-2 rounded-xl border border-gray-200 bg-gray-50 p-4 text-left hover:bg-gray-100 hover:border-gray-300 hover:shadow-sm transition-all"
+                  >
+                    <Icon className="h-5 w-5 text-gray-600" />
+                    <p className="font-bold text-gray-900 text-sm leading-tight">{s.label}</p>
+                    <p className="text-xs text-gray-500 leading-relaxed">{s.description}</p>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="py-12 text-center">
+              <p className="text-gray-500 text-sm">All available sections have been added to your CV.</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Add Content Button ───────────────────────────────────────────────────────
 
 function AddContentButton({
@@ -473,12 +574,11 @@ function AddContentButton({
   onAdd: (id: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const availableSections = ALL_SECTIONS.filter((s) => !addedSections.includes(s.id));
 
   return (
-    <div className="relative">
+    <>
       <button
-        onClick={() => setOpen(!open)}
+        onClick={() => setOpen(true)}
         className="w-full flex items-center justify-center gap-2 rounded-2xl py-3.5 text-sm font-semibold text-white shadow-md hover:shadow-lg hover:scale-[1.01] active:scale-[0.99] transition-all"
         style={{ background: "linear-gradient(135deg, #f43f5e 0%, #ec4899 100%)" }}
       >
@@ -487,36 +587,13 @@ function AddContentButton({
       </button>
 
       {open && (
-        <div className="absolute left-0 right-0 top-full mt-2 z-10 rounded-2xl border border-border/60 bg-popover shadow-xl overflow-hidden">
-          {availableSections.length > 0 ? (
-            <>
-              <p className="px-4 py-2.5 text-[11px] font-semibold text-muted-foreground border-b border-border/40 uppercase tracking-wide">
-                Choose a section to add
-              </p>
-              {availableSections.map((s) => {
-                const Icon = s.icon;
-                return (
-                  <button
-                    key={s.id}
-                    onClick={() => { onAdd(s.id); setOpen(false); }}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-muted/40 transition-colors"
-                  >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-muted/60">
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                    </div>
-                    <span className="font-medium">{s.label}</span>
-                  </button>
-                );
-              })}
-            </>
-          ) : (
-            <p className="px-4 py-3 text-xs text-center text-muted-foreground">
-              All sections have been added
-            </p>
-          )}
-        </div>
+        <AddContentModal
+          addedSections={addedSections}
+          onAdd={onAdd}
+          onClose={() => setOpen(false)}
+        />
       )}
-    </div>
+    </>
   );
 }
 
