@@ -28,18 +28,27 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
 
   const body = await req.json();
   const cvProfile: CVProfile = {
-    headline: body.headline ?? "",
-    summary: body.summary ?? "",
-    linkedinAbout: body.linkedinAbout ?? "",
-    skills: body.skills ?? [],
-    languages: body.languages ?? [],
+    headline:       body.headline       ?? "",
+    summary:        body.summary        ?? "",
+    linkedinAbout:  body.linkedinAbout  ?? "",
+    skills:         body.skills         ?? [],
+    languages:      body.languages      ?? [],
     certifications: body.certifications ?? [],
-    experience: body.experience ?? [],
-    education: body.education ?? [],
-    sectionOrder: body.sectionOrder ?? undefined,
-    style: body.style ?? undefined,
-    contact: body.contact ?? {},
-    updatedAt: new Date().toISOString(),
+    experience:     body.experience     ?? [],
+    education:      body.education      ?? [],
+    interests:      body.interests      ?? [],
+    projects:       body.projects       ?? [],
+    courses:        body.courses        ?? [],
+    awards:         body.awards         ?? [],
+    organisations:  body.organisations  ?? [],
+    publications:   body.publications   ?? [],
+    references:     body.references     ?? [],
+    declaration:    body.declaration    ?? "",
+    customSections: body.customSections ?? [],
+    sectionOrder:   body.sectionOrder   ?? undefined,
+    style:          body.style          ?? undefined,
+    contact:        body.contact        ?? {},
+    updatedAt:      new Date().toISOString(),
   };
 
   const updated = await updateCandidate(params.id, { cvProfile });

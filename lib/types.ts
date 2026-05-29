@@ -125,6 +125,64 @@ export interface CVContact {
   website?: string;
 }
 
+export interface CVProject {
+  id: string;
+  title: string;
+  description: string;
+  link?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface CVCourse {
+  id: string;
+  name: string;
+  provider: string;
+  date?: string;
+  link?: string;
+}
+
+export interface CVAward {
+  id: string;
+  title: string;
+  issuer: string;
+  date?: string;
+  description?: string;
+}
+
+export interface CVOrganisation {
+  id: string;
+  name: string;
+  role: string;
+  from?: string;
+  to?: string;
+  description?: string;
+}
+
+export interface CVPublication {
+  id: string;
+  title: string;
+  publisher: string;
+  date?: string;
+  link?: string;
+  description?: string;
+}
+
+export interface CVReference {
+  id: string;
+  name: string;
+  jobTitle?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface CVCustomSection {
+  id: string;
+  title: string;
+  content: string;
+}
+
 export interface CVStyle {
   accentColor: string;                          // hex e.g. "#e11d48"
   fontFamily: string;                           // css font-family string
@@ -141,6 +199,15 @@ export interface CVProfile {
   certifications?: CVCertification[];
   experience: CVExperience[];
   education: CVEducation[];
+  interests?: string[];
+  projects?: CVProject[];
+  courses?: CVCourse[];
+  awards?: CVAward[];
+  organisations?: CVOrganisation[];
+  publications?: CVPublication[];
+  references?: CVReference[];
+  declaration?: string;
+  customSections?: CVCustomSection[];
   sectionOrder?: string[];                      // ordered section IDs
   style?: CVStyle;
   contact?: CVContact;
