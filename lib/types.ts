@@ -99,6 +99,7 @@ export interface CVExperience {
   to: string;
   current: boolean;
   description: string;
+  bullets?: string[];       // bullet points replacing description for display
 }
 
 export interface CVEducation {
@@ -110,13 +111,31 @@ export interface CVEducation {
   to: string;
 }
 
+export interface CVCertification {
+  id: string;
+  name: string;
+  issuer: string;
+  date: string;
+}
+
+export interface CVStyle {
+  accentColor: string;                          // hex e.g. "#e11d48"
+  fontFamily: string;                           // css font-family string
+  fontSize: "sm" | "md" | "lg";
+  spacing: "compact" | "normal" | "relaxed";
+}
+
 export interface CVProfile {
   headline: string;
   summary: string;
   linkedinAbout: string;
   skills: string[];
+  languages?: string[];
+  certifications?: CVCertification[];
   experience: CVExperience[];
   education: CVEducation[];
+  sectionOrder?: string[];                      // ordered section IDs
+  style?: CVStyle;
   updatedAt?: string;
 }
 
