@@ -142,7 +142,7 @@ function parseCV(text: string): Partial<CVProfile> {
   if (sections.skills?.length) {
     const raw = sections.skills.join(" , ");
     const chips = raw.split(/[,•|·\n\/]/).map((s) => s.trim()).filter((s) => s.length > 0 && s.length < 60);
-    profile.skills = [...new Set(chips)].slice(0, 30);
+    profile.skills = Array.from(new Set(chips)).slice(0, 30);
   }
 
   // ── Languages ───────────────────────────────────────────────────────────────
