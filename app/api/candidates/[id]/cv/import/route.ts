@@ -69,14 +69,23 @@ Rules:
 
 // ─── Gemini ───────────────────────────────────────────────────────────────────
 
+// Models to try in order — first one that responds (not 404) wins
+const GEMINI_MODELS = [
+  "v1beta/models/gemini-1.5-flash-latest",
+  "v1beta/models/gemini-1.5-flash",
+  "v1beta/models/gemini-1.5-flash-8b",
+  "v1beta/models/gemini-1.0-pro",
+  "v1beta/models/gemini-pro",
+  "v1/models/gemini-1.5-flash-latest",
+  "v1/models/gemini-1.5-flash",
+];
+
 async function parseWithGemini(
   input: { type: "pdf" | "text"; data: string }
 ): Promise<Partial<CVProfile>> {
   const apiKey = process.env.GEMINI_API_KEY!;
-  // Use v1 REST endpoint directly — gemini-1.5-flash is on v1, not v1beta
-  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const BASE   = "https://generativelanguage.googleapis.com";
 
-  // Build parts array depending on file type
   const parts =
     input.type === "pdf"
       ? [
@@ -85,40 +94,48 @@ async function parseWithGemini(
         ]
       : [{ text: `${PARSE_PROMPT}\n\nCV TEXT:\n${input.data.slice(0, 20000)}` }];
 
-  const body = {
+  const body = JSON.stringify({
     contents: [{ parts }],
     generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
-  };
-
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Gemini API error ${res.status}: ${errText.slice(0, 300)}`);
+  let lastError = "No Gemini model available";
+
+  for (const modelPath of GEMINI_MODELS) {
+    const url = `${BASE}/${modelPath}:generateContent?key=${apiKey}`;
+    const res  = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+    });
+
+    if (res.status === 404) continue; // try next model
+
+    if (!res.ok) {
+      const errText = await res.text();
+      lastError = `${modelPath} → ${res.status}: ${errText.slice(0, 200)}`;
+      continue; // try next model
+    }
+
+    const json = await res.json();
+    const raw  = (json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "") as string;
+    if (!raw) { lastError = `${modelPath} returned empty response`; continue; }
+
+    const clean = raw
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
+
+    try {
+      return JSON.parse(clean) as Partial<CVProfile>;
+    } catch {
+      lastError = `${modelPath} returned unparseable JSON`;
+      continue;
+    }
   }
 
-  const json = await res.json();
-  const raw  = (json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "") as string;
-
-  if (!raw) throw new Error("Gemini returned an empty response");
-
-  // Strip accidental markdown fences
-  const clean = raw
-    .replace(/^```json\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/```\s*$/i, "")
-    .trim();
-
-  try {
-    return JSON.parse(clean) as Partial<CVProfile>;
-  } catch {
-    console.error("[cv-import] JSON parse failed. Raw:", clean.slice(0, 400));
-    throw new Error("AI returned unexpected format — please try again");
-  }
+  throw new Error(`AI parsing failed — ${lastError}`);
 }
 
 // ─── Route handler ────────────────────────────────────────────────────────────
