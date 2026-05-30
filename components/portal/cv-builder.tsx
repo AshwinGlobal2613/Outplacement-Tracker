@@ -642,20 +642,22 @@ function AddContentModal({ addedSections, onAdd, onClose, onUploadResume }: {
   const available = ALL_SECTIONS.filter((s) => !addedSections.includes(s.id));
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded]   = useState(false);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadErr(null);
     try {
       await onUploadResume(file);
       setUploaded(true);
-      setTimeout(() => setUploaded(false), 3000);
-    } catch {
-      // silently ignore — no crash
+      setTimeout(() => setUploaded(false), 4000);
+    } catch (err) {
+      setUploadErr(err instanceof Error ? err.message : "Import failed — please try again");
     } finally {
       setUploading(false);
-      e.target.value = ""; // reset so same file can be re-selected
+      e.target.value = "";
     }
   }
 
@@ -663,6 +665,16 @@ function AddContentModal({ addedSections, onAdd, onClose, onUploadResume }: {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(0,0,0,0.65)" }}
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="relative w-full max-w-3xl max-h-[85vh] overflow-y-auto rounded-2xl bg-white shadow-2xl">
+        {uploadErr && (
+          <div className="mx-8 mt-6 flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <span className="font-bold shrink-0">⚠</span>
+            <span>{uploadErr}</span>
+            <button onClick={() => setUploadErr(null)} className="ml-auto shrink-0 text-red-400 hover:text-red-600">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
+
         <div className="flex items-center justify-between px-8 pt-8 pb-5">
           <div>
             <h2 className="text-3xl font-bold text-gray-900">Add content</h2>
