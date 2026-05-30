@@ -317,7 +317,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const parsed = parseCV(text);
 
   // Merge with existing CV — prefer parsed values for non-empty fields
-  const existing = candidate.cvProfile ?? {};
+  const existing: Partial<CVProfile> = candidate.cvProfile ?? {};
   const merged: Partial<CVProfile> = {
     ...existing,
     headline:       parsed.headline      || existing.headline      || "",
