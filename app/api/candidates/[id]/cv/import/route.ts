@@ -74,7 +74,10 @@ async function parseWithGemini(
 ): Promise<Partial<CVProfile>> {
   const { GoogleGenerativeAI } = await import("@google/generative-ai");
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const model  = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model  = genAI.getGenerativeModel(
+    { model: "gemini-2.0-flash" },
+    { apiVersion: "v1beta" }
+  );
 
   // Build content parts — PDFs go as inline base64, text goes as plain string
   const parts =
