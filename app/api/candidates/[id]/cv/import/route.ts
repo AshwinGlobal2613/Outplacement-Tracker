@@ -184,7 +184,7 @@ function parseCV(text: string): Partial<CVProfile> {
     let cur: Partial<CVExperience> | null = null;
     const descBuf: string[] = [];
 
-    function flushExp() {
+    const flushExp = () => {
       if (cur && (cur.company || cur.role)) {
         experiences.push({
           id: uid(), company: cur.company ?? "", role: cur.role ?? "",
@@ -194,7 +194,7 @@ function parseCV(text: string): Partial<CVProfile> {
           bullets: [],
         });
       }
-    }
+    };
 
     for (const line of expLines) {
       const dates = line.match(DATE_RE);
@@ -224,7 +224,7 @@ function parseCV(text: string): Partial<CVProfile> {
     const INST_RE = /university|college|school|institute|academy|polytechnic/i;
     const DEG_RE  = /b\.?sc|b\.?a|m\.?sc|m\.?a|m\.?b\.?a|ph\.?d|bachelor|master|diploma|certificate|a-level|gcse/i;
 
-    function flushEdu() {
+    const flushEdu = () => {
       if (cur && cur.institution) {
         educations.push({
           id: uid(), institution: cur.institution ?? "", degree: cur.degree ?? "",
@@ -232,7 +232,7 @@ function parseCV(text: string): Partial<CVProfile> {
           description: descBuf.join(" ").trim(),
         });
       }
-    }
+    };
 
     for (const line of eduLines) {
       const years = [...line.matchAll(/\b(\d{4})\b/g)].map((m) => m[1]);
