@@ -41,14 +41,16 @@ async function extractText(file: File): Promise<string> {
 
   if (ext === "pdf") {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const pdfParse = require("pdf-parse");
+    const mod = require("pdf-parse");
+    const pdfParse = typeof mod === "function" ? mod : (mod.default ?? mod);
     const data = await pdfParse(buffer);
     return data.text as string;
   }
 
   if (ext === "docx" || ext === "doc") {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mammoth = require("mammoth");
+    const mod = require("mammoth");
+    const mammoth = mod.default ?? mod;
     const result = await mammoth.extractRawText({ buffer });
     return result.value as string;
   }
