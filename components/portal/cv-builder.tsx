@@ -1090,6 +1090,7 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
   });
   const [saving,            setSaving]           = useState(false);
   const [saved,             setSaved]            = useState(false);
+  const [importMsg,         setImportMsg]        = useState<string | null>(null);
   const [addedSections,     setAddedSections]    = useState<string[]>(() => initialCv?.sectionOrder ?? []);
   const [hiddenFromPreview, setHiddenFromPreview]= useState<Set<string>>(new Set());
   const [openSection,       setOpenSection]      = useState<string | null>(null);
@@ -1131,8 +1132,33 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
   async function uploadResume(file: File) {
     const form = new FormData();
     form.append("file", file);
-    form.append("source", "candidate");
-    await fetch(`/api/candidates/${candidateId}/documents`, { method: "POST", body: form }).catch(() => {});
+
+    const res = await fetch(`/api/candidates/${candidateId}/cv/import`, {
+      method: "POST",
+      body: form,
+    });
+
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Unknown error" }));
+      throw new Error(err.error ?? "Import failed");
+    }
+
+    const data: { cvProfile: CVProfile; sections: string[] } = await res.json();
+
+    // Populate the CV form with parsed data (keep existing style + sectionOrder)
+    setCv((prev) => ({ ...prev, ...data.cvProfile, style: prev.style, sectionOrder: prev.sectionOrder }));
+
+    // Auto-add any newly-parsed sections that aren't in the editor yet
+    setAddedSections((prev) => {
+      const toAdd = data.sections.filter(
+        (s) => !prev.includes(s) && ALL_SECTIONS.some((def) => def.id === s)
+      );
+      return [...prev, ...toAdd];
+    });
+
+    const n = data.sections.length;
+    setImportMsg(`Resume imported — ${n} section${n === 1 ? "" : "s"} detected`);
+    setTimeout(() => setImportMsg(null), 5000);
   }
 
   async function save() {
@@ -1457,6 +1483,15 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
 
   return (
     <div className="space-y-5">
+      {/* Import success banner */}
+      {importMsg && (
+        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400">
+          <span className="text-base">✓</span>
+          {importMsg}
+          <span className="ml-1 text-xs font-normal text-emerald-400/70">— review the sections below and save when ready</span>
+        </div>
+      )}
+
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-base font-semibold text-foreground">CV Builder</h2>
