@@ -72,24 +72,39 @@ Rules:
 async function parseWithGemini(
   input: { type: "pdf" | "text"; data: string }
 ): Promise<Partial<CVProfile>> {
-  const { GoogleGenerativeAI } = await import("@google/generative-ai");
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-  const model  = genAI.getGenerativeModel(
-    { model: "gemini-2.0-flash" },
-    { apiVersion: "v1beta" }
-  );
+  const apiKey = process.env.GEMINI_API_KEY!;
+  // Use v1 REST endpoint directly — gemini-1.5-flash is on v1, not v1beta
+  const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-  // Build content parts — PDFs go as inline base64, text goes as plain string
+  // Build parts array depending on file type
   const parts =
     input.type === "pdf"
       ? [
-          { inlineData: { mimeType: "application/pdf" as const, data: input.data } },
+          { inline_data: { mime_type: "application/pdf", data: input.data } },
           { text: PARSE_PROMPT },
         ]
       : [{ text: `${PARSE_PROMPT}\n\nCV TEXT:\n${input.data.slice(0, 20000)}` }];
 
-  const result = await model.generateContent(parts);
-  const raw    = result.response.text().trim();
+  const body = {
+    contents: [{ parts }],
+    generationConfig: { temperature: 0.1, maxOutputTokens: 4096 },
+  };
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Gemini API error ${res.status}: ${errText.slice(0, 300)}`);
+  }
+
+  const json = await res.json();
+  const raw  = (json?.candidates?.[0]?.content?.parts?.[0]?.text ?? "") as string;
+
+  if (!raw) throw new Error("Gemini returned an empty response");
 
   // Strip accidental markdown fences
   const clean = raw
