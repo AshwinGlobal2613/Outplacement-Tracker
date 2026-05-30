@@ -235,7 +235,7 @@ function parseCV(text: string): Partial<CVProfile> {
     };
 
     for (const line of eduLines) {
-      const years = [...line.matchAll(/\b(\d{4})\b/g)].map((m) => m[1]);
+      const years = Array.from(line.matchAll(/\b(\d{4})\b/g)).map((m) => m[1]);
       if (INST_RE.test(line) || (years.length >= 1 && DEG_RE.test(line))) {
         flushEdu(); descBuf.length = 0;
         cur = { institution: line.replace(/\b\d{4}\b/g, "").replace(/[-–—|,]+/g, "").trim(), from: years[0] ?? "", to: years[1] ?? "" };
