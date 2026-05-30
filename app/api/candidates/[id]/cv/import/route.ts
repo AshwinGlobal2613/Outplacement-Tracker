@@ -71,11 +71,14 @@ Rules:
 
 // Models to try in order — first one that responds (not 404) wins
 const GEMINI_MODELS = [
+  "v1beta/models/gemini-2.0-flash",
+  "v1beta/models/gemini-2.0-flash-exp",
   "v1beta/models/gemini-1.5-flash-latest",
   "v1beta/models/gemini-1.5-flash",
   "v1beta/models/gemini-1.5-flash-8b",
   "v1beta/models/gemini-1.0-pro",
   "v1beta/models/gemini-pro",
+  "v1/models/gemini-2.0-flash",
   "v1/models/gemini-1.5-flash-latest",
   "v1/models/gemini-1.5-flash",
 ];
@@ -109,7 +112,16 @@ async function parseWithGemini(
       body,
     });
 
-    if (res.status === 404) continue; // try next model
+    if (res.status === 404) continue; // model doesn't exist on this key — try next
+
+    if (res.status === 429) {
+      // Model exists but quota exceeded — stop trying, surface this error
+      const errText = await res.text();
+      throw new Error(
+        `Quota exceeded for ${modelPath}. Your API key's free tier limit is 0 for this model. ` +
+        `Please enable billing at console.cloud.google.com or create a new API key at aistudio.google.com`
+      );
+    }
 
     if (!res.ok) {
       const errText = await res.text();
