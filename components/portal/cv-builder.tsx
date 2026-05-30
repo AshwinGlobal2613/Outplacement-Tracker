@@ -642,17 +642,21 @@ function AddContentModal({ addedSections, onAdd, onClose, onUploadResume }: {
   const available = ALL_SECTIONS.filter((s) => !addedSections.includes(s.id));
   const [uploading, setUploading] = useState(false);
   const [uploaded, setUploaded]   = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    await onUploadResume(file);
-    setUploading(false);
-    setUploaded(true);
-    setTimeout(() => setUploaded(false), 3000);
-    if (fileInputRef.current) fileInputRef.current.value = "";
+    try {
+      await onUploadResume(file);
+      setUploaded(true);
+      setTimeout(() => setUploaded(false), 3000);
+    } catch {
+      // silently ignore — no crash
+    } finally {
+      setUploading(false);
+      e.target.value = ""; // reset so same file can be re-selected
+    }
   }
 
   return (
@@ -665,16 +669,21 @@ function AddContentModal({ addedSections, onAdd, onClose, onUploadResume }: {
             <p className="text-sm text-gray-500 mt-1">Quick start:</p>
           </div>
           <div className="flex items-center gap-3">
-            {/* Upload Resume */}
-            <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={handleFile} />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="flex items-center gap-2 rounded-xl bg-violet-50 border border-violet-200 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors disabled:opacity-60"
-            >
+            {/* Upload Resume — label wraps the input so the click always opens the picker */}
+            <label className={cn(
+              "flex items-center gap-2 rounded-xl bg-violet-50 border border-violet-200 px-4 py-2 text-sm font-semibold text-violet-700 hover:bg-violet-100 transition-colors cursor-pointer select-none",
+              uploading && "opacity-60 pointer-events-none"
+            )}>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                className="sr-only"
+                disabled={uploading}
+                onChange={handleFile}
+              />
               {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-              {uploaded ? "Uploaded!" : uploading ? "Uploading…" : "Import Resume"}
-            </button>
+              {uploaded ? "Uploaded ✓" : uploading ? "Uploading…" : "Import Resume"}
+            </label>
             <button onClick={onClose} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors">
               <X className="h-5 w-5" />
             </button>
