@@ -69,18 +69,14 @@ Rules:
 
 // ─── Gemini ───────────────────────────────────────────────────────────────────
 
-// Models to try in order — first one that responds (not 404) wins
+// Models confirmed available on this API key (from /api/gemini-check diagnostic)
 const GEMINI_MODELS = [
+  "v1beta/models/gemini-2.5-flash",
+  "v1beta/models/gemini-2.5-pro",
   "v1beta/models/gemini-2.0-flash",
-  "v1beta/models/gemini-2.0-flash-exp",
-  "v1beta/models/gemini-1.5-flash-latest",
-  "v1beta/models/gemini-1.5-flash",
-  "v1beta/models/gemini-1.5-flash-8b",
-  "v1beta/models/gemini-1.0-pro",
-  "v1beta/models/gemini-pro",
-  "v1/models/gemini-2.0-flash",
-  "v1/models/gemini-1.5-flash-latest",
-  "v1/models/gemini-1.5-flash",
+  "v1beta/models/gemini-flash-latest",
+  "v1beta/models/gemini-2.0-flash-001",
+  "v1beta/models/gemini-2.0-flash-lite",
 ];
 
 async function parseWithGemini(
