@@ -250,7 +250,7 @@ export default function CandidateManagementPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1.5">
                       {staleAlerts.some(({ candidate }) => candidate.id === c.id) && (
-                        <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-400" title="No activity in 7+ days" />
+                        <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-400" />
                       )}
                       <p className={cn("font-medium whitespace-nowrap transition-colors", selectedId === c.id ? "text-primary" : "text-foreground group-hover:text-primary")}>{c.candidateName}</p>
                     </div>
