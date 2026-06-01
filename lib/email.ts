@@ -37,7 +37,7 @@ const C = {
 // ─── Global branded layout wrapper ───────────────────────────────────────────
 
 function layout(content: string): string {
-  const logoUrl = `${BASE_URL}/logo.svg`;
+  const logoUrl = `${BASE_URL}/roger.png`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
@@ -54,10 +54,8 @@ function layout(content: string): string {
           <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 36px 20px;">
             <tr>
               <td valign="middle">
-                <p style="margin:0 0 3px;font-family:Georgia,'Times New Roman',serif;font-size:24px;font-weight:bold;line-height:1;">
-                  <span style="color:${C.mauve};">Glob</span><span style="color:${C.crimson};">al</span>
-                </p>
-                <p style="margin:0;font-family:Arial,Helvetica,sans-serif;font-size:8px;color:${C.mauve};letter-spacing:2.5px;font-weight:300;text-transform:uppercase;">Management Consultants</p>
+                <img src="${logoUrl}" width="120" height="120" alt="Global Management Consultants"
+                     style="display:block;border:0;border-radius:8px;max-width:120px;" />
               </td>
               <td align="right" valign="middle">
                 <p style="color:${C.mauve};font-size:10px;margin:0;letter-spacing:0.8px;text-align:right;line-height:1.6;">
