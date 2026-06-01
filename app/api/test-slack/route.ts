@@ -50,29 +50,42 @@ export async function GET() {
     });
   }
 
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000)
-    .toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const lastAction = new Date(Date.now() - 12 * 24 * 60 * 60 * 1000)
+    .toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
   const result = await sendSlackDM(slackUserId, {
-    text: "📅 You have 1 session tomorrow",
+    text: "⚠️ Candidate needs attention — 12 days no activity",
     blocks: [
       {
         type: "header",
-        text: { type: "plain_text", text: `📅 Session Reminder — ${tomorrow}`, emoji: true },
+        text: { type: "plain_text", text: "⚠️ Candidate Needs Attention", emoji: true },
       },
       {
         type: "section",
         text: {
           type: "mrkdwn",
-          text: `Hi *Ashwin*, this is a test reminder from the Outplacement Management System.\n\nYou have the following session scheduled for tomorrow:`,
+          text: `Hi *Ashwin*, the following candidate assigned to you has had *no activity for 12 days* and may need a follow-up.`,
         },
       },
       {
         type: "section",
-        text: {
-          type: "mrkdwn",
-          text: `• *10:00* — *Test Candidate* (CV Review & Strategy Session)\n  60 min · Google Meet`,
-        },
+        fields: [
+          { type: "mrkdwn", text: `*Candidate*\nTest Candidate` },
+          { type: "mrkdwn", text: `*Client*\nEpic Games` },
+          { type: "mrkdwn", text: `*Days Inactive*\n12 days` },
+          { type: "mrkdwn", text: `*Last Action*\n${lastAction}` },
+        ],
+      },
+      {
+        type: "actions",
+        elements: [
+          {
+            type: "button",
+            text: { type: "plain_text", text: "View Candidate →", emoji: true },
+            style: "primary",
+            url: "https://outplacement-tracker-drab.vercel.app/outplacement/candidates",
+          },
+        ],
       },
       {
         type: "context",
