@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import {
   ShieldCheck, AlertCircle, Clock, X, MessageCircle, ExternalLink,
-  CheckCircle2, Circle, ChevronRight,
+  CheckCircle2, Circle, ChevronRight, TriangleAlert,
 } from "lucide-react";
 import { Candidate, InvoiceStatus, CostingStatus } from "@/lib/types";
 import Link from "next/link";
@@ -43,6 +43,18 @@ const progressSteps = [
   { key: "networkingPersonalBranding", label: "Networking & Personal Branding" },
 ];
 
+function getLastActionDate(c: Candidate): Date | null {
+  const timestamps: number[] = [];
+  for (const s of c.sessions ?? []) {
+    if (s.createdAt) timestamps.push(new Date(s.createdAt).getTime());
+  }
+  for (const a of c.activities ?? []) {
+    if (a.createdAt) timestamps.push(new Date(a.createdAt).getTime());
+  }
+  if (!timestamps.length) return null;
+  return new Date(Math.max(...timestamps));
+}
+
 export default function CandidateManagementPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -54,6 +66,14 @@ export default function CandidateManagementPage() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [adminDraft, setAdminDraft] = useState("");
   const [editingAdmin, setEditingAdmin] = useState(false);
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
+
+  const staleAlerts = candidates
+    .filter((c) => c.status === "active" || c.status === "candidate_reached")
+    .filter((c) => !dismissedAlerts.has(c.id))
+    .map((c) => ({ candidate: c, lastAction: getLastActionDate(c) }))
+    .filter(({ lastAction }) => lastAction && Date.now() - lastAction.getTime() > 7 * 24 * 60 * 60 * 1000)
+    .sort((a, b) => (a.lastAction!.getTime() - b.lastAction!.getTime()));
 
   useEffect(() => {
     if (status === "loading") return;
@@ -152,6 +172,51 @@ export default function CandidateManagementPage() {
         <SummaryPill label="Costing Pending" value={candidates.filter((c) => c.costingStatus === "Not Done").length} color="text-rose-400" icon={Clock} />
       </div>
 
+      {/* Inactivity alerts */}
+      {staleAlerts.length > 0 && (
+        <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
+          <div className="flex items-center gap-2.5 px-4 py-3 border-b border-amber-500/20">
+            <TriangleAlert className="h-4 w-4 text-amber-400 shrink-0" />
+            <span className="text-sm font-semibold text-amber-400">
+              {staleAlerts.length} candidate{staleAlerts.length !== 1 ? "s" : ""} need attention
+            </span>
+            <span className="text-xs text-amber-400/60">{staleAlerts.length} no activity (7+ days)</span>
+          </div>
+          <div className="divide-y divide-amber-500/10">
+            {staleAlerts.map(({ candidate: c, lastAction }) => {
+              const daysAgo = Math.floor((Date.now() - lastAction!.getTime()) / (1000 * 60 * 60 * 24));
+              return (
+                <div key={c.id} className="flex items-center gap-4 px-4 py-2.5">
+                  <TriangleAlert className="h-3.5 w-3.5 text-amber-400/70 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-foreground">{c.candidateName}</span>
+                    <span className="ml-2 text-xs text-muted-foreground">{c.clientName}</span>
+                    <span className="ml-2 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-semibold text-amber-400">
+                      {daysAgo} days inactive
+                    </span>
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      Last action: {lastAction!.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                    </span>
+                  </div>
+                  <Link
+                    href={`/outplacement/candidates/${c.id}`}
+                    className="shrink-0 rounded-lg border border-amber-500/30 px-3 py-1 text-xs font-medium text-amber-400 hover:bg-amber-500/10 transition-colors"
+                  >
+                    View
+                  </Link>
+                  <button
+                    onClick={() => setDismissedAlerts((prev) => new Set([...prev, c.id]))}
+                    className="shrink-0 rounded p-1 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Table + slide-over */}
       <div className="relative flex gap-0 overflow-hidden rounded-xl border border-border bg-card">
         {/* Table */}
@@ -183,7 +248,12 @@ export default function CandidateManagementPage() {
                   )}
                 >
                   <td className="px-4 py-3">
-                    <p className={cn("font-medium whitespace-nowrap transition-colors", selectedId === c.id ? "text-primary" : "text-foreground group-hover:text-primary")}>{c.candidateName}</p>
+                    <div className="flex items-center gap-1.5">
+                      {staleAlerts.some(({ candidate }) => candidate.id === c.id) && (
+                        <TriangleAlert className="h-3.5 w-3.5 shrink-0 text-amber-400" title="No activity in 7+ days" />
+                      )}
+                      <p className={cn("font-medium whitespace-nowrap transition-colors", selectedId === c.id ? "text-primary" : "text-foreground group-hover:text-primary")}>{c.candidateName}</p>
+                    </div>
                     <p className="text-xs text-muted-foreground">{c.leadCoach}</p>
                   </td>
                   <td className="px-4 py-3 text-sm text-muted-foreground whitespace-nowrap">{c.partner}</td>
