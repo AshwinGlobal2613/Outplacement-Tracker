@@ -3,11 +3,11 @@ import type { Session } from "./types";
 const FROM = `"Global Management Consultants" <${process.env.SMTP_FROM || "team@global-dubai.com"}>`;
 const BASE_URL = process.env.NEXTAUTH_URL || "https://outplacement-tracker-drab.vercel.app";
 
-async function sendEmail(to: string, subject: string, html: string): Promise<void> {
+async function sendEmail(to: string, subject: string, html: string): Promise<string | null> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
     console.warn("[email] RESEND_API_KEY not set — skipping email");
-    return;
+    return null;
   }
 
   const res = await fetch("https://api.resend.com/emails", {
@@ -19,10 +19,11 @@ async function sendEmail(to: string, subject: string, html: string): Promise<voi
     body: JSON.stringify({ from: FROM, to, subject, html }),
   });
 
+  const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Resend API error ${res.status}: ${body}`);
+    throw new Error(`Resend error ${res.status}: ${JSON.stringify(body)}`);
   }
+  return (body as { id?: string }).id ?? null;
 }
 
 export async function sendPasswordResetEmail(

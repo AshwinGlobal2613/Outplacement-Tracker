@@ -26,6 +26,8 @@ export async function GET() {
     createdBy: "Admin",
   };
 
+  const smtpFrom = process.env.SMTP_FROM || "(not set — defaulting to team@global-dubai.com)";
+
   try {
     await sendSessionReminderEmail(
       "ashwin@global-dubai.com",
@@ -34,9 +36,14 @@ export async function GET() {
       "Lead Coach",
       "https://outplacement-tracker-drab.vercel.app/portal"
     );
-    return NextResponse.json({ ok: true, message: "Test reminder email sent to ashwin@global-dubai.com" });
+    return NextResponse.json({
+      ok: true,
+      message: "Email accepted by Resend",
+      from: smtpFrom,
+      note: "If not received, check: 1) spam folder 2) global-dubai.com domain verification in Resend dashboard",
+    });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+    return NextResponse.json({ ok: false, error: msg, from: smtpFrom }, { status: 500 });
   }
 }
