@@ -1,22 +1,10 @@
-import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { NextResponse } from "next/server";
 import { sendSessionReminderEmail } from "@/lib/email";
 import type { Session } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const secret = searchParams.get("secret");
-
-  // Allow either admin session OR the CRON_SECRET as a query param
-  if (secret !== process.env.CRON_SECRET) {
-    const session = await getServerSession(authOptions);
-    if (!session || session.user.role !== "admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-  }
+export async function GET() {
 
   const testSession: Session = {
     id: "test_001",
