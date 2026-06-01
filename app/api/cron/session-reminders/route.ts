@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCandidates, getUsers } from "@/lib/db";
+import { sendSessionReminderEmail } from "@/lib/email";
 
 function getTargetDate(): string {
   // Cron runs at 8 AM UTC (12 PM GST). Find the date 24 hours from now.
@@ -134,5 +135,30 @@ export async function GET(req: NextRequest) {
     dmsSent++;
   }
 
-  return NextResponse.json({ ok: true, dmsSent });
+  // ── Email reminders to candidates ────────────────────────────────────────
+  let emailsSent = 0;
+  const portalBase = process.env.NEXTAUTH_URL || "https://outplacement-tracker-drab.vercel.app";
+
+  for (const candidate of candidates) {
+    if (!candidate.email) continue;
+    const tomorrowSessions = (candidate.sessions ?? []).filter((s) => s.date === tomorrow);
+    if (!tomorrowSessions.length) continue;
+
+    for (const session of tomorrowSessions) {
+      try {
+        await sendSessionReminderEmail(
+          candidate.email,
+          candidate.candidateName,
+          session,
+          candidate.leadCoach || "Your Coach",
+          `${portalBase}/portal`
+        );
+        emailsSent++;
+      } catch (err) {
+        console.error(`[session-reminders] Email failed for ${candidate.candidateName}:`, err);
+      }
+    }
+  }
+
+  return NextResponse.json({ ok: true, dmsSent, emailsSent });
 }

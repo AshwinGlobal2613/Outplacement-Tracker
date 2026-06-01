@@ -324,3 +324,52 @@ export async function sendSessionCancellationEmail(
     </div>`
   );
 }
+
+export async function sendSessionReminderEmail(
+  to: string,
+  candidateName: string,
+  session: Session,
+  coachName: string,
+  portalUrl: string
+): Promise<void> {
+  const [year, month, day] = session.date.split("-").map(Number);
+  const [hours, minutes] = session.time.split(":").map(Number);
+  const formattedDate = new Date(year, month - 1, day).toLocaleDateString("en-GB", {
+    weekday: "long", day: "numeric", month: "long", year: "numeric",
+  });
+  const formattedTime = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+
+  await sendEmail(
+    to,
+    `Reminder: Your session tomorrow — ${session.title} at ${formattedTime}`,
+    `
+    <div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;background:#0f172a;color:#e2e8f0;padding:36px;border-radius:12px;">
+      <div style="margin-bottom:24px;">
+        <span style="background:#7c3aed;color:#fff;padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;letter-spacing:0.5px;">Global Management Consultants</span>
+      </div>
+      <h2 style="color:#a78bfa;margin:0 0 4px;">Session Reminder ⏰</h2>
+      <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;">Hi <strong style="color:#e2e8f0;">${candidateName}</strong>, this is a reminder about your upcoming session <strong>tomorrow</strong>.</p>
+
+      <div style="background:#1e293b;border-radius:8px;padding:16px 20px;margin:0 0 24px;border-left:3px solid #7c3aed;">
+        <table style="width:100%;border-collapse:collapse;">
+          <tr><td style="color:#64748b;font-size:13px;padding:6px 0;width:40%;">Session</td><td style="color:#e2e8f0;font-weight:600;font-size:13px;padding:6px 0;">${session.title}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Date</td><td style="color:#e2e8f0;font-size:13px;padding:6px 0;">${formattedDate}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Time</td><td style="color:#e2e8f0;font-weight:600;font-size:13px;padding:6px 0;">${formattedTime}</td></tr>
+          <tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Duration</td><td style="color:#e2e8f0;font-size:13px;padding:6px 0;">${session.duration} minutes</td></tr>
+          ${session.location ? `<tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Location</td><td style="color:#e2e8f0;font-size:13px;padding:6px 0;">${session.location}</td></tr>` : ""}
+          ${session.meetingLink ? `<tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Meeting Link</td><td style="font-size:13px;padding:6px 0;"><a href="${session.meetingLink}" style="color:#818cf8;">${session.meetingLink}</a></td></tr>` : ""}
+          <tr><td style="color:#64748b;font-size:13px;padding:6px 0;">Coach</td><td style="color:#e2e8f0;font-size:13px;padding:6px 0;">${coachName}</td></tr>
+        </table>
+      </div>
+
+      ${session.meetingLink ? `
+      <div style="text-align:center;margin:0 0 24px;">
+        <a href="${session.meetingLink}" style="background:#7c3aed;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:600;font-size:14px;display:inline-block;">Join Session →</a>
+      </div>` : ""}
+
+      <p style="color:#64748b;font-size:13px;margin:0 0 16px;">If you need to reschedule or have any questions, please contact your coach directly.</p>
+      <hr style="border:none;border-top:1px solid #1e293b;margin:0 0 16px;" />
+      <a href="${portalUrl}" style="color:#6366f1;font-size:12px;">View your programme in the candidate portal →</a>
+    </div>`
+  );
+}
