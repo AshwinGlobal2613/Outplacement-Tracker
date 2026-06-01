@@ -19,32 +19,48 @@ async function sendEmail(to: string, subject: string, html: string): Promise<str
   return (body as { id?: string }).id ?? null;
 }
 
+// ─── Brand colours (from logo.svg) ───────────────────────────────────────────
+const C = {
+  crimson:  "#BE3758",   // primary brand
+  coral:    "#FE5656",   // secondary / hover
+  gold:     "#FEDB99",   // warm accent
+  mauve:    "#9C889B",   // muted text / labels
+  dark:     "#332A3F",   // deepest dark
+  bg:       "#1a1428",   // email body bg
+  card:     "#231836",   // card/row bg
+  cardAlt:  "#1c1230",   // alternate row
+  border:   "#2e2040",   // divider
+  text:     "#f0eaf5",   // primary text
+  muted:    "#9C889B",   // secondary text
+};
+
 // ─── Global branded layout wrapper ───────────────────────────────────────────
 
 function layout(content: string): string {
+  const logoUrl = `${BASE_URL}/logo.svg`;
   return `<!DOCTYPE html>
 <html lang="en">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"></head>
-<body style="margin:0;padding:0;background:#f1f5f9;font-family:Arial,Helvetica,sans-serif;">
-<table width="100%" cellpadding="0" cellspacing="0" style="background:#f1f5f9;padding:32px 0;">
+<body style="margin:0;padding:0;background:#f3f0f6;font-family:Arial,Helvetica,sans-serif;">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#f3f0f6;padding:32px 0;">
   <tr><td align="center">
     <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;">
 
       <!-- Header -->
       <tr>
-        <td style="background:#0c0a1e;border-radius:12px 12px 0 0;padding:28px 36px 22px;text-align:left;">
-          <table width="100%" cellpadding="0" cellspacing="0">
+        <td style="background:${C.dark};border-radius:12px 12px 0 0;padding:0;overflow:hidden;">
+          <!-- Top accent bar -->
+          <div style="height:4px;background:linear-gradient(90deg,${C.crimson},${C.coral},${C.gold});"></div>
+          <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 36px 20px;">
             <tr>
-              <td>
-                <div style="display:inline-block;background:linear-gradient(135deg,#7c3aed,#a855f7);padding:5px 14px;border-radius:20px;margin-bottom:14px;">
-                  <span style="color:#fff;font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;">Global Management Consultants</span>
-                </div>
-                <p style="color:#94a3b8;font-size:11px;margin:0;letter-spacing:0.5px;">Outplacement Management System · global-dubai.com</p>
+              <td valign="middle">
+                <img src="${logoUrl}" width="160" height="44" alt="Global Management Consultants"
+                     style="display:block;border:0;max-width:160px;" />
               </td>
               <td align="right" valign="middle">
-                <div style="width:44px;height:44px;background:linear-gradient(135deg,#7c3aed,#a855f7);border-radius:10px;display:flex;align-items:center;justify-content:center;">
-                  <span style="color:#fff;font-size:20px;font-weight:900;line-height:44px;display:block;text-align:center;">G</span>
-                </div>
+                <p style="color:${C.mauve};font-size:10px;margin:0;letter-spacing:0.8px;text-align:right;line-height:1.6;">
+                  Outplacement<br>Management System
+                </p>
               </td>
             </tr>
           </table>
@@ -53,20 +69,22 @@ function layout(content: string): string {
 
       <!-- Body -->
       <tr>
-        <td style="background:#0f172a;padding:32px 36px;">
+        <td style="background:${C.bg};padding:32px 36px;">
           ${content}
         </td>
       </tr>
 
       <!-- Footer -->
       <tr>
-        <td style="background:#080b14;border-radius:0 0 12px 12px;padding:20px 36px;text-align:center;">
-          <p style="color:#334155;font-size:11px;margin:0 0 6px;">
-            <strong style="color:#475569;">Global Management Consultants</strong> · Dubai, UAE
+        <td style="background:${C.dark};border-radius:0 0 12px 12px;padding:20px 36px;border-top:1px solid ${C.border};">
+          <!-- Bottom accent bar -->
+          <div style="height:2px;background:linear-gradient(90deg,${C.crimson},${C.coral},${C.gold});margin-bottom:16px;border-radius:1px;"></div>
+          <p style="color:${C.mauve};font-size:11px;margin:0 0 4px;text-align:center;">
+            <strong style="color:${C.text};">Global Management Consultants</strong> · Dubai, UAE
           </p>
-          <p style="color:#1e293b;font-size:11px;margin:0;">
+          <p style="color:#5a4e62;font-size:11px;margin:0;text-align:center;">
             © ${YEAR} Global Management Consultants ·
-            <a href="https://global-dubai.com" style="color:#334155;text-decoration:none;">global-dubai.com</a>
+            <a href="https://global-dubai.com" style="color:${C.mauve};text-decoration:none;">global-dubai.com</a>
           </p>
         </td>
       </tr>
@@ -81,39 +99,39 @@ function layout(content: string): string {
 // ─── Shared sub-components ────────────────────────────────────────────────────
 
 function detailsTable(rows: [string, string][]): string {
-  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:8px;padding:0;margin:0 0 24px;overflow:hidden;">
-    ${rows.map(([label, value]) => `
-    <tr>
-      <td style="color:#64748b;font-size:13px;padding:8px 16px;width:38%;white-space:nowrap;">${label}</td>
-      <td style="color:#e2e8f0;font-size:13px;padding:8px 16px;font-weight:500;">${value}</td>
-    </tr>`).join('<tr><td colspan="2" style="padding:0;border-top:1px solid #0f172a;"></td></tr>')}
+  return `<table width="100%" cellpadding="0" cellspacing="0" style="background:${C.card};border-radius:8px;padding:0;margin:0 0 24px;overflow:hidden;border:1px solid ${C.border};">
+    ${rows.map(([label, value], i) => `
+    <tr style="background:${i % 2 === 0 ? C.card : C.cardAlt};">
+      <td style="color:${C.mauve};font-size:13px;padding:9px 16px;width:38%;white-space:nowrap;">${label}</td>
+      <td style="color:${C.text};font-size:13px;padding:9px 16px;font-weight:500;">${value}</td>
+    </tr>`).join("")}
   </table>`;
 }
 
-function ctaButton(text: string, href: string, color = "#7c3aed"): string {
+function ctaButton(text: string, href: string): string {
   return `<table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-    <tr><td style="border-radius:8px;background:${color};">
-      <a href="${href}" style="display:inline-block;padding:13px 28px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:8px;">${text}</a>
+    <tr><td style="border-radius:8px;background:linear-gradient(135deg,${C.crimson},${C.coral});">
+      <a href="${href}" style="display:inline-block;padding:13px 30px;color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:8px;letter-spacing:0.3px;">${text}</a>
     </td></tr>
   </table>`;
 }
 
 function divider(): string {
-  return `<div style="border-top:1px solid #1e293b;margin:24px 0;"></div>`;
+  return `<div style="height:1px;background:linear-gradient(90deg,${C.crimson}40,${C.border},transparent);margin:24px 0;"></div>`;
 }
 
 function footerLink(text: string, href: string): string {
-  return `<a href="${href}" style="color:#6366f1;font-size:12px;text-decoration:none;">${text} →</a>`;
+  return `<a href="${href}" style="color:${C.crimson};font-size:12px;text-decoration:none;font-weight:500;">${text} →</a>`;
 }
 
 // ─── Password Reset ───────────────────────────────────────────────────────────
 
 export async function sendPasswordResetEmail(to: string, name: string, resetUrl: string): Promise<void> {
   await sendEmail(to, "Reset Your Password — Global Management Consultants", layout(`
-    <h2 style="color:#a78bfa;margin:0 0 6px;font-size:22px;">Password Reset Request 🔐</h2>
-    <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;line-height:1.6;">
-      Hi <strong style="color:#e2e8f0;">${name}</strong>, we received a request to reset your password.
-      This link expires in <strong style="color:#e2e8f0;">1 hour</strong>.
+    <h2 style="color:#BE3758;margin:0 0 6px;font-size:22px;">Password Reset Request 🔐</h2>
+    <p style="color:#9C889B;margin:0 0 24px;font-size:14px;line-height:1.6;">
+      Hi <strong style="color:#f0eaf5;">${name}</strong>, we received a request to reset your password.
+      This link expires in <strong style="color:#f0eaf5;">1 hour</strong>.
     </p>
     ${ctaButton("Reset Password", resetUrl)}
     <p style="color:#475569;font-size:12px;margin:0 0 4px;">Or copy this link:</p>
@@ -127,22 +145,22 @@ export async function sendPasswordResetEmail(to: string, name: string, resetUrl:
 
 export async function sendInviteEmail(to: string, name: string, tempPassword: string): Promise<void> {
   await sendEmail(to, "You've been invited to Global Management Consultants OMS", layout(`
-    <h2 style="color:#a78bfa;margin:0 0 6px;font-size:22px;">You're Invited 🎉</h2>
-    <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;line-height:1.6;">
-      Hi <strong style="color:#e2e8f0;">${name}</strong>, your account on the
-      <strong style="color:#e2e8f0;">Global Management Consultants OMS</strong> has been created.
+    <h2 style="color:#BE3758;margin:0 0 6px;font-size:22px;">You're Invited 🎉</h2>
+    <p style="color:#9C889B;margin:0 0 24px;font-size:14px;line-height:1.6;">
+      Hi <strong style="color:#f0eaf5;">${name}</strong>, your account on the
+      <strong style="color:#f0eaf5;">Global Management Consultants OMS</strong> has been created.
       Use the temporary password below to sign in — you'll be asked to set a new password immediately.
     </p>
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:8px;margin:0 0 20px;text-align:center;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#231836;border-radius:8px;margin:0 0 20px;text-align:center;">
       <tr><td style="padding:20px;">
         <p style="color:#64748b;font-size:11px;margin:0 0 8px;text-transform:uppercase;letter-spacing:1.5px;">Temporary Password</p>
-        <p style="color:#a78bfa;font-size:26px;font-weight:700;font-family:monospace;margin:0;letter-spacing:3px;">${tempPassword}</p>
+        <p style="color:#BE3758;font-size:26px;font-weight:700;font-family:monospace;margin:0;letter-spacing:3px;">${tempPassword}</p>
       </td></tr>
     </table>
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:8px;margin:0 0 24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#231836;border-radius:8px;margin:0 0 24px;">
       <tr><td style="padding:14px 16px;">
         <p style="color:#64748b;font-size:12px;margin:0 0 4px;">Signing in with</p>
-        <p style="color:#e2e8f0;font-weight:600;margin:0;font-size:14px;">${to}</p>
+        <p style="color:#f0eaf5;font-weight:600;margin:0;font-size:14px;">${to}</p>
       </td></tr>
     </table>
     ${ctaButton("Sign In Now", `${BASE_URL}/login`)}
@@ -160,17 +178,17 @@ export async function sendCandidateAssignedEmail(
 ): Promise<void> {
   const candidateUrl = `${BASE_URL}/outplacement/candidates/${candidateId}`;
   await sendEmail(to, `New Candidate Assigned — ${candidateName}`, layout(`
-    <h2 style="color:#a78bfa;margin:0 0 6px;font-size:22px;">New Candidate Assigned 👤</h2>
-    <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;line-height:1.6;">
-      Hi <strong style="color:#e2e8f0;">${recipientName}</strong>, a new candidate has been assigned to you as
-      <strong style="color:#a78bfa;">${role}</strong>.
+    <h2 style="color:#BE3758;margin:0 0 6px;font-size:22px;">New Candidate Assigned 👤</h2>
+    <p style="color:#9C889B;margin:0 0 24px;font-size:14px;line-height:1.6;">
+      Hi <strong style="color:#f0eaf5;">${recipientName}</strong>, a new candidate has been assigned to you as
+      <strong style="color:#BE3758;">${role}</strong>.
     </p>
     ${detailsTable([
       ["Candidate", `<strong>${candidateName}</strong>`],
       ["Partner / Client", partner],
       ["Level of Support", levelOfSupport],
       ["Programme Duration", duration],
-      ["Your Role", `<span style="color:#a78bfa;font-weight:600;">${role}</span>`],
+      ["Your Role", `<span style="color:#BE3758;font-weight:600;">${role}</span>`],
     ])}
     ${ctaButton("View Candidate Profile", candidateUrl)}
     ${divider()}
@@ -182,15 +200,15 @@ export async function sendCandidateAssignedEmail(
 
 export async function sendWelcomeEmail(to: string, name: string): Promise<void> {
   await sendEmail(to, "Welcome to Global Management Consultants — Your account is ready", layout(`
-    <h2 style="color:#a78bfa;margin:0 0 6px;font-size:22px;">Welcome Aboard, ${name}! 👋</h2>
-    <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;line-height:1.6;">
-      Your account on the <strong style="color:#e2e8f0;">Global Management Consultants</strong> platform
+    <h2 style="color:#BE3758;margin:0 0 6px;font-size:22px;">Welcome Aboard, ${name}! 👋</h2>
+    <p style="color:#9C889B;margin:0 0 24px;font-size:14px;line-height:1.6;">
+      Your account on the <strong style="color:#f0eaf5;">Global Management Consultants</strong> platform
       has been created and is ready to use.
     </p>
-    <table width="100%" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:8px;margin:0 0 24px;">
+    <table width="100%" cellpadding="0" cellspacing="0" style="background:#231836;border-radius:8px;margin:0 0 24px;">
       <tr><td style="padding:14px 16px;">
         <p style="color:#64748b;font-size:12px;margin:0 0 4px;">Signing in with</p>
-        <p style="color:#e2e8f0;font-weight:600;margin:0;font-size:14px;">${to}</p>
+        <p style="color:#f0eaf5;font-weight:600;margin:0;font-size:14px;">${to}</p>
       </td></tr>
     </table>
     ${ctaButton("Sign In Now", `${BASE_URL}/login`)}
@@ -277,15 +295,15 @@ export async function sendSessionInviteEmail(
     ["Time",      `<strong>${formattedTime}</strong>`],
     ["Duration",  durationLabel],
     ["Location",  session.location],
-    ...(session.meetingLink ? [["Meeting Link", `<a href="${session.meetingLink}" style="color:#a78bfa;">${session.meetingLink}</a>`] as [string,string]] : []),
-    ...(session.notes ? [["Notes", `<span style="color:#94a3b8;">${session.notes}</span>`] as [string,string]] : []),
+    ...(session.meetingLink ? [["Meeting Link", `<a href="${session.meetingLink}" style="color:#BE3758;">${session.meetingLink}</a>`] as [string,string]] : []),
+    ...(session.notes ? [["Notes", `<span style="color:#9C889B;">${session.notes}</span>`] as [string,string]] : []),
   ];
 
   const html = layout(`
-    <h2 style="color:#a78bfa;margin:0 0 6px;font-size:22px;">Session Scheduled 📅</h2>
-    <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;line-height:1.6;">
-      Hi <strong style="color:#e2e8f0;">${recipientName}</strong>, a coaching session has been scheduled
-      ${recipientRole ? `— you are the <strong style="color:#e2e8f0;">${recipientRole}</strong>.` : "."}
+    <h2 style="color:#BE3758;margin:0 0 6px;font-size:22px;">Session Scheduled 📅</h2>
+    <p style="color:#9C889B;margin:0 0 24px;font-size:14px;line-height:1.6;">
+      Hi <strong style="color:#f0eaf5;">${recipientName}</strong>, a coaching session has been scheduled
+      ${recipientRole ? `— you are the <strong style="color:#f0eaf5;">${recipientRole}</strong>.` : "."}
     </p>
     ${detailsTable(rows)}
     ${ctaButton("Add to Google Calendar", googleLink)}
@@ -328,20 +346,20 @@ export async function sendSessionCancellationEmail(
     `Session Cancelled: ${session.title} — ${candidateName} · ${formattedDate}`,
     layout(`
       <h2 style="color:#f87171;margin:0 0 6px;font-size:22px;">Session Cancelled ❌</h2>
-      <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;line-height:1.6;">
-        Hi <strong style="color:#e2e8f0;">${recipientName}</strong>, the following session has been
+      <p style="color:#9C889B;margin:0 0 24px;font-size:14px;line-height:1.6;">
+        Hi <strong style="color:#f0eaf5;">${recipientName}</strong>, the following session has been
         <strong style="color:#f87171;">cancelled</strong>.
       </p>
-      <table width="100%" cellpadding="0" cellspacing="0" style="background:#1e293b;border-radius:8px;margin:0 0 24px;border-left:3px solid #f87171;overflow:hidden;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#231836;border-radius:8px;margin:0 0 24px;border-left:3px solid #f87171;overflow:hidden;">
         ${[
           ["Session",   `<span style="text-decoration:line-through;">${session.title}</span>`],
           ["Candidate", candidateName],
-          ["Date",      `<span style="text-decoration:line-through;color:#94a3b8;">${formattedDate}</span>`],
-          ["Time",      `<span style="text-decoration:line-through;color:#94a3b8;">${formattedTime}</span>`],
+          ["Date",      `<span style="text-decoration:line-through;color:#9C889B;">${formattedDate}</span>`],
+          ["Time",      `<span style="text-decoration:line-through;color:#9C889B;">${formattedTime}</span>`],
           ...(session.location ? [["Location", session.location]] : []),
-        ].map(([l,v]) => `<tr><td style="color:#64748b;font-size:13px;padding:8px 16px;width:38%;">${l}</td><td style="color:#e2e8f0;font-size:13px;padding:8px 16px;">${v}</td></tr>`).join("")}
+        ].map(([l,v]) => `<tr><td style="color:#64748b;font-size:13px;padding:8px 16px;width:38%;">${l}</td><td style="color:#f0eaf5;font-size:13px;padding:8px 16px;">${v}</td></tr>`).join("")}
       </table>
-      <p style="color:#94a3b8;font-size:14px;margin:0 0 24px;line-height:1.6;">
+      <p style="color:#9C889B;font-size:14px;margin:0 0 24px;line-height:1.6;">
         Please remove this event from your calendar. A new session will be scheduled if required.
       </p>
       ${divider()}
@@ -364,7 +382,7 @@ export async function sendSessionReminderEmail(
   const rows: [string, string][] = [
     ["Session",   `<strong>${session.title}</strong>`],
     ["Date",      formattedDate],
-    ["Time",      `<strong style="color:#a78bfa;">${formattedTime}</strong>`],
+    ["Time",      `<strong style="color:#BE3758;">${formattedTime}</strong>`],
     ["Duration",  `${session.duration} minutes`],
     ...(session.location  ? [["Location",     session.location] as [string,string]] : []),
     ...(session.meetingLink ? [["Meeting Link", `<a href="${session.meetingLink}" style="color:#818cf8;">${session.meetingLink}</a>`] as [string,string]] : []),
@@ -375,10 +393,10 @@ export async function sendSessionReminderEmail(
     to,
     `Reminder: Your session tomorrow — ${session.title} at ${formattedTime}`,
     layout(`
-      <h2 style="color:#a78bfa;margin:0 0 6px;font-size:22px;">Session Reminder ⏰</h2>
-      <p style="color:#94a3b8;margin:0 0 24px;font-size:14px;line-height:1.6;">
-        Hi <strong style="color:#e2e8f0;">${candidateName}</strong>, this is your reminder about your
-        session <strong style="color:#e2e8f0;">tomorrow</strong>.
+      <h2 style="color:#BE3758;margin:0 0 6px;font-size:22px;">Session Reminder ⏰</h2>
+      <p style="color:#9C889B;margin:0 0 24px;font-size:14px;line-height:1.6;">
+        Hi <strong style="color:#f0eaf5;">${candidateName}</strong>, this is your reminder about your
+        session <strong style="color:#f0eaf5;">tomorrow</strong>.
       </p>
       ${detailsTable(rows)}
       ${session.meetingLink ? ctaButton("Join Session →", session.meetingLink) : ""}
