@@ -55,10 +55,14 @@ export async function GET(req: NextRequest) {
 
   const [candidates, users] = await Promise.all([getCandidates(), getUsers()]);
 
-  // Map user names to emails for Slack lookup
-  const nameToEmail: Record<string, string> = {};
-  for (const u of users) {
-    if (u.name && u.email) nameToEmail[u.name.toLowerCase()] = u.email;
+  // Fuzzy user lookup — handles first-name-only entries like "Sarah" → "Sarah Jhan"
+  function findUserByName(name: string) {
+    const s = name.toLowerCase().trim();
+    return (
+      users.find((u) => u.name.toLowerCase() === s) ||
+      users.find((u) => u.name.toLowerCase().startsWith(s + " ")) ||
+      users.find((u) => u.name.toLowerCase().includes(s))
+    );
   }
 
   const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
@@ -83,20 +87,24 @@ export async function GET(req: NextRequest) {
     });
 
     // Collect all people to notify: lead coach + support
-    const people: string[] = [
-      ...(c.leadCoach ? c.leadCoach.split(",").map((n) => n.trim()).filter(Boolean) : []),
-      ...(c.support    ? c.support.split(",").map((n) => n.trim()).filter(Boolean)    : []),
-    ];
+    // Collect all coaches + supports with fuzzy name matching
+    const coachNames   = c.leadCoach ? c.leadCoach.split(",").map((n) => n.trim()).filter(Boolean) : [];
+    const supportNames = c.support   ? c.support.split(",").map((n) => n.trim()).filter(Boolean)   : [];
+    const allNames     = [...coachNames, ...supportNames];
 
     const notified = new Set<string>(); // avoid duplicate DMs
 
-    for (const name of people) {
-      const email = nameToEmail[name.toLowerCase()];
+    for (const name of allNames) {
+      const user  = findUserByName(name);
+      const email = user?.email;
       if (!email || notified.has(email)) continue;
       notified.add(email);
 
       const slackUserId = await getSlackUserId(email, token);
       if (!slackUserId) continue;
+
+      const displayName = user?.name ?? name;
+      const role = coachNames.includes(name) ? "Lead Coach" : "Support";
 
       await sendSlackDM(slackUserId, token, {
         text: `⚠️ ${c.candidateName} has had no activity for ${daysInactive} days`,
@@ -109,7 +117,7 @@ export async function GET(req: NextRequest) {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `Hi *${name}*, a candidate on your programme has had *no activity for ${daysInactive} days* and may need a follow-up.`,
+              text: `Hi *${displayName}* _(${role})_, a candidate on your programme has had *no activity for ${daysInactive} days* and may need a follow-up.`,
             },
           },
           {
