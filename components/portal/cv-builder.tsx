@@ -772,9 +772,38 @@ function HtmlOrText({ html, style }: { html: string; style: React.CSSProperties 
   return <p style={{ ...style, whiteSpace: "pre-line" }}>{html}</p>;
 }
 
+// A4 ratio: 297mm / 210mm ≈ 1.4143
+const A4_RATIO = 297 / 210;
+
 function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
   cv: CVProfile; name: string; addedSections: string[]; hiddenFromPreview: Set<string>;
 }) {
+  const contentRef = useRef<HTMLDivElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [pageBreaks, setPageBreaks] = useState<number[]>([]);
+  const [pageCount, setPageCount]   = useState(1);
+
+  // Recalculate page breaks whenever content height changes
+  useEffect(() => {
+    const el = contentRef.current;
+    const wr = wrapperRef.current;
+    if (!el || !wr) return;
+    function recalc() {
+      if (!el || !wr) return;
+      const pageH = wr.offsetWidth * A4_RATIO;
+      const total = el.offsetHeight;
+      const count = Math.max(1, Math.ceil(total / pageH));
+      setPageCount(count);
+      setPageBreaks(
+        Array.from({ length: count - 1 }, (_, i) => Math.round(pageH * (i + 1)))
+      );
+    }
+    recalc();
+    const ro = new ResizeObserver(recalc);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [cv, addedSections, hiddenFromPreview]);
+
   const style  = { ...DEFAULT_STYLE, ...(cv.style ?? {}) };
   const accent = style.accentColor;
   const ff     = style.fontFamily;
@@ -1054,8 +1083,25 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
   const hasContact = contact.email || contact.phone || contact.location || contact.website;
 
+  // Outer print-preview shell (shown to user) + inner content (used for print)
   return (
-    <div id="cv-preview-panel" style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#111827", minHeight: "700px", boxShadow: "0 4px 32px rgba(0,0,0,0.15)", borderRadius: "8px", overflow: "hidden" }}>
+    <div ref={wrapperRef} style={{ background: "#64748b", borderRadius: "10px", padding: "16px 12px", display: "flex", flexDirection: "column", gap: "0" }}>
+      {/* Page count indicator */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+        <span style={{ color: "#cbd5e1", fontSize: "11px", fontFamily: "Arial,sans-serif" }}>Live Preview</span>
+        <span style={{ color: "#94a3b8", fontSize: "11px", fontFamily: "Arial,sans-serif" }}>
+          {pageCount} page{pageCount !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Relative wrapper so page-break overlays are positioned correctly */}
+      <div style={{ position: "relative" }}>
+        {/* The actual CV content */}
+        <div
+          ref={contentRef}
+          id="cv-preview-panel"
+          style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#111827", overflow: "hidden" }}
+        >
       <div style={{ borderBottom: `3px solid ${accent}`, padding: "28px 32px 22px" }}>
         <p style={{ fontSize: px(basePx * 1.85), fontWeight: 700, color: "#0f172a", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{name || "Your Name"}</p>
         {cv.headline && <p style={{ fontSize: px(basePx * 1.02), color: accent, fontWeight: 500, marginTop: "5px" }}>{cv.headline}</p>}
@@ -1069,6 +1115,39 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         )}
       </div>
       <div style={{ padding: "24px 32px" }}>{visible.map((id) => renderSection(id))}</div>
+        </div>{/* end cv-preview-panel */}
+
+        {/* Page break overlays */}
+        {pageBreaks.map((y, i) => (
+          <div key={i} style={{
+            position: "absolute", top: y, left: 0, right: 0, height: "20px",
+            background: "#64748b",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 5,
+          }}>
+            <span style={{ color: "#94a3b8", fontSize: "10px", fontFamily: "Arial,sans-serif", letterSpacing: "0.5px" }}>
+              — Page {i + 2} —
+            </span>
+          </div>
+        ))}
+
+        {/* Shadow under each page for depth */}
+        {Array.from({ length: pageCount }).map((_, i) => {
+          const wrapW = wrapperRef.current?.offsetWidth ?? 440;
+          const pageH = (wrapW - 24) * A4_RATIO;
+          return (
+            <div key={i} style={{
+              position: "absolute",
+              top: i * (pageH + 20),
+              left: 0, right: 0,
+              height: pageH,
+              boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
+              pointerEvents: "none",
+              zIndex: 4,
+            }} />
+          );
+        })}
+      </div>{/* end relative wrapper */}
     </div>
   );
 }
@@ -1544,8 +1623,7 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
         </div>
 
         <div className="lg:sticky lg:top-24 lg:self-start">
-          <div className="mb-2.5 flex items-center justify-between">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Live Preview</p>
+          <div className="mb-2.5 flex items-center justify-end">
             <button onClick={() => window.print()} className="flex items-center gap-1 text-xs text-primary hover:opacity-80 transition-opacity">
               <Download className="h-3 w-3" /> Save as PDF
             </button>
