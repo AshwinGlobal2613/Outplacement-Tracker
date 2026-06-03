@@ -22,6 +22,7 @@ import {
   ChevronUp,
   ChevronDown,
   UserCircle,
+  Mail,
 } from "lucide-react";
 
 type UserRole = "admin" | "team_member" | "candidate";
@@ -34,6 +35,7 @@ type User = {
   role: UserRole;
   clientCompany?: string;
   candidateId?: string;
+  additionalEmails?: string[];
   disabled: boolean;
   mustChangePassword?: boolean;
   createdAt: string;
@@ -66,6 +68,8 @@ function UserModal({
   const [candidates, setCandidates] = useState<CandidateOption[]>([]);
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
+  const [additionalEmails, setAdditionalEmails] = useState<string[]>(user?.additionalEmails ?? []);
+  const [newEmail, setNewEmail] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -109,6 +113,7 @@ function UserModal({
       phone,
       role,
       candidateId: role === "candidate" ? candidateId : undefined,
+      additionalEmails,
     };
     if (!isNew && password) body.password = password;
 
@@ -186,6 +191,71 @@ function UserModal({
               className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
+
+          {/* Additional emails for session invites */}
+          {(role === "admin" || role === "team_member") && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                <label className="text-sm font-medium text-foreground">Additional Email Addresses</label>
+                <span className="text-xs text-muted-foreground">(CC on session invites)</span>
+              </div>
+              {/* Existing additional emails */}
+              {additionalEmails.length > 0 && (
+                <div className="space-y-1.5">
+                  {additionalEmails.map((em, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <span className="flex-1 rounded-lg border border-border bg-muted/30 px-3 py-2 text-sm text-foreground truncate">{em}</span>
+                      <button
+                        type="button"
+                        onClick={() => setAdditionalEmails(additionalEmails.filter((_, j) => j !== i))}
+                        className="shrink-0 rounded p-1 text-muted-foreground/50 hover:text-rose-400 transition-colors"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Add new email */}
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={(e) => setNewEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const val = newEmail.trim();
+                      if (val && !additionalEmails.includes(val)) {
+                        setAdditionalEmails([...additionalEmails, val]);
+                        setNewEmail("");
+                      }
+                    }
+                  }}
+                  placeholder="another@email.com (Enter to add)"
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const val = newEmail.trim();
+                    if (val && !additionalEmails.includes(val)) {
+                      setAdditionalEmails([...additionalEmails, val]);
+                      setNewEmail("");
+                    }
+                  }}
+                  disabled={!newEmail.trim()}
+                  className="rounded-lg bg-primary/10 px-3 py-2 text-xs font-medium text-primary hover:bg-primary/20 disabled:opacity-40 transition-colors"
+                >
+                  Add
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Session invites will be sent to the primary email plus all addresses listed here.
+              </p>
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-foreground">Role</label>

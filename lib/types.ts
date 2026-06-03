@@ -7,8 +7,9 @@ export interface User {
   phone?: string;
   password: string;
   role: UserRole;
-  clientCompany?: string;  // only for role === "client"
-  candidateId?: string;    // only for role === "candidate"
+  clientCompany?: string;      // only for role === "client"
+  candidateId?: string;        // only for role === "candidate"
+  additionalEmails?: string[]; // extra addresses to CC on session invites
   disabled: boolean;
   mustChangePassword?: boolean;
   createdAt: string;

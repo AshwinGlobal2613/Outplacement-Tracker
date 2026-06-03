@@ -73,8 +73,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         ? users.find((u) => u.name.trim().toLowerCase() === candidate.support.trim().toLowerCase())
         : null;
 
-      // Collect all attendee emails for calendar invite
-      const allEmails = [candidate.email, coachUser?.email, supportUser?.email].filter(Boolean) as string[];
+      // Collect all attendee emails (primary + additional) for calendar invite
+      const coachEmails    = [coachUser?.email,   ...(coachUser?.additionalEmails   ?? [])].filter(Boolean) as string[];
+      const supportEmails  = [supportUser?.email, ...(supportUser?.additionalEmails ?? [])].filter(Boolean) as string[];
+      const allEmails      = [...new Set([candidate.email, ...coachEmails, ...supportEmails].filter(Boolean))] as string[];
 
       const invites: Promise<void>[] = [];
 
@@ -88,21 +90,21 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         );
       }
 
-      // Lead Coach
-      if (coachUser?.email) {
+      // Lead Coach — primary + all additional emails
+      for (const em of coachEmails) {
         invites.push(
           sendSessionInviteEmail(
-            coachUser.email, coachUser.name, "Lead Coach",
+            em, coachUser!.name, "Lead Coach",
             newSession, candidate.candidateName, candidate.id, allEmails
           ).catch((e) => console.error("[email] Lead Coach session invite failed:", e))
         );
       }
 
-      // Support
-      if (supportUser?.email) {
+      // Support — primary + all additional emails
+      for (const em of supportEmails) {
         invites.push(
           sendSessionInviteEmail(
-            supportUser.email, supportUser.name, "Support",
+            em, supportUser!.name, "Support",
             newSession, candidate.candidateName, candidate.id, allEmails
           ).catch((e) => console.error("[email] Support session invite failed:", e))
         );
