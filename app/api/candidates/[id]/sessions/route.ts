@@ -63,51 +63,75 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   ).length;
   const updated = await updateCandidate(params.id, { sessions, sessionsCompleted });
 
-  // Fire-and-forget: also send email invites (with .ics) regardless of Google Calendar
+  // Fire-and-forget: send email invites
+  // If the client sent an explicit inviteEmails list, use that.
+  // Otherwise fall back to auto-detecting from candidate's coach/support.
+  const explicitEmails: string[] | undefined = Array.isArray(body.inviteEmails) && body.inviteEmails.length > 0
+    ? body.inviteEmails as string[]
+    : undefined;
+
   getUsers()
     .then((users) => {
-      const coachUser = candidate.leadCoach
-        ? users.find((u) => u.name.trim().toLowerCase() === candidate.leadCoach.trim().toLowerCase())
-        : null;
-      const supportUser = candidate.support
-        ? users.find((u) => u.name.trim().toLowerCase() === candidate.support.trim().toLowerCase())
-        : null;
-
-      // Collect all attendee emails (primary + additional) for calendar invite
-      const coachEmails    = [coachUser?.email,   ...(coachUser?.additionalEmails   ?? [])].filter(Boolean) as string[];
-      const supportEmails  = [supportUser?.email, ...(supportUser?.additionalEmails ?? [])].filter(Boolean) as string[];
-      const allEmails      = [...new Set([candidate.email, ...coachEmails, ...supportEmails].filter(Boolean))] as string[];
+      // Build a name→user map with fuzzy first-name matching
+      function findUser(name: string) {
+        const s = name.toLowerCase().trim();
+        return users.find((u) => u.name.toLowerCase() === s) ||
+               users.find((u) => u.name.toLowerCase().startsWith(s + " ")) ||
+               users.find((u) => u.name.toLowerCase().includes(s));
+      }
 
       const invites: Promise<void>[] = [];
 
-      // Candidate
-      if (candidate.email) {
-        invites.push(
-          sendSessionInviteEmail(
-            candidate.email, candidate.candidateName, "Candidate",
-            newSession, candidate.candidateName, candidate.id, allEmails
-          ).catch((e) => console.error("[email] Candidate session invite failed:", e))
-        );
-      }
+      if (explicitEmails) {
+        // Use the exact list chosen by the user in the modal
+        const allEmails = [...new Set(explicitEmails)];
+        for (const em of allEmails) {
+          // Find matching user for display name, fall back to email
+          const matchedUser = users.find((u) => u.email === em || (u.additionalEmails ?? []).includes(em));
+          const name = matchedUser?.name ?? em;
+          const role = em === candidate.email ? "Candidate"
+            : matchedUser?.name && candidate.leadCoach?.includes(matchedUser.name) ? "Lead Coach"
+            : matchedUser?.name && candidate.support?.includes(matchedUser.name) ? "Support"
+            : "Attendee";
+          invites.push(
+            sendSessionInviteEmail(em, name, role, newSession, candidate.candidateName, candidate.id, allEmails)
+              .catch((e) => console.error(`[email] Invite to ${em} failed:`, e))
+          );
+        }
+      } else {
+        // Auto-detect from candidate record
+        const coachNames   = candidate.leadCoach ? candidate.leadCoach.split(",").map((n) => n.trim()).filter(Boolean) : [];
+        const supportNames = candidate.support    ? candidate.support.split(",").map((n) => n.trim()).filter(Boolean)    : [];
 
-      // Lead Coach — primary + all additional emails
-      for (const em of coachEmails) {
-        invites.push(
-          sendSessionInviteEmail(
-            em, coachUser!.name, "Lead Coach",
-            newSession, candidate.candidateName, candidate.id, allEmails
-          ).catch((e) => console.error("[email] Lead Coach session invite failed:", e))
-        );
-      }
+        const coachUsers   = coachNames.map(findUser).filter(Boolean);
+        const supportUsers = supportNames.map(findUser).filter(Boolean);
 
-      // Support — primary + all additional emails
-      for (const em of supportEmails) {
-        invites.push(
-          sendSessionInviteEmail(
-            em, supportUser!.name, "Support",
-            newSession, candidate.candidateName, candidate.id, allEmails
-          ).catch((e) => console.error("[email] Support session invite failed:", e))
-        );
+        const coachEmails   = coachUsers.flatMap((u) => [u!.email, ...(u!.additionalEmails ?? [])]).filter(Boolean) as string[];
+        const supportEmails = supportUsers.flatMap((u) => [u!.email, ...(u!.additionalEmails ?? [])]).filter(Boolean) as string[];
+        const allEmails     = [...new Set([candidate.email, ...coachEmails, ...supportEmails].filter(Boolean))] as string[];
+
+        if (candidate.email) {
+          invites.push(
+            sendSessionInviteEmail(candidate.email, candidate.candidateName, "Candidate", newSession, candidate.candidateName, candidate.id, allEmails)
+              .catch((e) => console.error("[email] Candidate invite failed:", e))
+          );
+        }
+        for (const u of coachUsers) {
+          for (const em of [u!.email, ...(u!.additionalEmails ?? [])].filter(Boolean) as string[]) {
+            invites.push(
+              sendSessionInviteEmail(em, u!.name, "Lead Coach", newSession, candidate.candidateName, candidate.id, allEmails)
+                .catch((e) => console.error("[email] Coach invite failed:", e))
+            );
+          }
+        }
+        for (const u of supportUsers) {
+          for (const em of [u!.email, ...(u!.additionalEmails ?? [])].filter(Boolean) as string[]) {
+            invites.push(
+              sendSessionInviteEmail(em, u!.name, "Support", newSession, candidate.candidateName, candidate.id, allEmails)
+                .catch((e) => console.error("[email] Support invite failed:", e))
+            );
+          }
+        }
       }
 
       return Promise.all(invites);

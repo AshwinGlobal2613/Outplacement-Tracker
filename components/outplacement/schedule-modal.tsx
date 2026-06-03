@@ -168,57 +168,68 @@ export function ScheduleModal({
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Session | null>(null);
-  const [recipients, setRecipients] = useState<{ name: string; emails: string[]; role: string }[]>([]);
 
-  // Load recipients (coach + support emails incl. additional) when modal opens
+  // Each recipient row: label, email, checked (included in invite), removable
+  type RecipientRow = { id: string; label: string; email: string; role: string; checked: boolean; removable: boolean };
+  const [inviteRows, setInviteRows] = useState<RecipientRow[]>([]);
+  const [extraEmail, setExtraEmail] = useState("");
+
+  // Smart name lookup — handles first-name-only entries like "Ashwin" matching "Ashwin Sharma"
+  function findUser(
+    name: string,
+    users: { name: string; email: string; additionalEmails?: string[] }[]
+  ) {
+    const s = name.toLowerCase().trim();
+    return (
+      users.find((u) => u.name.toLowerCase() === s) ||
+      users.find((u) => u.name.toLowerCase().startsWith(s + " ")) ||
+      users.find((u) => u.name.toLowerCase().includes(s))
+    );
+  }
+
   useEffect(() => {
-    async function loadRecipients() {
+    async function loadInviteRows() {
       try {
-        const usersRes = await fetch("/api/users");
-        if (!usersRes.ok) return;
-        const users: { name: string; email: string; additionalEmails?: string[] }[] = await usersRes.json();
-        const nameToUser: Record<string, { name: string; email: string; additionalEmails?: string[] }> = {};
-        for (const u of users) {
-          if (u.name) nameToUser[u.name.toLowerCase()] = u;
-        }
-        const list: { name: string; emails: string[]; role: string }[] = [];
+        const res = await fetch("/api/users");
+        if (!res.ok) return;
+        const users: { name: string; email: string; additionalEmails?: string[] }[] = await res.json();
 
+        const rows: RecipientRow[] = [];
+        let idx = 0;
+
+        // Candidate
         if (candidate.email) {
-          list.push({ name: candidate.candidateName, emails: [candidate.email], role: "Candidate" });
+          rows.push({ id: `r${idx++}`, label: candidate.candidateName, email: candidate.email, role: "Candidate", checked: true, removable: false });
         }
 
+        // Lead coaches
         const coachNames = candidate.leadCoach
           ? candidate.leadCoach.split(",").map((n) => n.trim()).filter(Boolean)
           : [];
         for (const n of coachNames) {
-          const u = nameToUser[n.toLowerCase()];
-          if (u) {
-            list.push({
-              name: n,
-              emails: [u.email, ...(u.additionalEmails ?? [])].filter(Boolean),
-              role: "Lead Coach",
-            });
+          const u = findUser(n, users);
+          const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
+          for (const em of emails) {
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked: true, removable: true });
           }
         }
 
+        // Supports
         const supportNames = candidate.support
           ? candidate.support.split(",").map((n) => n.trim()).filter(Boolean)
           : [];
         for (const n of supportNames) {
-          const u = nameToUser[n.toLowerCase()];
-          if (u) {
-            list.push({
-              name: n,
-              emails: [u.email, ...(u.additionalEmails ?? [])].filter(Boolean),
-              role: "Support",
-            });
+          const u = findUser(n, users);
+          const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
+          for (const em of emails) {
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked: true, removable: true });
           }
         }
 
-        setRecipients(list);
+        setInviteRows(rows);
       } catch {}
     }
-    loadRecipients();
+    loadInviteRows();
   }, [candidate]);
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
@@ -232,11 +243,12 @@ export function ScheduleModal({
   async function handleSave() {
     if (!form.date || !form.time) return;
     setSaving(true);
+    const selectedEmails = inviteRows.filter((r) => r.checked).map((r) => r.email);
     try {
       const res = await fetch(`/api/candidates/${candidate.id}/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ ...form, inviteEmails: selectedEmails }),
       });
       if (!res.ok) throw new Error("Failed");
       const { session } = await res.json();
@@ -361,36 +373,89 @@ export function ScheduleModal({
               </div>
             </div>
 
-            {/* Invite recipients preview */}
-            {recipients.length > 0 && (
-              <div className="mx-6 mb-4 rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
-                <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 bg-muted/30">
-                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-semibold text-foreground">Invite will be sent to</span>
-                  <span className="ml-auto text-[10px] text-muted-foreground">{recipients.reduce((t, r) => t + r.emails.length, 0)} recipient{recipients.reduce((t, r) => t + r.emails.length, 0) !== 1 ? "s" : ""}</span>
-                </div>
-                <div className="divide-y divide-border/30">
-                  {recipients.map((r, i) => (
-                    <div key={i} className="flex items-start gap-3 px-3 py-2.5">
-                      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
-                        {r.name.slice(0, 1).toUpperCase()}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs font-medium text-foreground truncate">{r.name}</p>
-                          <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{r.role}</span>
-                        </div>
-                        <div className="flex flex-wrap gap-x-2 gap-y-0.5 mt-0.5">
-                          {r.emails.map((em, j) => (
-                            <span key={j} className="text-[11px] text-muted-foreground truncate">{em}</span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+            {/* Editable invite recipients */}
+            <div className="mx-6 mb-4 rounded-xl border border-border/60 bg-muted/20 overflow-hidden">
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-border/40 bg-muted/30">
+                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-xs font-semibold text-foreground">Invite will be sent to</span>
+                <span className="ml-auto text-[10px] text-muted-foreground">
+                  {inviteRows.filter((r) => r.checked).length} of {inviteRows.length} selected
+                </span>
               </div>
-            )}
+
+              {/* Recipient rows with checkboxes */}
+              <div className="divide-y divide-border/30 max-h-48 overflow-y-auto">
+                {inviteRows.length === 0 && (
+                  <p className="px-3 py-3 text-xs text-muted-foreground">Loading recipients…</p>
+                )}
+                {inviteRows.map((r) => (
+                  <div key={r.id} className={cn("flex items-center gap-3 px-3 py-2.5 transition-colors", !r.checked && "opacity-50")}>
+                    <input
+                      type="checkbox"
+                      checked={r.checked}
+                      disabled={!r.removable}
+                      onChange={(e) => setInviteRows((prev) => prev.map((row) => row.id === r.id ? { ...row, checked: e.target.checked } : row))}
+                      className="h-3.5 w-3.5 rounded accent-primary cursor-pointer disabled:cursor-not-allowed"
+                    />
+                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                      {r.label.slice(0, 1).toUpperCase()}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs font-medium text-foreground truncate">{r.label}</p>
+                        <span className="shrink-0 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{r.role}</span>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground truncate">{r.email}</p>
+                    </div>
+                    {r.removable && (
+                      <button
+                        type="button"
+                        onClick={() => setInviteRows((prev) => prev.filter((row) => row.id !== r.id))}
+                        className="shrink-0 rounded p-0.5 text-muted-foreground/30 hover:text-rose-400 transition-colors"
+                        title="Remove from invite"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Add extra recipient */}
+              <div className="flex items-center gap-2 px-3 py-2 border-t border-border/40">
+                <input
+                  type="email"
+                  value={extraEmail}
+                  onChange={(e) => setExtraEmail(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      const val = extraEmail.trim();
+                      if (val && !inviteRows.some((r) => r.email === val)) {
+                        setInviteRows((prev) => [...prev, { id: `extra_${Date.now()}`, label: val, email: val, role: "Additional", checked: true, removable: true }]);
+                        setExtraEmail("");
+                      }
+                    }
+                  }}
+                  placeholder="Add another email…"
+                  className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  disabled={!extraEmail.trim()}
+                  onClick={() => {
+                    const val = extraEmail.trim();
+                    if (val && !inviteRows.some((r) => r.email === val)) {
+                      setInviteRows((prev) => [...prev, { id: `extra_${Date.now()}`, label: val, email: val, role: "Additional", checked: true, removable: true }]);
+                      setExtraEmail("");
+                    }
+                  }}
+                  className="rounded-lg bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/20 disabled:opacity-40 transition-colors"
+                >
+                  + Add
+                </button>
+              </div>
+            </div>
 
             <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
               <button onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
