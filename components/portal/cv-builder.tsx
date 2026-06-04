@@ -782,7 +782,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [pageBreaks, setPageBreaks] = useState<number[]>([]);
   const [pageCount, setPageCount]   = useState(1);
-  const [pageH,     setPageH]       = useState(794); // default A4 at ~560px wide
+  const [pageH,     setPageH]       = useState(792); // A4 at 560px wide: 560 × 297/210 ≈ 792
 
   // Recalculate page breaks whenever content height changes
   useEffect(() => {
@@ -791,7 +791,9 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
     if (!el || !wr) return;
     function recalc() {
       if (!el || !wr) return;
-      const ph = Math.round(wr.offsetWidth * A4_RATIO);
+      const rawWidth = wr.offsetWidth;
+      if (rawWidth < 50) return; // layout not settled yet — skip
+      const ph = Math.max(600, Math.round(rawWidth * A4_RATIO));
       setPageH(ph);
       const total = el.offsetHeight;
       const count = Math.max(1, Math.ceil(total / ph));
