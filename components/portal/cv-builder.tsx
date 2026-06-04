@@ -1100,17 +1100,16 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
   // Outer print-preview shell (shown to user) + inner content (used for print)
   return (
-    <div ref={wrapperRef} style={{ background: "#64748b", borderRadius: "10px", padding: "16px 12px", display: "flex", flexDirection: "column", gap: "0" }}>
-      {/* Page count indicator */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-        <span style={{ color: "#cbd5e1", fontSize: "11px", fontFamily: "Arial,sans-serif" }}>Live Preview</span>
-        <span style={{ color: "#94a3b8", fontSize: "11px", fontFamily: "Arial,sans-serif" }}>
+    <div ref={wrapperRef}>
+      {/* Page count badge */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
+        <span style={{ background: "rgba(0,0,0,0.18)", color: "#fff", fontSize: "11px", fontFamily: "Arial,sans-serif", padding: "2px 10px", borderRadius: "999px" }}>
           {pageCount} page{pageCount !== 1 ? "s" : ""}
         </span>
       </div>
 
       {/* Relative wrapper so page-break overlays are positioned correctly */}
-      <div style={{ position: "relative" }}>
+      <div style={{ position: "relative", boxShadow: "0 8px 40px rgba(0,0,0,0.18)", borderRadius: "4px" }}>
         {/* The actual CV content */}
         <div
           ref={contentRef}
@@ -1609,40 +1608,59 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
   const currentStyle = { ...DEFAULT_STYLE, ...(cv.style ?? {}) };
 
   return (
-    <div className="space-y-5">
-      {/* Import success banner */}
-      {importMsg && (
-        <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm font-medium text-emerald-400">
-          <span className="text-base">✓</span>
-          {importMsg}
-          <span className="ml-1 text-xs font-normal text-emerald-400/70">— review the sections below and save when ready</span>
-        </div>
-      )}
+    <div className="flex flex-col" style={{ height: "calc(100vh - 140px)", minHeight: "600px" }}>
 
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-base font-semibold text-foreground">CV Builder</h2>
-          <p className="text-xs text-muted-foreground mt-0.5">Fill in your details, then add sections below</p>
+      {/* ── FlowCV-style top bar ────────────────────────────────────────────── */}
+      <div className="flex items-center justify-between gap-4 border-b border-border bg-card px-5 py-3 shrink-0">
+        <div className="flex items-center gap-2.5">
+          <Sparkles className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">CV Builder</span>
+          {importMsg && (
+            <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
+              ✓ {importMsg}
+            </span>
+          )}
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button onClick={() => window.print()} className="flex items-center gap-1.5 rounded-xl border border-border/60 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
-            <Printer className="h-3.5 w-3.5" /><span className="hidden sm:block">Print / PDF</span>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => window.print()}
+            className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:block">Print / PDF</span>
           </button>
-          <button onClick={save} disabled={saving} className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity">
+          <button
+            onClick={save}
+            disabled={saving}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
+          >
             {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
             {saved ? "Saved!" : saving ? "Saving…" : "Save"}
           </button>
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr,440px]">
-        <div className="space-y-3">
-          <PersonalInfoCard name={candidateName} headline={cv.headline} contact={cv.contact ?? {}} accentColor={currentStyle.accentColor}
-            onHeadlineChange={(v) => setCv((p) => ({ ...p, headline: v }))} onContactChange={setContact} />
+      {/* ── Two-panel body ──────────────────────────────────────────────────── */}
+      <div className="flex flex-1 overflow-hidden">
+
+        {/* LEFT — editor (fixed width, independently scrollable) */}
+        <div className="w-[380px] shrink-0 overflow-y-auto border-r border-border bg-sidebar/30 p-4 space-y-3">
+          <PersonalInfoCard
+            name={candidateName}
+            headline={cv.headline}
+            contact={cv.contact ?? {}}
+            accentColor={currentStyle.accentColor}
+            onHeadlineChange={(v) => setCv((p) => ({ ...p, headline: v }))}
+            onContactChange={setContact}
+          />
           <AppearancePanel currentStyle={currentStyle} onStyleChange={setStyle} />
 
           {addedSections.map((id) => (
-            <SectionRow key={id} sectionId={id} isOpen={openSection === id} isHidden={hiddenFromPreview.has(id)}
+            <SectionRow
+              key={id}
+              sectionId={id}
+              isOpen={openSection === id}
+              isHidden={hiddenFromPreview.has(id)}
               onToggle={() => setOpenSection(openSection === id ? null : id)}
               onToggleVisibility={() => toggleHidden(id)}
               onRemove={() => removeSection(id)}
@@ -1650,22 +1668,44 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
               onDragOver={(e) => handleDragOver(e, id)}
               onDrop={() => handleDrop(id)}
               onDragEnd={() => { setDragItem(null); setDragOver(null); }}
-              isDraggingOver={dragOver === id}>
+              isDraggingOver={dragOver === id}
+            >
               {renderSectionEditor(id)}
             </SectionRow>
           ))}
 
           <AddContentButton addedSections={addedSections} onAdd={addSection} onUploadResume={uploadResume} />
+
+          {/* Bottom padding so last element doesn't touch the edge */}
+          <div className="h-4" />
         </div>
 
-        <div className="lg:sticky lg:top-24 lg:self-start">
-          <div className="mb-2.5 flex items-center justify-end">
-            <button onClick={() => window.print()} className="flex items-center gap-1 text-xs text-primary hover:opacity-80 transition-opacity">
+        {/* RIGHT — document viewer (fills remaining space, light bg, centered preview) */}
+        <div className="flex-1 overflow-y-auto bg-[#e8edf2]">
+          {/* Download bar */}
+          <div className="sticky top-0 z-10 flex items-center justify-end gap-3 border-b border-black/10 bg-[#dde3eb] px-5 py-2">
+            <span className="text-[11px] text-slate-500">Live Preview</span>
+            <button
+              onClick={() => window.print()}
+              className="flex items-center gap-1.5 rounded-lg bg-white border border-black/10 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+            >
               <Download className="h-3 w-3" /> Save as PDF
             </button>
           </div>
-          <CVPreview cv={cv} name={candidateName} addedSections={addedSections} hiddenFromPreview={hiddenFromPreview} />
+
+          {/* Centered A4 preview */}
+          <div className="flex justify-center py-8 px-6">
+            <div className="w-full max-w-[700px]">
+              <CVPreview
+                cv={cv}
+                name={candidateName}
+                addedSections={addedSections}
+                hiddenFromPreview={hiddenFromPreview}
+              />
+            </div>
+          </div>
         </div>
+
       </div>
     </div>
   );
