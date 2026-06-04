@@ -187,7 +187,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   const profiles = getProfiles(candidate);
   const filtered = profiles.filter((p) => p.id !== cvId);
 
-  if (filtered.length === 0) return NextResponse.json({ error: "Cannot delete the last CV" }, { status: 400 });
+  // Allow deleting all CVs — leaves an empty list
 
   const updated = await updateCandidate(params.id, { cvProfiles: filtered });
   if (!updated) return NextResponse.json({ error: "Update failed" }, { status: 500 });
