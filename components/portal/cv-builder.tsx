@@ -1235,7 +1235,7 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
   useEffect(() => {
     const el = document.createElement("style");
     el.id = "cv-print-style";
-    el.textContent = `@media print { body * { visibility: hidden !important; } #cv-preview-panel, #cv-preview-panel * { visibility: visible !important; } #cv-preview-panel { position: fixed !important; inset: 0 !important; border-radius: 0 !important; box-shadow: none !important; } @page { margin: 12mm 14mm; size: A4; } }`;
+    el.textContent = `@media print { body * { visibility: hidden !important; } #cv-preview-panel, #cv-preview-panel * { visibility: visible !important; } #cv-preview-panel { position: fixed !important; inset: 0 !important; border-radius: 0 !important; box-shadow: none !important; } @page { margin: 0; size: A4; } }`;
     document.head.appendChild(el);
     return () => { document.getElementById("cv-print-style")?.remove(); };
   }, []);
