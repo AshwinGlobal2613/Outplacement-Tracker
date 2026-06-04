@@ -110,6 +110,7 @@ export default function MyDashboardPage() {
   const firstName = userName.split(" ")[0];
 
   const myCandidates = candidates.filter((c) => {
+    if (c.status === "completed" || c.status === "declined") return false;
     const coach = c.leadCoach?.toLowerCase() ?? "";
     const support = c.support?.toLowerCase() ?? "";
     const fn = firstName.toLowerCase();
