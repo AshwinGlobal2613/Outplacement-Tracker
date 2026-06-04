@@ -93,6 +93,41 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   let updatedProfiles: CVNamedProfile[];
 
   if (cvId) {
+    const exists = profiles.some((p) => p.id === cvId);
+
+    if (!exists) {
+      // First save — create the profile entry
+      const newEntry: CVNamedProfile = {
+        id: cvId,
+        name: name ?? `Resume ${profiles.length + 1}`,
+        createdAt: now,
+        updatedAt: now,
+        profile: {
+          headline: profileFields.headline ?? "",
+          summary: profileFields.summary ?? "",
+          linkedinAbout: profileFields.linkedinAbout ?? "",
+          skills: profileFields.skills ?? [],
+          languages: profileFields.languages ?? [],
+          certifications: profileFields.certifications ?? [],
+          experience: profileFields.experience ?? [],
+          education: profileFields.education ?? [],
+          interests: profileFields.interests ?? [],
+          projects: profileFields.projects ?? [],
+          courses: profileFields.courses ?? [],
+          awards: profileFields.awards ?? [],
+          organisations: profileFields.organisations ?? [],
+          publications: profileFields.publications ?? [],
+          references: profileFields.references ?? [],
+          declaration: profileFields.declaration ?? "",
+          customSections: profileFields.customSections ?? [],
+          sectionOrder: profileFields.sectionOrder,
+          style: profileFields.style,
+          contact: profileFields.contact ?? {},
+          updatedAt: now,
+        } as CVProfile,
+      };
+      updatedProfiles = [...profiles, newEntry];
+    } else {
     // Update existing
     updatedProfiles = profiles.map((p) => p.id === cvId
       ? {
@@ -125,6 +160,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         }
       : p
     );
+    } // end else (update existing)
   } else {
     return NextResponse.json({ error: "cvId required" }, { status: 400 });
   }

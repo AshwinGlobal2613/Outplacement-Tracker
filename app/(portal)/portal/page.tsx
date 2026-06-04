@@ -504,7 +504,6 @@ function CVBuilderTab({ candidate }: { candidate: PortalCandidate }) {
   const [profiles, setProfiles]   = useState<CVNamedProfile[]>([]);
   const [loading, setLoading]     = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [creating, setCreating]   = useState(false);
 
   async function loadProfiles() {
     setLoading(true);
@@ -516,19 +515,26 @@ function CVBuilderTab({ candidate }: { candidate: PortalCandidate }) {
 
   useEffect(() => { loadProfiles(); }, [candidate.id]);
 
-  async function createNew() {
-    setCreating(true);
-    const res = await fetch(`/api/candidates/${candidate.id}/cv`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: `Resume ${profiles.length + 1}` }),
-    });
-    if (res.ok) {
-      const newProfile: CVNamedProfile = await res.json();
-      setProfiles((p) => [...p, newProfile]);
-      setSelectedId(newProfile.id);
-    }
-    setCreating(false);
+  function createNew() {
+    // Create locally — saved to DB when the user clicks Save in the builder
+    const newId = `cv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+    const newProfile: CVNamedProfile = {
+      id: newId,
+      name: `Resume ${profiles.length + 1}`,
+      createdAt: new Date().toISOString(),
+      profile: {
+        headline: "", summary: "", linkedinAbout: "",
+        skills: [], languages: [], certifications: [],
+        experience: [], education: [],
+        interests: [], projects: [], courses: [], awards: [],
+        publications: [], references: [], declaration: "", customSections: [],
+        sectionOrder: [],
+        style: { accentColor: "#e11d48", fontFamily: "Inter, system-ui, sans-serif", fontSize: "md", spacing: "normal" },
+        contact: {},
+      },
+    };
+    setProfiles((p) => [...p, newProfile]);
+    setSelectedId(newId);
   }
 
   async function deleteProfile(id: string) {
@@ -624,14 +630,11 @@ function CVBuilderTab({ candidate }: { candidate: PortalCandidate }) {
           <div className="flex flex-col">
             <button
               onClick={createNew}
-              disabled={creating}
               className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary"
               style={{ aspectRatio: "210/297" }}
             >
-              {creating
-                ? <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-                : <><Plus className="h-8 w-8 mb-2" /><span className="text-sm font-medium">New resume</span></>
-              }
+              <Plus className="h-8 w-8 mb-2" />
+              <span className="text-sm font-medium">New resume</span>
             </button>
             <div className="mt-2 px-0.5 h-8" />
           </div>
