@@ -74,6 +74,9 @@ function toCandidate(r: Record<string, unknown>): Candidate {
     budget: (r.budget as number) ?? null,
     budgetCurrency: (r.budget_currency as string) ?? "AED",
     adminNotes: (r.admin_notes as string) ?? "",
+    goals: (r.goals as Candidate["goals"]) ?? [],
+    cvProfile: (r.cv_profile as Candidate["cvProfile"]) ?? undefined,
+    cvProfiles: (r.cv_profiles as Candidate["cvProfiles"]) ?? [],
     createdAt: r.created_at as string,
     updatedAt: (r.updated_at as string) ?? new Date().toISOString(),
     updatedBy: (r.updated_by as string) ?? null,
@@ -381,6 +384,9 @@ export async function updateCandidate(
   if (updates.budgetCurrency !== undefined) dbUpdates.budget_currency = updates.budgetCurrency;
   if (updates.adminNotes !== undefined) dbUpdates.admin_notes = updates.adminNotes;
   if (updates.candidateResources !== undefined) dbUpdates.candidate_resources = updates.candidateResources;
+  if (updates.goals !== undefined) dbUpdates.goals = updates.goals;
+  if (updates.cvProfile !== undefined) dbUpdates.cv_profile = updates.cvProfile;
+  if (updates.cvProfiles !== undefined) dbUpdates.cv_profiles = updates.cvProfiles;
   if (updates.updatedBy !== undefined) dbUpdates.updated_by = updates.updatedBy;
 
   const { data, error } = await supabase
