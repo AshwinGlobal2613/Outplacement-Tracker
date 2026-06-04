@@ -231,6 +231,14 @@ export interface CVProfile {
   updatedAt?: string;
 }
 
+export interface CVNamedProfile {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt?: string;
+  profile: CVProfile;
+}
+
 export interface CandidateResource {
   id: string;
   title: string;
@@ -290,6 +298,7 @@ export interface Candidate {
   candidateResources?: CandidateResource[];
   goals?: WeeklyGoal[];
   cvProfile?: CVProfile;
+  cvProfiles?: CVNamedProfile[];
   discDone: DiscDoneStatus;
   invoiceStatus: InvoiceStatus;
   costingStatus: CostingStatus;

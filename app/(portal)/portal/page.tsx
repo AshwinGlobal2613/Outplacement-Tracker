@@ -8,7 +8,7 @@ import {
   User, Building2, GraduationCap, X, Target, Plus, Minus, Sparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { WeeklyGoal, CVProfile } from "@/lib/types";
+import { WeeklyGoal, CVProfile, CVNamedProfile } from "@/lib/types";
 import { CVBuilder } from "@/components/portal/cv-builder";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -498,15 +498,147 @@ function DocumentsTab({ candidate, onUpload }: { candidate: PortalCandidate; onU
   );
 }
 
-// ─── CV Builder Tab (delegates to CVBuilder component) ────────────────────────
+// ─── CV Builder Tab — multi-CV list + builder ─────────────────────────────────
 
 function CVBuilderTab({ candidate }: { candidate: PortalCandidate }) {
+  const [profiles, setProfiles]   = useState<CVNamedProfile[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creating, setCreating]   = useState(false);
+
+  async function loadProfiles() {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/candidates/${candidate.id}/cv`);
+      if (res.ok) setProfiles(await res.json());
+    } finally { setLoading(false); }
+  }
+
+  useEffect(() => { loadProfiles(); }, [candidate.id]);
+
+  async function createNew() {
+    setCreating(true);
+    const res = await fetch(`/api/candidates/${candidate.id}/cv`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: `Resume ${profiles.length + 1}` }),
+    });
+    if (res.ok) {
+      const newProfile: CVNamedProfile = await res.json();
+      setProfiles((p) => [...p, newProfile]);
+      setSelectedId(newProfile.id);
+    }
+    setCreating(false);
+  }
+
+  async function deleteProfile(id: string) {
+    if (!confirm("Delete this CV? This cannot be undone.")) return;
+    await fetch(`/api/candidates/${candidate.id}/cv`, {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cvId: id }),
+    });
+    setProfiles((p) => p.filter((x) => x.id !== id));
+    if (selectedId === id) setSelectedId(null);
+  }
+
+  // Show builder for selected CV
+  const selected = profiles.find((p) => p.id === selectedId);
+  if (selected) {
+    return (
+      <CVBuilder
+        candidateId={candidate.id}
+        candidateName={candidate.candidateName}
+        cvId={selected.id}
+        cvName={selected.name}
+        initialCv={selected.profile}
+        onBack={() => { setSelectedId(null); loadProfiles(); }}
+      />
+    );
+  }
+
+  // ── CV List view ───────────────────────────────────────────────────────────
   return (
-    <CVBuilder
-      candidateId={candidate.id}
-      candidateName={candidate.candidateName}
-      initialCv={candidate.cvProfile ?? null}
-    />
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div>
+        <h2 className="text-xl font-bold text-foreground">My CVs</h2>
+        <p className="text-sm text-muted-foreground mt-0.5">Create and manage multiple CV versions</p>
+      </div>
+
+      {loading ? (
+        <div className="flex h-40 items-center justify-center">
+          <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4">
+
+          {/* Existing CV cards */}
+          {profiles.map((p) => (
+            <div key={p.id} className="group relative flex flex-col">
+              {/* Thumbnail card */}
+              <button
+                onClick={() => setSelectedId(p.id)}
+                className="flex flex-col rounded-xl border-2 border-border bg-card hover:border-primary/50 hover:shadow-md transition-all overflow-hidden"
+              >
+                {/* A4 thumbnail preview */}
+                <div className="w-full bg-white" style={{ aspectRatio: "210/297", padding: "8% 8% 0" }}>
+                  <div style={{ fontSize: "7px", fontFamily: "Arial,sans-serif", color: "#1a1a1a" }}>
+                    <p style={{ fontWeight: 700, fontSize: "10px", marginBottom: "3px" }}>{candidate.candidateName}</p>
+                    {p.profile.headline && <p style={{ color: "#6b7280", fontSize: "7px", marginBottom: "4px" }}>{p.profile.headline}</p>}
+                    {p.profile.sectionOrder && p.profile.sectionOrder.length > 0 && (
+                      <div style={{ marginTop: "6px", borderTop: "1px solid #e5e7eb", paddingTop: "4px" }}>
+                        {p.profile.sectionOrder.slice(0, 4).map((s) => (
+                          <div key={s} style={{ height: "3px", background: "#f3f4f6", borderRadius: "2px", marginBottom: "3px" }} />
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </button>
+
+              {/* Delete button */}
+              {profiles.length > 1 && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); deleteProfile(p.id); }}
+                  className="absolute top-2 right-2 hidden group-hover:flex h-6 w-6 items-center justify-center rounded-full bg-rose-500/90 text-white shadow-sm hover:bg-rose-600 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+
+              {/* Card footer */}
+              <div className="mt-2 px-0.5">
+                <p className="text-sm font-semibold text-foreground truncate">{p.name}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {p.updatedAt
+                    ? `Edited ${new Date(p.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
+                    : "Not saved yet"}
+                  {p.profile.sectionOrder?.length ? ` · ${p.profile.sectionOrder.length} sections` : ""}
+                </p>
+              </div>
+            </div>
+          ))}
+
+          {/* New CV card */}
+          <div className="flex flex-col">
+            <button
+              onClick={createNew}
+              disabled={creating}
+              className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary"
+              style={{ aspectRatio: "210/297" }}
+            >
+              {creating
+                ? <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                : <><Plus className="h-8 w-8 mb-2" /><span className="text-sm font-medium">New resume</span></>
+              }
+            </button>
+            <div className="mt-2 px-0.5 h-8" />
+          </div>
+
+        </div>
+      )}
+    </div>
   );
 }
 

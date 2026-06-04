@@ -1203,8 +1203,11 @@ function EntryCard({ label, onRemove, children }: { label: string; onRemove: () 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export function CVBuilder({ candidateId, candidateName, initialCv }: {
-  candidateId: string; candidateName: string; initialCv: CVProfile | null;
+export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvName, initialCv, onBack }: {
+  candidateId: string; candidateName: string;
+  cvId: string; cvName: string;
+  initialCv: CVProfile | null;
+  onBack: () => void;
 }) {
   const [cv, setCv] = useState<CVProfile>(() => {
     if (!initialCv) return EMPTY_CV;
@@ -1214,6 +1217,8 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
       customSections: migrateCustom(initialCv.customSections ?? []),
     };
   });
+  const [cvNameState,       setCvNameState]      = useState(initialCvName);
+  const [editingName,       setEditingName]      = useState(false);
   const [saving,            setSaving]           = useState(false);
   const [saved,             setSaved]            = useState(false);
   const [importMsg,         setImportMsg]        = useState<string | null>(null);
@@ -1291,7 +1296,7 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
     setSaving(true);
     await fetch(`/api/candidates/${candidateId}/cv`, {
       method: "PUT", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ ...cv, sectionOrder: addedSections }),
+      body: JSON.stringify({ cvId, name: cvNameState, ...cv, sectionOrder: addedSections }),
     });
     setCv((p) => ({ ...p, sectionOrder: addedSections }));
     setSaving(false); setSaved(true);
@@ -1612,9 +1617,34 @@ export function CVBuilder({ candidateId, candidateName, initialCv }: {
 
       {/* ── FlowCV-style top bar ────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-4 border-b border-border bg-card px-5 py-3 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <Sparkles className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold text-foreground">CV Builder</span>
+        <div className="flex items-center gap-3">
+          {/* Back to CV list */}
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <ChevronDown className="h-3.5 w-3.5 rotate-90" /> My CVs
+          </button>
+          <div className="h-4 w-px bg-border" />
+          {/* Editable CV name */}
+          {editingName ? (
+            <input
+              autoFocus
+              value={cvNameState}
+              onChange={(e) => setCvNameState(e.target.value)}
+              onBlur={() => setEditingName(false)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === "Escape") setEditingName(false); }}
+              className="rounded-md border border-primary/40 bg-background px-2 py-1 text-sm font-semibold text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40 w-40"
+            />
+          ) : (
+            <button
+              onClick={() => setEditingName(true)}
+              className="text-sm font-semibold text-foreground hover:text-primary transition-colors"
+              title="Click to rename"
+            >
+              {cvNameState}
+            </button>
+          )}
           {importMsg && (
             <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-medium text-emerald-400">
               ✓ {importMsg}
