@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { PageHeader } from "@/components/page-header";
 import {
   ShieldCheck, AlertCircle, Clock, X, MessageCircle, ExternalLink,
-  CheckCircle2, Circle, ChevronRight, TriangleAlert,
+  CheckCircle2, Circle, ChevronRight, TriangleAlert, Filter, Search,
 } from "lucide-react";
 import { Candidate, InvoiceStatus, CostingStatus } from "@/lib/types";
 import Link from "next/link";
@@ -68,12 +68,54 @@ export default function CandidateManagementPage() {
   const [editingAdmin, setEditingAdmin] = useState(false);
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
 
+  // Filters
+  const [search,         setSearch]         = useState("");
+  const [filterClient,   setFilterClient]   = useState("");
+  const [filterPartner,  setFilterPartner]  = useState("");
+  const [filterStatus,   setFilterStatus]   = useState("");
+  const [filterLevel,    setFilterLevel]    = useState("");
+  const [filterInvoice,  setFilterInvoice]  = useState("");
+  const [filterCosting,  setFilterCosting]  = useState("");
+  const [filterDisc,     setFilterDisc]     = useState("");
+  const [filterInactive, setFilterInactive] = useState(false);
+  const [showFilters,    setShowFilters]    = useState(false);
+
   const staleAlerts = candidates
     .filter((c) => c.status === "active" || c.status === "candidate_reached")
     .filter((c) => !dismissedAlerts.has(c.id))
     .map((c) => ({ candidate: c, lastAction: getLastActionDate(c) }))
     .filter(({ lastAction }) => lastAction && Date.now() - lastAction.getTime() > 7 * 24 * 60 * 60 * 1000)
     .sort((a, b) => (a.lastAction!.getTime() - b.lastAction!.getTime()));
+
+  // Dynamic filter option lists
+  const clients  = [...new Set(candidates.map((c) => c.clientName).filter(Boolean))].sort();
+  const partners = [...new Set(candidates.map((c) => c.partner).filter(Boolean))].sort();
+
+  // Active filter count
+  const activeFilterCount = [filterClient, filterPartner, filterStatus, filterLevel, filterInvoice, filterCosting, filterDisc].filter(Boolean).length + (filterInactive ? 1 : 0) + (search ? 1 : 0);
+
+  // Apply all filters
+  const filtered = candidates.filter((c) => {
+    if (search && ![c.candidateName, c.clientName, c.partner, c.leadCoach, c.support].join(" ").toLowerCase().includes(search.toLowerCase())) return false;
+    if (filterClient  && c.clientName    !== filterClient)   return false;
+    if (filterPartner && c.partner       !== filterPartner)  return false;
+    if (filterStatus  && c.status        !== filterStatus)   return false;
+    if (filterLevel   && c.levelOfSupport !== filterLevel)   return false;
+    if (filterInvoice && c.invoiceStatus !== filterInvoice)  return false;
+    if (filterCosting && c.costingStatus !== filterCosting)  return false;
+    if (filterDisc === "done"     && !c.discStyle)  return false;
+    if (filterDisc === "not_done" &&  c.discStyle)  return false;
+    if (filterInactive) {
+      const last = getLastActionDate(c);
+      if (!last || Date.now() - last.getTime() <= 7 * 24 * 60 * 60 * 1000) return false;
+    }
+    return true;
+  });
+
+  function clearFilters() {
+    setSearch(""); setFilterClient(""); setFilterPartner(""); setFilterStatus("");
+    setFilterLevel(""); setFilterInvoice(""); setFilterCosting(""); setFilterDisc(""); setFilterInactive(false);
+  }
 
   useEffect(() => {
     if (status === "loading") return;
@@ -172,6 +214,97 @@ export default function CandidateManagementPage() {
         <SummaryPill label="Costing Pending" value={candidates.filter((c) => c.costingStatus === "Not Done").length} color="text-rose-400" icon={Clock} />
       </div>
 
+      {/* Filter bar */}
+      <div className="rounded-xl border border-border bg-card overflow-hidden">
+        {/* Search + toggle row */}
+        <div className="flex items-center gap-3 px-4 py-3">
+          <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+            <Search className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search candidates, clients, coaches…"
+              className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/50 focus:outline-none"
+            />
+            {search && <button onClick={() => setSearch("")} className="text-muted-foreground/50 hover:text-foreground transition-colors"><X className="h-3.5 w-3.5" /></button>}
+          </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn("flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors",
+              showFilters ? "border-primary/50 bg-primary/10 text-primary" : "border-border text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Filter className="h-3.5 w-3.5" />
+            Filters
+            {activeFilterCount > 0 && (
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+          {activeFilterCount > 0 && (
+            <button onClick={clearFilters} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+              Clear all
+            </button>
+          )}
+        </div>
+
+        {/* Expanded filter dropdowns */}
+        {showFilters && (
+          <div className="border-t border-border px-4 py-3 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {[
+              { label: "Client",   value: filterClient,  set: setFilterClient,  opts: clients },
+              { label: "Partner",  value: filterPartner, set: setFilterPartner, opts: partners },
+              { label: "Status",   value: filterStatus,  set: setFilterStatus,
+                opts: ["referred","active","candidate_reached","completed","declined"] },
+              { label: "Level",    value: filterLevel,   set: setFilterLevel,
+                opts: ["Low","Low-Mid","Mid","Mid-High","High"] },
+              { label: "Invoice",  value: filterInvoice, set: setFilterInvoice,
+                opts: ["Not Raised","Raised","Cleared"] },
+              { label: "Costing",  value: filterCosting, set: setFilterCosting,
+                opts: ["Not Done","To be reviewed","Done"] },
+              { label: "DiSC",     value: filterDisc,    set: setFilterDisc,
+                opts: [{ v: "done", l: "Done" }, { v: "not_done", l: "Not Done" }] as { v: string; l: string }[] },
+            ].map(({ label, value, set, opts }) => (
+              <div key={label} className="space-y-1">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
+                <select
+                  value={value}
+                  onChange={(e) => (set as (v: string) => void)(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30"
+                >
+                  <option value="">All</option>
+                  {(opts as (string | { v: string; l: string })[]).map((o) =>
+                    typeof o === "string"
+                      ? <option key={o} value={o}>{o}</option>
+                      : <option key={o.v} value={o.v}>{o.l}</option>
+                  )}
+                </select>
+              </div>
+            ))}
+            {/* Inactive toggle */}
+            <div className="space-y-1">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Activity</p>
+              <button
+                onClick={() => setFilterInactive(!filterInactive)}
+                className={cn("w-full rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors text-left",
+                  filterInactive ? "border-amber-500/50 bg-amber-500/10 text-amber-400" : "border-border bg-background text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {filterInactive ? "⚠ Inactive only" : "Any activity"}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Results count */}
+      {activeFilterCount > 0 && (
+        <p className="text-xs text-muted-foreground -mt-3">
+          Showing <strong className="text-foreground">{filtered.length}</strong> of {candidates.length} candidates
+        </p>
+      )}
+
       {/* Inactivity alerts */}
       {staleAlerts.length > 0 && (
         <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 overflow-hidden">
@@ -224,7 +357,9 @@ export default function CandidateManagementPage() {
           <div className="flex items-center gap-2 border-b border-border bg-sidebar/50 px-4 py-3">
             <ShieldCheck className="h-4 w-4 text-primary" />
             <span className="text-sm font-semibold text-foreground">All Candidates — Admin View</span>
-            <span className="ml-auto text-xs text-muted-foreground">{candidates.length} total</span>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {activeFilterCount > 0 ? `${filtered.length} of ${candidates.length}` : `${candidates.length} total`}
+            </span>
           </div>
           <table className="w-full text-sm">
             <thead>
@@ -236,7 +371,15 @@ export default function CandidateManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {candidates.map((c) => (
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={12} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                    No candidates match the current filters.{" "}
+                    <button onClick={clearFilters} className="text-primary hover:underline">Clear filters</button>
+                  </td>
+                </tr>
+              )}
+              {filtered.map((c) => (
                 <tr
                   key={c.id}
                   onClick={() => setSelectedId((prev) => prev === c.id ? null : c.id)}
