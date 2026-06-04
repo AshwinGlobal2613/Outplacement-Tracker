@@ -817,9 +817,10 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
   function SH({ title }: { title: string }) {
     return (
-      <div style={{ marginBottom: px(gap * 0.5) }}>
-        <p style={{ fontSize: em(basePx * 0.72), fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: accent, marginBottom: "4px" }}>{title}</p>
-        <div style={{ height: "1.5px", background: accent, opacity: 0.25 }} />
+      <div style={{ marginBottom: px(gap * 0.6), paddingBottom: "4px", borderBottom: `1.5px solid #1a1a1a` }}>
+        <p style={{ fontSize: em(basePx * 0.78), fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#1a1a1a", margin: 0 }}>
+          {title}
+        </p>
       </div>
     );
   }
@@ -843,25 +844,26 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         return (
           <div key="experience" style={{ marginBottom: px(gap) }}>
             <SH title="Professional Experience" />
-            <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.8) }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.9) }}>
               {cv.experience.map((exp) => {
                 const bullets = exp.bullets?.filter(Boolean) ?? [];
                 const dateStr = exp.from ? `${exp.from} – ${exp.current ? "Present" : exp.to || ""}` : "";
                 return (
                   <div key={exp.id}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                      <div>
-                        <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{exp.role || "Role"}</p>
-                        {exp.company && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{exp.company}</p>}
-                      </div>
-                      {dateStr && <p style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", whiteSpace: "nowrap", marginTop: "2px" }}>{dateStr}</p>}
+                    {/* Row 1: Job Title (bold) + Date (right) */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                      <p style={{ fontWeight: 700, fontSize: em(basePx), color: "#111827", margin: 0 }}>{exp.role || "Role"}</p>
+                      {dateStr && <p style={{ fontSize: em(basePx * 0.85), color: "#6b7280", whiteSpace: "nowrap", margin: 0 }}>{dateStr}</p>}
                     </div>
+                    {/* Row 2: Company (italic, accent) */}
+                    {exp.company && (
+                      <p style={{ fontSize: em(basePx * 0.92), color: accent, fontStyle: "italic", margin: "1px 0 4px" }}>{exp.company}</p>
+                    )}
+                    {/* Bullets */}
                     {bullets.length > 0 && (
-                      <ul style={{ margin: "6px 0 0 0", padding: 0, listStyle: "none" }}>
+                      <ul style={{ margin: "5px 0 0 14px", padding: 0 }}>
                         {bullets.map((b, i) => (
-                          <li key={i} style={{ display: "flex", gap: "8px", marginBottom: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.55 }}>
-                            <span style={{ color: accent, flexShrink: 0 }}>›</span><span>{b}</span>
-                          </li>
+                          <li key={i} style={{ marginBottom: "3px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.55 }}>{b}</li>
                         ))}
                       </ul>
                     )}
@@ -881,13 +883,19 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
             <div style={{ display: "flex", flexDirection: "column", gap: px(gap * 0.6) }}>
               {cv.education.map((e) => (
                 <div key={e.id}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                    <div>
-                      <p style={{ fontWeight: 600, fontSize: em(basePx), color: "#111827" }}>{e.degree || "Degree"}{e.field ? ` in ${e.field}` : ""}</p>
-                      {e.institution && <p style={{ fontSize: em(basePx * 0.9), color: accent, fontWeight: 500 }}>{e.institution}</p>}
-                    </div>
-                    {(e.from || e.to) && <p style={{ fontSize: em(basePx * 0.82), color: "#9ca3af", whiteSpace: "nowrap", marginTop: "2px" }}>{e.from}{e.to ? ` – ${e.to}` : ""}</p>}
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <p style={{ fontWeight: 700, fontSize: em(basePx), color: "#111827", margin: 0 }}>
+                      {e.degree || "Degree"}{e.field ? ` in ${e.field}` : ""}
+                    </p>
+                    {(e.from || e.to) && (
+                      <p style={{ fontSize: em(basePx * 0.85), color: "#6b7280", whiteSpace: "nowrap", margin: 0 }}>
+                        {e.from}{e.to ? ` – ${e.to}` : ""}
+                      </p>
+                    )}
                   </div>
+                  {e.institution && (
+                    <p style={{ fontSize: em(basePx * 0.92), color: accent, fontStyle: "italic", margin: "1px 0 4px" }}>{e.institution}</p>
+                  )}
                   {e.description && <HtmlOrText html={e.description} style={{ marginTop: "4px", fontSize: em(basePx * 0.92), color: "#374151", lineHeight: 1.6 }} />}
                 </div>
               ))}
@@ -897,7 +905,14 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
       case "skills":
         if (!cv.skills?.length) return null;
-        return <div key="skills" style={{ marginBottom: px(gap) }}><SH title="Skills" /><div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>{cv.skills.map(chip)}</div></div>;
+        return (
+          <div key="skills" style={{ marginBottom: px(gap) }}>
+            <SH title="Skills" />
+            <p style={{ fontSize: em(basePx), color: "#374151", lineHeight: 1.7, margin: 0 }}>
+              {cv.skills.join("  ·  ")}
+            </p>
+          </div>
+        );
 
       case "languages":
         if (!cv.languages?.length) return null;
@@ -1100,21 +1115,42 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         <div
           ref={contentRef}
           id="cv-preview-panel"
-          style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#111827", overflow: "hidden" }}
+          style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#1a1a1a", overflow: "hidden" }}
         >
-      <div style={{ borderBottom: `3px solid ${accent}`, padding: "28px 32px 22px" }}>
-        <p style={{ fontSize: px(basePx * 1.85), fontWeight: 700, color: "#0f172a", lineHeight: 1.15, letterSpacing: "-0.01em" }}>{name || "Your Name"}</p>
-        {cv.headline && <p style={{ fontSize: px(basePx * 1.02), color: accent, fontWeight: 500, marginTop: "5px" }}>{cv.headline}</p>}
-        {hasContact && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "14px", marginTop: "10px" }}>
-            {contact.email    && <span style={{ fontSize: px(basePx * 0.82), color: "#6b7280" }}>✉ {contact.email}</span>}
-            {contact.phone    && <span style={{ fontSize: px(basePx * 0.82), color: "#6b7280" }}>✆ {contact.phone}</span>}
-            {contact.location && <span style={{ fontSize: px(basePx * 0.82), color: "#6b7280" }}>⌖ {contact.location}</span>}
-            {contact.website  && <span style={{ fontSize: px(basePx * 0.82), color: "#6b7280" }}>⊕ {contact.website}</span>}
+          {/* ── FlowCV-style header ── */}
+          <div style={{ padding: "32px 36px 20px", textAlign: "center", borderBottom: `2px solid ${accent}` }}>
+            {/* Name */}
+            <p style={{ fontSize: px(basePx * 2), fontWeight: 700, color: "#0f172a", lineHeight: 1.1, letterSpacing: "-0.02em", margin: "0 0 4px" }}>
+              {name || "Your Name"}
+            </p>
+            {/* Headline */}
+            {cv.headline && (
+              <p style={{ fontSize: px(basePx * 1.05), color: "#6b7280", fontStyle: "italic", fontWeight: 400, margin: "0 0 12px" }}>
+                {cv.headline}
+              </p>
+            )}
+            {/* Contact row — centered, separated by dots */}
+            {hasContact && (
+              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "0", fontSize: px(basePx * 0.82), color: "#4b5563" }}>
+                {[
+                  contact.email    ? `✉ ${contact.email}`    : null,
+                  contact.phone    ? `📞 ${contact.phone}`   : null,
+                  contact.location ? `📍 ${contact.location}` : null,
+                  contact.website  ? `🔗 ${contact.website}`  : null,
+                ].filter(Boolean).map((item, i, arr) => (
+                  <span key={i} style={{ display: "flex", alignItems: "center" }}>
+                    <span>{item}</span>
+                    {i < arr.length - 1 && <span style={{ margin: "0 8px", color: "#d1d5db" }}>·</span>}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      <div style={{ padding: "24px 32px" }}>{visible.map((id) => renderSection(id))}</div>
+
+          {/* ── Sections body ── */}
+          <div style={{ padding: "20px 36px 32px" }}>
+            {visible.map((id) => renderSection(id))}
+          </div>
         </div>{/* end cv-preview-panel */}
 
         {/* Page break overlays */}
