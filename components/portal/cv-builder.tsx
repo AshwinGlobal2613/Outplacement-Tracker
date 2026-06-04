@@ -1674,7 +1674,7 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
       <div className="flex flex-1 overflow-hidden">
 
         {/* LEFT — editor (fixed width, independently scrollable) */}
-        <div className="w-[380px] shrink-0 overflow-y-auto border-r border-border bg-sidebar/30 p-4 space-y-3">
+        <div className="w-[340px] min-w-[280px] shrink-0 overflow-y-auto border-r border-border bg-sidebar/30 p-4 space-y-3">
           <PersonalInfoCard
             name={candidateName}
             headline={cv.headline}
@@ -1724,8 +1724,8 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
           </div>
 
           {/* Centered A4 preview */}
-          <div className="flex justify-center py-8 px-6">
-            <div className="w-full max-w-[700px]">
+          <div className="flex justify-center py-8 px-4">
+            <div className="w-full max-w-[560px]">
               <CVPreview
                 cv={cv}
                 name={candidateName}
