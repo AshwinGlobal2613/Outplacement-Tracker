@@ -616,10 +616,10 @@ function CVBuilderTab({ candidate }: { candidate: PortalCandidate }) {
                 </div>
               </button>
 
-              {/* Delete button — always visible on hover */}
+              {/* Delete button — always visible */}
               <button
                 onClick={(e) => { e.stopPropagation(); deleteProfile(p.id); }}
-                className="absolute top-2 right-2 hidden group-hover:flex h-6 w-6 items-center justify-center rounded-full bg-rose-500/90 text-white shadow-sm hover:bg-rose-600 transition-colors"
+                className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-rose-500/80 text-white shadow hover:bg-rose-600 transition-colors"
                 title="Delete CV"
               >
                 <X className="h-3 w-3" />
