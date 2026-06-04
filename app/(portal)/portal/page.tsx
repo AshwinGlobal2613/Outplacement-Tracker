@@ -579,6 +579,19 @@ function CVBuilderTab({ candidate }: { candidate: PortalCandidate }) {
       ) : (
         <div className="grid grid-cols-2 gap-5 sm:grid-cols-3 md:grid-cols-4">
 
+          {/* New CV card — always first */}
+          <div className="flex flex-col">
+            <button
+              onClick={createNew}
+              className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary"
+              style={{ aspectRatio: "210/297" }}
+            >
+              <Plus className="h-8 w-8 mb-2" />
+              <span className="text-sm font-medium">New resume</span>
+            </button>
+            <div className="mt-2 px-0.5 h-8" />
+          </div>
+
           {/* Existing CV cards */}
           {profiles.map((p) => (
             <div key={p.id} className="group relative flex flex-col">
@@ -625,19 +638,6 @@ function CVBuilderTab({ candidate }: { candidate: PortalCandidate }) {
               </div>
             </div>
           ))}
-
-          {/* New CV card */}
-          <div className="flex flex-col">
-            <button
-              onClick={createNew}
-              className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-all text-muted-foreground hover:text-primary"
-              style={{ aspectRatio: "210/297" }}
-            >
-              <Plus className="h-8 w-8 mb-2" />
-              <span className="text-sm font-medium">New resume</span>
-            </button>
-            <div className="mt-2 px-0.5 h-8" />
-          </div>
 
         </div>
       )}
