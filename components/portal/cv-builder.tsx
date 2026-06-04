@@ -782,6 +782,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [pageBreaks, setPageBreaks] = useState<number[]>([]);
   const [pageCount, setPageCount]   = useState(1);
+  const [pageH,     setPageH]       = useState(794); // default A4 at ~560px wide
 
   // Recalculate page breaks whenever content height changes
   useEffect(() => {
@@ -790,17 +791,18 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
     if (!el || !wr) return;
     function recalc() {
       if (!el || !wr) return;
-      const pageH = wr.offsetWidth * A4_RATIO;
+      const ph = Math.round(wr.offsetWidth * A4_RATIO);
+      setPageH(ph);
       const total = el.offsetHeight;
-      const count = Math.max(1, Math.ceil(total / pageH));
+      const count = Math.max(1, Math.ceil(total / ph));
       setPageCount(count);
       setPageBreaks(
-        Array.from({ length: count - 1 }, (_, i) => Math.round(pageH * (i + 1)))
+        Array.from({ length: count - 1 }, (_, i) => Math.round(ph * (i + 1)))
       );
     }
     recalc();
     const ro = new ResizeObserver(recalc);
-    ro.observe(el);
+    ro.observe(wr); // watch wrapper width changes too
     return () => ro.disconnect();
   }, [cv, addedSections, hiddenFromPreview]);
 
@@ -1114,7 +1116,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
         <div
           ref={contentRef}
           id="cv-preview-panel"
-          style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#1a1a1a", overflow: "hidden" }}
+          style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#1a1a1a", minHeight: `${pageH}px` }}
         >
           {/* ── FlowCV-style header ── */}
           <div style={{ padding: "32px 36px 20px", textAlign: "center", borderBottom: `2px solid ${accent}` }}>
