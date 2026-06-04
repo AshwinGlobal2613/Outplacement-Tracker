@@ -1104,7 +1104,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
   // Outer print-preview shell (shown to user) + inner content (used for print)
   return (
-    <div ref={wrapperRef}>
+    <div ref={wrapperRef} id="cv-print-root">
       {/* Page count badge */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
         <span style={{ background: "rgba(0,0,0,0.18)", color: "#fff", fontSize: "11px", fontFamily: "Arial,sans-serif", padding: "2px 10px", borderRadius: "999px" }}>
@@ -1235,7 +1235,24 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
   useEffect(() => {
     const el = document.createElement("style");
     el.id = "cv-print-style";
-    el.textContent = `@media print { body * { visibility: hidden !important; } #cv-preview-panel, #cv-preview-panel * { visibility: visible !important; } #cv-preview-panel { position: fixed !important; inset: 0 !important; border-radius: 0 !important; box-shadow: none !important; } @page { margin: 0; size: A4; } }`;
+    el.textContent = `
+      @page { margin: 12mm 14mm; size: A4; }
+      @media print {
+        html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+        body > * { display: none !important; }
+        #cv-print-root { display: block !important; }
+        #cv-preview-panel {
+          display: block !important;
+          position: static !important;
+          width: 100% !important;
+          min-height: 0 !important;
+          border-radius: 0 !important;
+          box-shadow: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+      }
+    `;
     document.head.appendChild(el);
     return () => { document.getElementById("cv-print-style")?.remove(); };
   }, []);
