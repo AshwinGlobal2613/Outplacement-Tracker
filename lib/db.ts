@@ -229,7 +229,7 @@ export async function updateUser(id: string, updates: Partial<User>): Promise<Us
     .eq("id", id)
     .select()
     .maybeSingle();
-  if (error) throw error;
+  if (error) throw new Error(error.message ?? JSON.stringify(error));
   return data ? toUser(data as Record<string, unknown>) : null;
 }
 
