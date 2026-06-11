@@ -24,6 +24,7 @@ function toUser(r: Record<string, unknown>): User {
     role: r.role as User["role"],
     clientCompany: (r.client_company as string) ?? undefined,
     candidateId: (r.candidate_id as string) ?? undefined,
+    additionalEmails: (r.additional_emails as string[]) ?? [],
     disabled: r.disabled as boolean,
     mustChangePassword: (r.must_change_password as boolean) ?? false,
     createdAt: r.created_at as string,
@@ -196,6 +197,7 @@ export async function createUser(user: User): Promise<User> {
       role: user.role,
       client_company: user.clientCompany ?? null,
       candidate_id: user.candidateId ?? null,
+      additional_emails: user.additionalEmails ?? [],
       disabled: user.disabled,
       must_change_password: user.mustChangePassword ?? false,
       created_at: user.createdAt,
@@ -216,6 +218,7 @@ export async function updateUser(id: string, updates: Partial<User>): Promise<Us
   if (updates.role !== undefined) dbUpdates.role = updates.role;
   if (updates.clientCompany !== undefined) dbUpdates.client_company = updates.clientCompany ?? null;
   if (updates.candidateId !== undefined) dbUpdates.candidate_id = updates.candidateId ?? null;
+  if (updates.additionalEmails !== undefined) dbUpdates.additional_emails = updates.additionalEmails;
   if (updates.disabled !== undefined) dbUpdates.disabled = updates.disabled;
   if (updates.mustChangePassword !== undefined) dbUpdates.must_change_password = updates.mustChangePassword;
   if (updates.lastLoginAt !== undefined) dbUpdates.last_login_at = updates.lastLoginAt;

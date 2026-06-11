@@ -27,6 +27,7 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
   if (body.name !== undefined) updates.name = body.name;
   if (body.email !== undefined) updates.email = body.email;
   if (body.phone !== undefined) updates.phone = body.phone;
+  if (body.additionalEmails !== undefined) updates.additionalEmails = body.additionalEmails;
   if (body.role !== undefined) updates.role = body.role;
   // Sync clientCompany: set it when role is client, clear it when switching away from client
   if (body.role === "client") {
