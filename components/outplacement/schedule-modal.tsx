@@ -26,14 +26,14 @@ const DURATIONS = [
 
 const LOCATIONS = ["Zoom", "Google Meet", "In Person"];
 
-function formatGoogleCalendarLink(session: Session, candidate: Candidate): string {
+function formatGoogleCalendarLink(session: Session, candidate: Candidate, inviteEmails: string[]): string {
   const [year, month, day] = session.date.split("-").map(Number);
   const [hours, minutes] = session.time.split(":").map(Number);
   const pad = (n: number) => String(n).padStart(2, "0");
   const startStr = `${year}${pad(month)}${pad(day)}T${pad(hours)}${pad(minutes)}00`;
   const endDate = new Date(year, month - 1, day, hours, minutes + session.duration);
   const endStr = `${endDate.getFullYear()}${pad(endDate.getMonth() + 1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
-  const attendees = [candidate.email].filter(Boolean).join(",");
+  const allEmails = Array.from(new Set([candidate.email, ...inviteEmails].filter(Boolean)));
   const description = [
     session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
     session.notes ? `Notes: ${session.notes}` : "",
@@ -45,11 +45,11 @@ function formatGoogleCalendarLink(session: Session, candidate: Candidate): strin
     details: description,
     location: session.meetingLink || session.location,
   });
-  if (attendees) params.append("add", attendees);
+  if (allEmails.length) params.append("add", allEmails.join(","));
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
-function generateICS(session: Session, candidate: Candidate): string {
+function generateICS(session: Session, candidate: Candidate, inviteEmails: string[]): string {
   const [year, month, day] = session.date.split("-").map(Number);
   const [hours, minutes] = session.time.split(":").map(Number);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -61,6 +61,8 @@ function generateICS(session: Session, candidate: Candidate): string {
     (candidate.leadCoach ? `\\nLead Coach: ${candidate.leadCoach}` : "") +
     (candidate.support ? `\\nSupport: ${candidate.support}` : "") +
     (session.notes ? `\\n\\nNotes: ${session.notes}` : "");
+  const allEmails = Array.from(new Set([candidate.email, ...inviteEmails].filter(Boolean)));
+  const attendeeLines = allEmails.map((em) => `ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:${em}`);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -71,7 +73,7 @@ function generateICS(session: Session, candidate: Candidate): string {
     `SUMMARY:${session.title} — ${candidate.candidateName}`,
     `DESCRIPTION:${description}`,
     `LOCATION:${session.meetingLink || session.location}`,
-    candidate.email ? `ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:${candidate.email}` : "",
+    ...attendeeLines,
     `UID:${session.id}@gmc-oms`,
     "END:VEVENT",
     "END:VCALENDAR",
@@ -168,6 +170,7 @@ export function ScheduleModal({
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Session | null>(null);
+  const [savedEmails, setSavedEmails] = useState<string[]>([]);
 
   // Each recipient row: label, email, checked (included in invite), removable
   type RecipientRow = { id: string; label: string; email: string; role: string; checked: boolean; removable: boolean };
@@ -202,7 +205,7 @@ export function ScheduleModal({
           rows.push({ id: `r${idx++}`, label: candidate.candidateName, email: candidate.email, role: "Candidate", checked: true, removable: false });
         }
 
-        // Lead coaches
+        // Lead coaches — unchecked by default, user selects which to include
         const coachNames = candidate.leadCoach
           ? candidate.leadCoach.split(",").map((n) => n.trim()).filter(Boolean)
           : [];
@@ -210,11 +213,11 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked: true, removable: true });
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked: false, removable: true });
           }
         }
 
-        // Supports
+        // Supports — unchecked by default, user selects which to include
         const supportNames = candidate.support
           ? candidate.support.split(",").map((n) => n.trim()).filter(Boolean)
           : [];
@@ -222,7 +225,7 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked: true, removable: true });
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked: false, removable: true });
           }
         }
 
@@ -253,6 +256,7 @@ export function ScheduleModal({
       if (!res.ok) throw new Error("Failed");
       const { session } = await res.json();
       setSaved(session);
+      setSavedEmails(selectedEmails);
       onSaved(session);
     } catch {
       alert("Failed to save session. Please try again.");
@@ -422,38 +426,41 @@ export function ScheduleModal({
               </div>
 
               {/* Add extra recipient */}
-              <div className="flex items-center gap-2 px-3 py-2 border-t border-border/40">
-                <input
-                  type="email"
-                  value={extraEmail}
-                  onChange={(e) => setExtraEmail(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
+              <div className="border-t border-border/60 bg-muted/30 px-3 py-2.5">
+                <p className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Add another recipient</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    value={extraEmail}
+                    onChange={(e) => setExtraEmail(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        const val = extraEmail.trim();
+                        if (val && !inviteRows.some((r) => r.email === val)) {
+                          setInviteRows((prev) => [...prev, { id: `extra_${Date.now()}`, label: val, email: val, role: "Additional", checked: true, removable: true }]);
+                          setExtraEmail("");
+                        }
+                      }
+                    }}
+                    placeholder="name@example.com"
+                    className="flex-1 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <button
+                    type="button"
+                    disabled={!extraEmail.trim()}
+                    onClick={() => {
                       const val = extraEmail.trim();
                       if (val && !inviteRows.some((r) => r.email === val)) {
                         setInviteRows((prev) => [...prev, { id: `extra_${Date.now()}`, label: val, email: val, role: "Additional", checked: true, removable: true }]);
                         setExtraEmail("");
                       }
-                    }
-                  }}
-                  placeholder="Add another email…"
-                  className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground/40 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  disabled={!extraEmail.trim()}
-                  onClick={() => {
-                    const val = extraEmail.trim();
-                    if (val && !inviteRows.some((r) => r.email === val)) {
-                      setInviteRows((prev) => [...prev, { id: `extra_${Date.now()}`, label: val, email: val, role: "Additional", checked: true, removable: true }]);
-                      setExtraEmail("");
-                    }
-                  }}
-                  className="rounded-lg bg-primary/10 px-2 py-1 text-[11px] font-medium text-primary hover:bg-primary/20 disabled:opacity-40 transition-colors"
-                >
-                  + Add
-                </button>
+                    }}
+                    className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-40 transition-opacity"
+                  >
+                    + Add
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -488,7 +495,7 @@ export function ScheduleModal({
 
             <div className="space-y-3">
               <a
-                href={formatGoogleCalendarLink(saved, candidate)}
+                href={formatGoogleCalendarLink(saved, candidate, savedEmails)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors"
@@ -511,7 +518,7 @@ export function ScheduleModal({
               </a>
 
               <button
-                onClick={() => downloadICS(generateICS(saved, candidate), `${saved.title.replace(/\s+/g, "_")}.ics`)}
+                onClick={() => downloadICS(generateICS(saved, candidate, savedEmails), `${saved.title.replace(/\s+/g, "_")}.ics`)}
                 className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors"
               >
                 <div className="flex items-center gap-3">
