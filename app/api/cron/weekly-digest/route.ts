@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCandidates } from "@/lib/db";
+import { getCandidates, getUsers } from "@/lib/db";
 
-function getWeekRange() {
-  const now = new Date();
-  const startOfWeek = new Date(now);
-  startOfWeek.setDate(now.getDate() - now.getDay()); // Sunday
-  startOfWeek.setHours(0, 0, 0, 0);
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6); // Saturday
-  endOfWeek.setHours(23, 59, 59, 999);
-  return { startOfWeek, endOfWeek };
-}
+export const dynamic = "force-dynamic";
 
 function toDateStr(d: Date) {
   return d.toISOString().split("T")[0];
@@ -20,13 +11,28 @@ function daysSince(dateStr: string): number {
   return Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000);
 }
 
-async function sendSlack(message: object) {
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
-  if (!webhookUrl) return;
-  await fetch(webhookUrl, {
+async function getSlackUserId(email: string, token: string): Promise<string | null> {
+  const res = await fetch(
+    `https://slack.com/api/users.lookupByEmail?email=${encodeURIComponent(email)}`,
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  const data = await res.json();
+  return data.ok ? data.user.id : null;
+}
+
+async function sendSlackDM(slackUserId: string, token: string, message: object): Promise<void> {
+  const dmRes = await fetch("https://slack.com/api/conversations.open", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(message),
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ users: slackUserId }),
+  });
+  const dmData = await dmRes.json();
+  if (!dmData.ok) return;
+
+  await fetch("https://slack.com/api/chat.postMessage", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ channel: dmData.channel.id, ...message }),
   });
 }
 
@@ -36,16 +42,30 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { startOfWeek, endOfWeek } = getWeekRange();
-  const weekStart = toDateStr(startOfWeek);
-  const weekEnd = toDateStr(endOfWeek);
-  const candidates = await getCandidates();
+  const token = process.env.SLACK_BOT_TOKEN;
+  if (!token) {
+    return NextResponse.json({ ok: false, error: "SLACK_BOT_TOKEN not set" });
+  }
 
-  // Sessions this week
+  const now = new Date();
+  // Week range: last 7 days (Mon–Sun prior to today)
+  const weekEnd = new Date(now);
+  weekEnd.setHours(23, 59, 59, 999);
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - 6);
+  weekStart.setHours(0, 0, 0, 0);
+  const weekStartStr = toDateStr(weekStart);
+  const weekEndStr = toDateStr(weekEnd);
+
+  const [candidates, users] = await Promise.all([getCandidates(), getUsers()]);
+
+  const admins = users.filter((u) => u.role === "admin" && !u.disabled);
+
+  // Sessions scheduled in the past 7 days
   const thisWeekSessions: { candidateName: string; sessionTitle: string; date: string; time: string; coach: string }[] = [];
   for (const c of candidates) {
     for (const s of c.sessions ?? []) {
-      if (s.date >= weekStart && s.date <= weekEnd) {
+      if (s.date >= weekStartStr && s.date <= weekEndStr) {
         thisWeekSessions.push({
           candidateName: c.candidateName,
           sessionTitle: s.title,
@@ -58,13 +78,13 @@ export async function GET(req: NextRequest) {
   }
   thisWeekSessions.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 
-  // New candidates this week
+  // New candidates added this week
   const newCandidates = candidates.filter((c) => {
     const created = new Date(c.createdAt);
-    return created >= startOfWeek && created <= endOfWeek;
+    return created >= weekStart && created <= weekEnd;
   });
 
-  // Stale cases (active/candidate_reached with no session/activity in 7+ days)
+  // Active candidates with no activity in 7+ days
   const staleCandidates = candidates
     .filter((c) => c.status === "active" || c.status === "candidate_reached")
     .filter((c) => {
@@ -72,62 +92,120 @@ export async function GET(req: NextRequest) {
       for (const s of c.sessions ?? []) if (s.createdAt) timestamps.push(new Date(s.createdAt).getTime());
       for (const a of c.activities ?? []) if (a.createdAt) timestamps.push(new Date(a.createdAt).getTime());
       if (timestamps.length === 0) return false;
-      const lastAction = new Date(Math.max(...timestamps));
-      return daysSince(lastAction.toISOString()) >= 7;
+      return daysSince(new Date(Math.max(...timestamps)).toISOString()) >= 7;
     });
+
+  // Upcoming sessions next 7 days
+  const nextWeekStart = new Date(now);
+  nextWeekStart.setDate(now.getDate() + 1);
+  const nextWeekEnd = new Date(now);
+  nextWeekEnd.setDate(now.getDate() + 7);
+  const nextWeekStartStr = toDateStr(nextWeekStart);
+  const nextWeekEndStr = toDateStr(nextWeekEnd);
+
+  const upcomingSessions: typeof thisWeekSessions = [];
+  for (const c of candidates) {
+    for (const s of c.sessions ?? []) {
+      if (s.date >= nextWeekStartStr && s.date <= nextWeekEndStr) {
+        upcomingSessions.push({
+          candidateName: c.candidateName,
+          sessionTitle: s.title,
+          date: s.date,
+          time: s.time,
+          coach: c.leadCoach ?? "Unassigned",
+        });
+      }
+    }
+  }
+  upcomingSessions.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  const totalActive = candidates.filter((c) => c.status === "active" || c.status === "candidate_reached").length;
 
   const blocks = [
     {
       type: "header",
-      text: { type: "plain_text", text: `📊 Weekly Digest — ${weekStart} to ${weekEnd}`, emoji: true },
+      text: { type: "plain_text", text: `📊 Weekly Admin Update — w/c ${weekStartStr}`, emoji: true },
     },
     { type: "divider" },
-    // Sessions
+    {
+      type: "section",
+      fields: [
+        { type: "mrkdwn", text: `*Active Candidates*\n${totalActive}` },
+        { type: "mrkdwn", text: `*New This Week*\n${newCandidates.length}` },
+        { type: "mrkdwn", text: `*Sessions (past 7 days)*\n${thisWeekSessions.length}` },
+        { type: "mrkdwn", text: `*Needs Attention*\n${staleCandidates.length}` },
+      ],
+    },
+    { type: "divider" },
     {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `*📅 Sessions This Week (${thisWeekSessions.length})*\n` +
+        text: `*📅 Sessions Last Week (${thisWeekSessions.length})*\n` +
           (thisWeekSessions.length > 0
-            ? thisWeekSessions.map((s) => `• ${s.date} ${s.time} — *${s.candidateName}* (${s.sessionTitle}) with ${s.coach}`).join("\n")
+            ? thisWeekSessions.map((s) => `• ${s.date} ${s.time} — *${s.candidateName}* (${s.sessionTitle}) — ${s.coach}`).join("\n")
+            : "_No sessions last week_"),
+      },
+    },
+    { type: "divider" },
+    {
+      type: "section",
+      text: {
+        type: "mrkdwn",
+        text: `*🗓️ Upcoming Sessions This Week (${upcomingSessions.length})*\n` +
+          (upcomingSessions.length > 0
+            ? upcomingSessions.map((s) => `• ${s.date} ${s.time} — *${s.candidateName}* (${s.sessionTitle}) — ${s.coach}`).join("\n")
             : "_No sessions scheduled this week_"),
       },
     },
     { type: "divider" },
-    // New candidates
     {
       type: "section",
       text: {
         type: "mrkdwn",
         text: `*🆕 New Candidates This Week (${newCandidates.length})*\n` +
           (newCandidates.length > 0
-            ? newCandidates.map((c) => `• *${c.candidateName}* — ${c.clientName} (${c.leadCoach ?? "No coach"})`).join("\n")
+            ? newCandidates.map((c) => `• *${c.candidateName}* — ${c.clientName} (${c.leadCoach ?? "No coach assigned"})`).join("\n")
             : "_No new candidates added this week_"),
       },
     },
     { type: "divider" },
-    // Stale cases
     {
       type: "section",
       text: {
         type: "mrkdwn",
-        text: `*⚠️ Stale Cases — No Activity in 7+ Days (${staleCandidates.length})*\n` +
+        text: `*⚠️ Candidates Needing Attention — No Activity in 7+ Days (${staleCandidates.length})*\n` +
           (staleCandidates.length > 0
-            ? staleCandidates.map((c) => `• *${c.candidateName}* — ${c.leadCoach ?? "No coach"}`).join("\n")
+            ? staleCandidates.map((c) => `• *${c.candidateName}* — ${c.clientName} (${c.leadCoach ?? "No coach"})`).join("\n")
             : "_No stale cases — great work!_ ✅"),
       },
     },
     { type: "divider" },
     {
       type: "context",
-      elements: [{ type: "mrkdwn", text: "Sent every Monday by the Outplacement Management System" }],
+      elements: [{ type: "mrkdwn", text: "Sent every Monday at 9:00 AM by *Global Management Consultants* Outplacement Management System" }],
     },
   ];
 
-  await sendSlack({
-    text: `📊 Weekly OMS Digest — ${weekStart} to ${weekEnd}`,
+  const message = {
+    text: `📊 Weekly Admin Update — w/c ${weekStartStr}`,
     blocks,
-  });
+  };
 
-  return NextResponse.json({ ok: true, sessions: thisWeekSessions.length, newCandidates: newCandidates.length, stale: staleCandidates.length });
+  let dmsSent = 0;
+  for (const admin of admins) {
+    if (!admin.email) continue;
+    const slackUserId = await getSlackUserId(admin.email, token);
+    if (!slackUserId) continue;
+    await sendSlackDM(slackUserId, token, message);
+    dmsSent++;
+  }
+
+  return NextResponse.json({
+    ok: true,
+    adminDmsSent: dmsSent,
+    sessions: thisWeekSessions.length,
+    newCandidates: newCandidates.length,
+    stale: staleCandidates.length,
+  });
 }
