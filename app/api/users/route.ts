@@ -15,11 +15,23 @@ function generateTempPassword(): string {
 
 export async function GET() {
   const session = await getServerSession(authOptions);
-  if (!session || session.user.role !== "admin") {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const users = (await getUsers()).map(({ password: _, ...u }) => u);
-  return NextResponse.json(users);
+
+  const users = await getUsers();
+
+  // Admins get the full user list (minus password)
+  if (session.user.role === "admin") {
+    return NextResponse.json(users.map(({ password: _, ...u }) => u));
+  }
+
+  // All other authenticated roles get a minimal safe subset for invite purposes
+  // (name, email, additionalEmails only — no roles, no passwords, no internal fields)
+  const safe = users
+    .filter((u) => !u.disabled && (u.role === "admin" || u.role === "team_member"))
+    .map((u) => ({ id: u.id, name: u.name, email: u.email, additionalEmails: u.additionalEmails ?? [] }));
+  return NextResponse.json(safe);
 }
 
 export async function POST(req: NextRequest) {

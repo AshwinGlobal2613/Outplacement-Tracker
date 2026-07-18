@@ -175,6 +175,7 @@ export function ScheduleModal({
   // Each recipient row: label, email, checked (included in invite), removable
   type RecipientRow = { id: string; label: string; email: string; role: string; checked: boolean; removable: boolean };
   const [inviteRows, setInviteRows] = useState<RecipientRow[]>([]);
+  const [inviteRowsLoaded, setInviteRowsLoaded] = useState(false);
   const [extraEmail, setExtraEmail] = useState("");
 
   // Smart name lookup — handles first-name-only entries like "Ashwin" matching "Ashwin Sharma"
@@ -230,7 +231,11 @@ export function ScheduleModal({
         }
 
         setInviteRows(rows);
-      } catch {}
+      } catch {
+        // fetch failed — rows stay empty but we still mark loaded
+      } finally {
+        setInviteRowsLoaded(true);
+      }
     }
     loadInviteRows();
   }, [candidate]);
@@ -389,8 +394,11 @@ export function ScheduleModal({
 
               {/* Recipient rows with checkboxes */}
               <div className="divide-y divide-border/30 max-h-48 overflow-y-auto">
-                {inviteRows.length === 0 && (
+                {!inviteRowsLoaded && (
                   <p className="px-3 py-3 text-xs text-muted-foreground">Loading recipients…</p>
+                )}
+                {inviteRowsLoaded && inviteRows.length === 0 && (
+                  <p className="px-3 py-3 text-xs text-muted-foreground">No recipients found. Use "Add another recipient" below.</p>
                 )}
                 {inviteRows.map((r) => (
                   <div key={r.id} className={cn("flex items-center gap-3 px-3 py-2.5 transition-colors", !r.checked && "opacity-50")}>
