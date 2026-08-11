@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
   Pencil, Trash2, ExternalLink, MessageCircle, CheckCircle2,
-  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText, Search, Target,
+  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText, Search, Target, GripVertical,
 } from "lucide-react";
 import { Candidate, CandidateActivity, CandidateResource, ActivityType, CustomMilestone, Session, ActivityLog, WeeklyGoal } from "@/lib/types";
 import { ScheduleModal } from "@/components/outplacement/schedule-modal";
@@ -544,8 +544,11 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
 
   function addCustomMilestone(label: string) {
     if (!candidate) return;
-    const custom = [...(candidate.progress.custom ?? []), { id: `cm_${Date.now()}`, label, done: false }];
-    saveProgress({ ...candidate.progress, custom });
+    const newId = `cm_${Date.now()}`;
+    const custom = [...(candidate.progress.custom ?? []), { id: newId, label, done: false }];
+    const currentOrder = candidate.progress.milestoneOrder ??
+      [...progressSteps.map((s) => s.key), ...(candidate.progress.custom ?? []).map((m) => m.id)];
+    saveProgress({ ...candidate.progress, custom, milestoneOrder: [...currentOrder, newId] });
   }
 
   function toggleCustomMilestone(id: string) {
@@ -557,7 +560,23 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
   function removeCustomMilestone(id: string) {
     if (!candidate) return;
     const custom = (candidate.progress.custom ?? []).filter((m) => m.id !== id);
-    saveProgress({ ...candidate.progress, custom });
+    const milestoneOrder = (
+      candidate.progress.milestoneOrder ??
+      [...progressSteps.map((s) => s.key), ...(candidate.progress.custom ?? []).map((m) => m.id)]
+    ).filter((oid) => oid !== id);
+    saveProgress({ ...candidate.progress, custom, milestoneOrder });
+  }
+
+  function removeStandardMilestone(key: string) {
+    if (!candidate) return;
+    const currentOrder = candidate.progress.milestoneOrder ??
+      [...progressSteps.map((s) => s.key), ...(candidate.progress.custom ?? []).map((m) => m.id)];
+    saveProgress({ ...candidate.progress, milestoneOrder: currentOrder.filter((id) => id !== key) });
+  }
+
+  function reorderMilestones(newOrder: string[]) {
+    if (!candidate) return;
+    saveProgress({ ...candidate.progress, milestoneOrder: newOrder });
   }
 
   function saveStandardNote(key: string, note: string) {
@@ -600,10 +619,14 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
   if (!candidate) return null;
 
   const customMilestones: CustomMilestone[] = candidate.progress.custom ?? [];
-  const standardDone = progressSteps.filter((s) => candidate.progress[s.key as keyof typeof candidate.progress]).length;
-  const customDone = customMilestones.filter((m) => m.done).length;
-  const progressCount = standardDone + customDone;
-  const totalMilestones = 5 + customMilestones.length;
+  const milestoneOrder = candidate.progress.milestoneOrder ??
+    [...progressSteps.map((s) => s.key), ...customMilestones.map((m) => m.id)];
+  const progressCount = milestoneOrder.filter((id) => {
+    const step = progressSteps.find((s) => s.key === id);
+    if (step) return !!candidate.progress[step.key as keyof typeof candidate.progress];
+    return customMilestones.find((m) => m.id === id)?.done ?? false;
+  }).length;
+  const totalMilestones = milestoneOrder.length;
   const pct = totalMilestones > 0 ? Math.round((progressCount / totalMilestones) * 100) : 0;
   const activities = candidate.activities ?? [];
   const jobCount = activities.filter((a) => a.type === "job").length;
@@ -674,11 +697,14 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
             progressCount={progressCount}
             totalMilestones={totalMilestones}
             pct={pct}
+            milestoneOrder={milestoneOrder}
             customMilestones={customMilestones}
             onToggleStandard={toggleProgress}
             onAddCustom={addCustomMilestone}
             onToggleCustom={toggleCustomMilestone}
             onRemoveCustom={removeCustomMilestone}
+            onRemoveStandard={removeStandardMilestone}
+            onReorder={reorderMilestones}
             onSaveStandardNote={saveStandardNote}
             onSaveCustomNote={saveCustomNote}
           />
@@ -893,19 +919,22 @@ function SessionRow({ session, formatDate, formatDuration, onDelete, isUpcoming 
 
 /* ─── Milestones Panel ─── */
 function MilestonesPanel({
-  candidate, progressCount, totalMilestones, pct, customMilestones,
-  onToggleStandard, onAddCustom, onToggleCustom, onRemoveCustom,
+  candidate, progressCount, totalMilestones, pct, milestoneOrder, customMilestones,
+  onToggleStandard, onAddCustom, onToggleCustom, onRemoveCustom, onRemoveStandard, onReorder,
   onSaveStandardNote, onSaveCustomNote,
 }: {
   candidate: Candidate;
   progressCount: number;
   totalMilestones: number;
   pct: number;
+  milestoneOrder: string[];
   customMilestones: CustomMilestone[];
   onToggleStandard: (key: string) => void;
   onAddCustom: (label: string) => void;
   onToggleCustom: (id: string) => void;
   onRemoveCustom: (id: string) => void;
+  onRemoveStandard: (key: string) => void;
+  onReorder: (newOrder: string[]) => void;
   onSaveStandardNote: (key: string, note: string) => void;
   onSaveCustomNote: (id: string, note: string) => void;
 }) {
@@ -913,6 +942,8 @@ function MilestonesPanel({
   const [newLabel, setNewLabel] = useState("");
   const [openNotes, setOpenNotes] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState("");
+  const [dragId, setDragId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   function handleAdd() {
     const trimmed = newLabel.trim();
@@ -933,6 +964,33 @@ function MilestonesPanel({
     setOpenNotes(null);
   }
 
+  function handleDragStart(id: string) {
+    setDragId(id);
+  }
+
+  function handleDragOver(e: React.DragEvent, id: string) {
+    e.preventDefault();
+    if (id !== dragId) setDragOverId(id);
+  }
+
+  function handleDrop(id: string) {
+    if (!dragId || dragId === id) { setDragId(null); setDragOverId(null); return; }
+    const from = milestoneOrder.indexOf(dragId);
+    const to = milestoneOrder.indexOf(id);
+    if (from === -1 || to === -1) { setDragId(null); setDragOverId(null); return; }
+    const next = [...milestoneOrder];
+    next.splice(from, 1);
+    next.splice(to, 0, dragId);
+    onReorder(next);
+    setDragId(null);
+    setDragOverId(null);
+  }
+
+  function handleDragEnd() {
+    setDragId(null);
+    setDragOverId(null);
+  }
+
   return (
     <div className="rounded-xl border border-border bg-card p-5">
       <div className="mb-4 flex items-center justify-between">
@@ -951,86 +1009,65 @@ function MilestonesPanel({
       </div>
 
       <div className="space-y-2">
-        {/* Fixed milestones */}
-        {progressSteps.map((step, i) => {
-          const done = !!candidate.progress[step.key as keyof typeof candidate.progress];
-          const note = candidate.progress.milestoneNotes?.[step.key] ?? "";
-          const isNoteOpen = openNotes === step.key;
+        {milestoneOrder.map((id) => {
+          const step = progressSteps.find((s) => s.key === id);
+          const custom = customMilestones.find((m) => m.id === id);
+          if (!step && !custom) return null;
+
+          const isCustom = !!custom;
+          const done = isCustom ? custom!.done : !!candidate.progress[id as keyof typeof candidate.progress];
+          const note = isCustom ? (custom!.notes ?? "") : (candidate.progress.milestoneNotes?.[id] ?? "");
+          const isNoteOpen = openNotes === id;
+          const isDragging = dragId === id;
+          const isDragOver = dragOverId === id;
+
           return (
-            <div key={step.key} className="rounded-lg border border-border overflow-hidden">
-              <div className="flex w-full items-center gap-3 px-4 py-3 hover:bg-sidebar-accent transition-colors">
-                <button onClick={() => onToggleStandard(step.key)} className="flex flex-1 items-center gap-3 text-left">
+            <div
+              key={id}
+              draggable
+              onDragStart={() => handleDragStart(id)}
+              onDragOver={(e) => handleDragOver(e, id)}
+              onDrop={() => handleDrop(id)}
+              onDragEnd={handleDragEnd}
+              className={cn(
+                "rounded-lg border overflow-hidden group transition-all",
+                isCustom ? "border-dashed border-border" : "border-border",
+                isDragging ? "opacity-40" : "opacity-100",
+                isDragOver ? "ring-2 ring-primary/50" : "",
+              )}
+            >
+              <div className="flex w-full items-center gap-2 px-3 py-3 hover:bg-sidebar-accent transition-colors">
+                <span className="shrink-0 cursor-grab text-muted-foreground/30 hover:text-muted-foreground/70 transition-colors active:cursor-grabbing">
+                  <GripVertical className="h-4 w-4" />
+                </span>
+                <button
+                  onClick={() => isCustom ? onToggleCustom(id) : onToggleStandard(id)}
+                  className="flex flex-1 items-center gap-3 text-left"
+                >
                   <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                    done ? "bg-emerald-500/20 text-emerald-400" : "bg-muted text-muted-foreground")}>
-                    {i + 1}
+                    done
+                      ? "bg-emerald-500/20 text-emerald-400"
+                      : isCustom ? "bg-violet-500/10 text-violet-400" : "bg-muted text-muted-foreground")}>
+                    {isCustom ? <Flag className="h-3.5 w-3.5" /> : milestoneOrder.filter((oid) => progressSteps.some((s) => s.key === oid)).indexOf(id) + 1}
                   </div>
                   {done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
                   <span className={cn("text-sm font-medium", done ? "text-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
-                    {step.label}
+                    {isCustom ? custom!.label : step!.label}
                   </span>
                 </button>
-                <span className="text-xs text-muted-foreground">{done ? "Complete" : "Pending"}</span>
+                <span className="text-xs text-muted-foreground shrink-0">{done ? "Complete" : "Pending"}</span>
                 <button
-                  onClick={() => isNoteOpen ? setOpenNotes(null) : openNote(step.key, note)}
-                  className={cn("ml-1 shrink-0 transition-colors", note ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground")}
+                  onClick={() => isNoteOpen ? setOpenNotes(null) : openNote(id, note)}
+                  className={cn("shrink-0 transition-colors", note ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground")}
                   title="Add note"
                 >
                   <FileText className="h-4 w-4" />
                 </button>
-              </div>
-              {isNoteOpen && (
-                <div className="border-t border-border bg-sidebar/30 px-4 py-3 space-y-2">
-                  <textarea
-                    autoFocus
-                    value={noteDraft}
-                    onChange={(e) => setNoteDraft(e.target.value)}
-                    rows={2}
-                    placeholder="Add a note for this milestone…"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                    onKeyDown={(e) => { if (e.key === "Escape") setOpenNotes(null); if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) saveNote(step.key, false); }}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button onClick={() => setOpenNotes(null)} className="rounded px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground border border-border transition-colors">Cancel</button>
-                    <button onClick={() => saveNote(step.key, false)} className="rounded px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">Save</button>
-                  </div>
-                  {note && !noteDraft && <p className="text-xs text-muted-foreground italic">Note will be cleared on save.</p>}
-                </div>
-              )}
-              {note && !isNoteOpen && (
-                <div className="border-t border-border bg-sidebar/20 px-4 py-2">
-                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{note}</p>
-                </div>
-              )}
-            </div>
-          );
-        })}
-
-        {/* Custom milestones */}
-        {customMilestones.map((m) => {
-          const isNoteOpen = openNotes === m.id;
-          return (
-            <div key={m.id} className="rounded-lg border border-dashed border-border overflow-hidden group">
-              <div className="flex w-full items-center gap-3 px-4 py-3 hover:bg-sidebar-accent transition-colors">
-                <button onClick={() => onToggleCustom(m.id)} className="flex flex-1 items-center gap-3 text-left">
-                  <div className={cn("flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold",
-                    m.done ? "bg-emerald-500/20 text-emerald-400" : "bg-violet-500/10 text-violet-400")}>
-                    <Flag className="h-3.5 w-3.5" />
-                  </div>
-                  {m.done ? <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-400" /> : <Circle className="h-5 w-5 shrink-0 text-muted-foreground/40" />}
-                  <span className={cn("text-sm font-medium", m.done ? "text-foreground line-through decoration-muted-foreground/40" : "text-foreground")}>
-                    {m.label}
-                  </span>
-                </button>
-                <span className="text-xs text-muted-foreground">{m.done ? "Complete" : "Pending"}</span>
                 <button
-                  onClick={() => isNoteOpen ? setOpenNotes(null) : openNote(m.id, m.notes ?? "")}
-                  className={cn("ml-1 shrink-0 transition-colors", m.notes ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground")}
-                  title="Add note"
+                  onClick={() => isCustom ? onRemoveCustom(id) : onRemoveStandard(id)}
+                  className="shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-all"
+                  title="Remove milestone"
                 >
-                  <FileText className="h-4 w-4" />
-                </button>
-                <button onClick={() => onRemoveCustom(m.id)}
-                  className="shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-all">
                   <X className="h-4 w-4" />
                 </button>
               </div>
@@ -1043,17 +1080,18 @@ function MilestonesPanel({
                     rows={2}
                     placeholder="Add a note for this milestone…"
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-                    onKeyDown={(e) => { if (e.key === "Escape") setOpenNotes(null); if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) saveNote(m.id, true); }}
+                    onKeyDown={(e) => { if (e.key === "Escape") setOpenNotes(null); if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) saveNote(id, isCustom); }}
                   />
                   <div className="flex justify-end gap-2">
                     <button onClick={() => setOpenNotes(null)} className="rounded px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground border border-border transition-colors">Cancel</button>
-                    <button onClick={() => saveNote(m.id, true)} className="rounded px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">Save</button>
+                    <button onClick={() => saveNote(id, isCustom)} className="rounded px-2.5 py-1 text-xs font-medium bg-primary text-primary-foreground hover:opacity-90 transition-opacity">Save</button>
                   </div>
+                  {note && !noteDraft && <p className="text-xs text-muted-foreground italic">Note will be cleared on save.</p>}
                 </div>
               )}
-              {m.notes && !isNoteOpen && (
+              {note && !isNoteOpen && (
                 <div className="border-t border-border bg-sidebar/20 px-4 py-2">
-                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{m.notes}</p>
+                  <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap">{note}</p>
                 </div>
               )}
             </div>

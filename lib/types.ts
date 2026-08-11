@@ -41,7 +41,8 @@ export interface CandidateProgress {
   profiling: boolean;
   networkingPersonalBranding: boolean;
   custom?: CustomMilestone[];
-  milestoneNotes?: Record<string, string>; // keyed by progress step key
+  milestoneNotes?: Record<string, string>;
+  milestoneOrder?: string[]; // ordered IDs (standard keys + custom IDs); drives display order and removal
 }
 
 export type DiscDoneStatus = "Done" | "Not Done";
