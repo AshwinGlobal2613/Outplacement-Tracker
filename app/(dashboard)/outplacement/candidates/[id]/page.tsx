@@ -6,9 +6,9 @@ import { useSession } from "next-auth/react";
 import { PageHeader } from "@/components/page-header";
 import {
   Pencil, Trash2, ExternalLink, MessageCircle, CheckCircle2,
-  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText, Search, Target, GripVertical,
+  Circle, ArrowLeft, Briefcase, CalendarDays, Users2, Link2, Plus, X, Flag, Clock, MapPin, Activity, FileText, Search, Target, GripVertical, ShieldCheck,
 } from "lucide-react";
-import { Candidate, CandidateActivity, CandidateResource, ActivityType, CustomMilestone, Session, ActivityLog, WeeklyGoal } from "@/lib/types";
+import { Candidate, CandidateActivity, CandidateResource, ActivityType, CustomMilestone, Session, ActivityLog, WeeklyGoal, InvoiceStatus, CostingStatus } from "@/lib/types";
 import { ScheduleModal } from "@/components/outplacement/schedule-modal";
 import { DocumentManager } from "@/components/outplacement/document-manager";
 import Link from "next/link";
@@ -791,6 +791,13 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
             </dl>
           </div>
 
+          {isAdmin && (
+            <AdminPanel
+              candidate={candidate}
+              onUpdated={(updates) => setCandidate((prev) => prev ? { ...prev, ...updates } : prev)}
+            />
+          )}
+
           {candidate.updatedAt && (
             <p className="text-xs text-muted-foreground text-center">
               Last updated {new Date(candidate.updatedAt).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
@@ -1119,6 +1126,144 @@ function MilestonesPanel({
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── Admin Panel ─── */
+const INVOICE_OPTIONS: InvoiceStatus[] = ["Not Raised", "Raised", "Cleared"];
+const COSTING_OPTIONS: CostingStatus[] = ["Not Done", "To be reviewed", "Done"];
+
+const invoiceColors: Record<InvoiceStatus, string> = {
+  Cleared: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40",
+  Raised: "bg-amber-500/20 text-amber-400",
+  "Not Raised": "bg-rose-500/20 text-rose-400",
+};
+const costingColors: Record<CostingStatus, string> = {
+  Done: "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40",
+  "To be reviewed": "bg-amber-500/20 text-amber-400",
+  "Not Done": "bg-rose-500/20 text-rose-400",
+};
+
+function AdminPanel({
+  candidate,
+  onUpdated,
+}: {
+  candidate: Candidate;
+  onUpdated: (updates: Partial<Candidate>) => void;
+}) {
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState(candidate.adminNotes ?? "");
+  const [saving, setSaving] = useState(false);
+
+  async function patchCandidate(updates: Partial<Candidate>) {
+    setSaving(true);
+    await fetch(`/api/candidates/${candidate.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(updates),
+    });
+    onUpdated(updates);
+    setSaving(false);
+  }
+
+  async function saveNotes() {
+    await patchCandidate({ adminNotes: notesDraft });
+    setEditingNotes(false);
+  }
+
+  return (
+    <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-5">
+      <div className="mb-4 flex items-center gap-2">
+        <ShieldCheck className="h-4 w-4 text-amber-400 shrink-0" />
+        <h2 className="font-semibold text-amber-400 text-sm">Admin</h2>
+      </div>
+
+      <div className="space-y-3">
+        {/* DiSC */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">DiSC</span>
+          {candidate.discStyle
+            ? <span className="rounded-full bg-emerald-500/20 border border-emerald-500/40 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-400">Done · {candidate.discStyle}</span>
+            : <span className="rounded-full bg-rose-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-rose-400">Not Done</span>
+          }
+        </div>
+
+        {/* Invoice */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Invoice</span>
+          <select
+            value={candidate.invoiceStatus}
+            disabled={saving}
+            onChange={(e) => patchCandidate({ invoiceStatus: e.target.value as InvoiceStatus })}
+            className={cn("rounded-full px-2.5 py-0.5 text-[11px] font-semibold cursor-pointer focus:outline-none disabled:opacity-60", invoiceColors[candidate.invoiceStatus])}
+          >
+            {INVOICE_OPTIONS.map((o) => <option key={o} value={o} className="bg-card text-foreground">{o}</option>)}
+          </select>
+        </div>
+
+        {/* Costing */}
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-xs text-muted-foreground">Costing</span>
+          <select
+            value={candidate.costingStatus}
+            disabled={saving}
+            onChange={(e) => patchCandidate({ costingStatus: e.target.value as CostingStatus })}
+            className={cn("rounded-full px-2.5 py-0.5 text-[11px] font-semibold cursor-pointer focus:outline-none disabled:opacity-60", costingColors[candidate.costingStatus])}
+          >
+            {COSTING_OPTIONS.map((o) => <option key={o} value={o} className="bg-card text-foreground">{o}</option>)}
+          </select>
+        </div>
+
+        {/* Budget */}
+        {candidate.budget ? (
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs text-muted-foreground">Budget</span>
+            <span className="text-xs font-medium text-foreground">{candidate.budgetCurrency ?? "AED"} {candidate.budget.toLocaleString()}</span>
+          </div>
+        ) : null}
+
+        {/* Admin Notes */}
+        <div className="pt-2 border-t border-amber-500/20">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-amber-400/70">Admin Notes</span>
+            {!editingNotes && (
+              <button
+                onClick={() => { setNotesDraft(candidate.adminNotes ?? ""); setEditingNotes(true); }}
+                className="text-[10px] text-amber-500/60 hover:text-amber-400 transition-colors border border-amber-500/30 rounded px-2 py-0.5"
+              >
+                {candidate.adminNotes ? "Edit" : "+ Add"}
+              </button>
+            )}
+          </div>
+          {editingNotes ? (
+            <div className="space-y-2">
+              <textarea
+                autoFocus
+                value={notesDraft}
+                onChange={(e) => setNotesDraft(e.target.value)}
+                rows={3}
+                placeholder="Internal notes visible only to admins…"
+                className="w-full rounded-lg border border-amber-500/30 bg-amber-500/5 px-3 py-2 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500/50 resize-none"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) saveNotes();
+                  if (e.key === "Escape") setEditingNotes(false);
+                }}
+              />
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setEditingNotes(false)} className="rounded px-2.5 py-1 text-[10px] text-muted-foreground hover:text-foreground border border-border transition-colors">Cancel</button>
+                <button onClick={saveNotes} disabled={saving} className="rounded px-2.5 py-1 text-[10px] font-semibold bg-amber-500/20 text-amber-400 hover:bg-amber-500/30 border border-amber-500/30 transition-colors disabled:opacity-60">
+                  {saving ? "Saving…" : "Save"}
+                </button>
+              </div>
+            </div>
+          ) : candidate.adminNotes ? (
+            <p className="text-xs text-amber-300/80 leading-relaxed whitespace-pre-wrap">{candidate.adminNotes}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground/40 italic">No admin notes yet.</p>
+          )}
+        </div>
       </div>
     </div>
   );
