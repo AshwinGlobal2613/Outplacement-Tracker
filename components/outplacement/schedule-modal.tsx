@@ -313,7 +313,7 @@ export function ScheduleModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl">
+      <div className="relative w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-2">
@@ -327,6 +327,7 @@ export function ScheduleModal({
 
         {!saved ? (
           <>
+          <div className="overflow-y-auto flex-1">
             <div className="space-y-4 px-6 py-5">
               {/* Candidate info */}
               <div className="rounded-lg bg-muted/40 px-4 py-3">
@@ -536,7 +537,8 @@ export function ScheduleModal({
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 border-t border-border px-6 py-4">
+          </div>
+            <div className="flex justify-end gap-2 border-t border-border px-6 py-4 shrink-0">
               <button onClick={onClose} className="rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
                 Cancel
               </button>
