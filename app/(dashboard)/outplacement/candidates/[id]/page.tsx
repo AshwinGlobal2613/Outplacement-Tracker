@@ -497,6 +497,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
   const [loading, setLoading] = useState(true);
   const [showEdit, setShowEdit] = useState(false);
   const [showSchedule, setShowSchedule] = useState(false);
+  const [editSession, setEditSession] = useState<Session | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
 
@@ -728,6 +729,7 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
               });
               if (res.ok) load();
             }}
+            onEdit={(session) => setEditSession(session)}
             onSchedule={() => setShowSchedule(true)}
           />
 
@@ -812,16 +814,26 @@ function CandidateDetailContent({ params }: { params: { id: string } }) {
       {showSchedule && (
         <ScheduleModal candidate={candidate} onClose={() => setShowSchedule(false)} onSaved={() => load()} />
       )}
+      {editSession && (
+        <ScheduleModal
+          candidate={candidate}
+          initialSession={editSession}
+          mode="edit"
+          onClose={() => setEditSession(null)}
+          onSaved={() => { setEditSession(null); load(); }}
+        />
+      )}
     </div>
   );
 }
 
 /* ─── Sessions List ─── */
 function SessionsList({
-  sessions, onDelete, onSchedule,
+  sessions, onDelete, onEdit, onSchedule,
 }: {
   sessions: Session[];
   onDelete: (id: string) => void;
+  onEdit: (session: Session) => void;
   onSchedule: () => void;
 }) {
   const now = new Date();
@@ -858,7 +870,7 @@ function SessionsList({
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Upcoming</p>
               <div className="space-y-2">
                 {upcoming.map((s) => (
-                  <SessionRow key={s.id} session={s} formatDate={formatDate} formatDuration={formatDuration} onDelete={onDelete} isUpcoming />
+                  <SessionRow key={s.id} session={s} formatDate={formatDate} formatDuration={formatDuration} onDelete={onDelete} onEdit={onEdit} isUpcoming />
                 ))}
               </div>
             </div>
@@ -868,7 +880,7 @@ function SessionsList({
               <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground/60">Past</p>
               <div className="space-y-2">
                 {past.map((s) => (
-                  <SessionRow key={s.id} session={s} formatDate={formatDate} formatDuration={formatDuration} onDelete={onDelete} isUpcoming={false} />
+                  <SessionRow key={s.id} session={s} formatDate={formatDate} formatDuration={formatDuration} onDelete={onDelete} onEdit={onEdit} isUpcoming={false} />
                 ))}
               </div>
             </div>
@@ -879,11 +891,12 @@ function SessionsList({
   );
 }
 
-function SessionRow({ session, formatDate, formatDuration, onDelete, isUpcoming }: {
+function SessionRow({ session, formatDate, formatDuration, onDelete, onEdit, isUpcoming }: {
   session: Session;
   formatDate: (d: string, t: string) => string;
   formatDuration: (m: number) => string;
   onDelete: (id: string) => void;
+  onEdit: (session: Session) => void;
   isUpcoming: boolean;
 }) {
   return (
@@ -916,10 +929,18 @@ function SessionRow({ session, formatDate, formatDuration, onDelete, isUpcoming 
         )}
         {session.notes && <p className="mt-1 text-xs text-muted-foreground">{session.notes}</p>}
       </div>
-      <button onClick={() => onDelete(session.id)}
-        className="ml-2 shrink-0 text-muted-foreground/30 opacity-0 group-hover:opacity-100 hover:text-rose-400 transition-all">
-        <X className="h-4 w-4" />
-      </button>
+      <div className="ml-2 flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+        <button onClick={() => onEdit(session)}
+          className="text-muted-foreground/50 hover:text-primary transition-colors"
+          title="Edit session">
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={() => onDelete(session.id)}
+          className="text-muted-foreground/30 hover:text-rose-400 transition-colors"
+          title="Delete session">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }

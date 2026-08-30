@@ -83,6 +83,51 @@ export async function createCalendarEvent(
   return event.data.id ?? null;
 }
 
+export async function updateCalendarEvent(
+  eventId: string,
+  session: Session,
+  candidateName: string,
+  attendeeEmails: string[],
+  calendarId?: string
+): Promise<void> {
+  const auth = getAuth();
+  const targetCalendarId = calendarId || process.env.GOOGLE_CALENDAR_ID;
+  if (!auth || !targetCalendarId) return;
+
+  const calendar = google.calendar({ version: "v3", auth });
+
+  const tz = process.env.GOOGLE_CALENDAR_TIMEZONE || "Asia/Dubai";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const [year, month, day] = session.date.split("-").map(Number);
+  const [hours, minutes] = session.time.split(":").map(Number);
+  const endMinutes = hours * 60 + minutes + session.duration;
+  const endH = Math.floor(endMinutes / 60) % 24;
+  const endM = endMinutes % 60;
+  const endDay = day + Math.floor((hours * 60 + minutes + session.duration) / (24 * 60));
+
+  const startStr = `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00`;
+  const endStr   = `${year}-${pad(month)}-${pad(endDay)}T${pad(endH)}:${pad(endM)}:00`;
+
+  const description = [
+    session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
+    session.notes ? `Notes: ${session.notes}` : "",
+  ].filter(Boolean).join("\n\n");
+
+  await calendar.events.patch({
+    calendarId: targetCalendarId,
+    eventId,
+    sendUpdates: "all",
+    requestBody: {
+      summary: `${session.title} — ${candidateName}`,
+      description,
+      location: session.meetingLink || session.location,
+      start: { dateTime: startStr, timeZone: tz },
+      end:   { dateTime: endStr,   timeZone: tz },
+      attendees: attendeeEmails.map((email) => ({ email })),
+    },
+  });
+}
+
 export async function deleteCalendarEvent(eventId: string, calendarId?: string): Promise<void> {
   const auth = getAuth();
   const targetCalendarId = calendarId || process.env.GOOGLE_CALENDAR_ID;

@@ -5,7 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { getCandidateById, updateCandidate, getUsers } from "@/lib/db";
 import { Session } from "@/lib/types";
 import { sendSessionInviteEmail, sendSessionCancellationEmail } from "@/lib/email";
-import { createCalendarEvent, deleteCalendarEvent, isGoogleCalendarConfigured } from "@/lib/google-calendar";
+import { createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, isGoogleCalendarConfigured } from "@/lib/google-calendar";
 
 export async function GET(_req: NextRequest, { params }: { params: { id: string } }) {
   const candidate = await getCandidateById(params.id);
@@ -50,7 +50,10 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       const allEmails = [candidate.email, coachUser?.email, supportUser?.email].filter(Boolean) as string[];
 
       const googleEventId = await createCalendarEvent(newSession, candidate.candidateName, allEmails, body.calendarId);
-      if (googleEventId) newSession.googleEventId = googleEventId;
+      if (googleEventId) {
+        newSession.googleEventId = googleEventId;
+        newSession.googleCalendarId = body.calendarId || process.env.GOOGLE_CALENDAR_ID;
+      }
     } catch (err) {
       console.error("[google-calendar] Failed to create calendar event:", err);
     }
@@ -153,7 +156,7 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
 
   // Remove from Google Calendar if event was created there
   if (sessionToDelete?.googleEventId) {
-    deleteCalendarEvent(sessionToDelete.googleEventId).catch((err) =>
+    deleteCalendarEvent(sessionToDelete.googleEventId, sessionToDelete.googleCalendarId).catch((err) =>
       console.error("[google-calendar] Failed to delete calendar event:", err)
     );
   }
@@ -209,4 +212,67 @@ export async function DELETE(req: NextRequest, { params }: { params: { id: strin
   }
 
   return NextResponse.json(updated);
+}
+
+export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+  const authSession = await getServerSession(authOptions);
+  if (!authSession) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const candidate = await getCandidateById(params.id);
+  if (!candidate) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const body = await req.json();
+  const { sessionId, ...updates } = body;
+
+  const sessions = candidate.sessions ?? [];
+  const idx = sessions.findIndex((s) => s.id === sessionId);
+  if (idx === -1) return NextResponse.json({ error: "Session not found" }, { status: 404 });
+
+  const existing = sessions[idx];
+  const updatedSession: Session = {
+    ...existing,
+    type: updates.type ?? existing.type,
+    title: updates.title ?? existing.title,
+    date: updates.date ?? existing.date,
+    time: updates.time ?? existing.time,
+    duration: updates.duration ?? existing.duration,
+    location: updates.location ?? existing.location,
+    meetingLink: updates.meetingLink ?? existing.meetingLink,
+    notes: updates.notes ?? existing.notes,
+  };
+
+  // Update Google Calendar event if one exists
+  if (updatedSession.googleEventId) {
+    try {
+      const users = await getUsers();
+      const coachUser = candidate.leadCoach
+        ? users.find((u) => u.name.trim().toLowerCase() === candidate.leadCoach.trim().toLowerCase())
+        : null;
+      const supportUser = candidate.support
+        ? users.find((u) => u.name.trim().toLowerCase() === candidate.support.trim().toLowerCase())
+        : null;
+      const allEmails = [candidate.email, coachUser?.email, supportUser?.email].filter(Boolean) as string[];
+
+      await updateCalendarEvent(
+        updatedSession.googleEventId,
+        updatedSession,
+        candidate.candidateName,
+        allEmails,
+        updatedSession.googleCalendarId
+      );
+    } catch (err) {
+      console.error("[google-calendar] Failed to update calendar event:", err);
+    }
+  }
+
+  const newSessions = [...sessions];
+  newSessions[idx] = updatedSession;
+
+  const now = new Date();
+  const sessionsCompleted = newSessions.filter(
+    (s) => new Date(`${s.date}T${s.time || "00:00"}`) < now
+  ).length;
+  const updated = await updateCandidate(params.id, { sessions: newSessions, sessionsCompleted });
+
+  return NextResponse.json({ candidate: updated, session: updatedSession });
 }

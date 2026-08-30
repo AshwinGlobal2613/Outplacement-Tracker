@@ -152,21 +152,25 @@ export function ScheduleModal({
   candidate,
   onClose,
   onSaved,
+  initialSession,
+  mode = "create",
 }: {
   candidate: Candidate;
   onClose: () => void;
   onSaved: (session: Session) => void;
+  initialSession?: Session;
+  mode?: "create" | "edit";
 }) {
   const today = new Date().toISOString().split("T")[0];
   const [form, setForm] = useState({
-    type: SESSION_TYPES[0],
-    title: SESSION_TYPES[0],
-    date: today,
-    time: "10:00",
-    duration: 60,
-    location: "Zoom",
-    meetingLink: "",
-    notes: "",
+    type: initialSession?.type ?? SESSION_TYPES[0],
+    title: initialSession?.title ?? SESSION_TYPES[0],
+    date: initialSession?.date ?? today,
+    time: initialSession?.time ?? "10:00",
+    duration: initialSession?.duration ?? 60,
+    location: initialSession?.location ?? "Zoom",
+    meetingLink: initialSession?.meetingLink ?? "",
+    notes: initialSession?.notes ?? "",
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Session | null>(null);
@@ -272,17 +276,28 @@ export function ScheduleModal({
     setSaving(true);
     const selectedEmails = inviteRows.filter((r) => r.checked).map((r) => r.email);
     try {
-      const res = await fetch(`/api/candidates/${candidate.id}/sessions`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...form,
-          inviteEmails: selectedEmails,
-          ...(gcalConfigured && selectedCalendarId ? { calendarId: selectedCalendarId } : {}),
-        }),
-      });
-      if (!res.ok) throw new Error("Failed");
-      const { session } = await res.json();
+      let session: Session;
+      if (mode === "edit" && initialSession) {
+        const res = await fetch(`/api/candidates/${candidate.id}/sessions`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sessionId: initialSession.id, ...form }),
+        });
+        if (!res.ok) throw new Error("Failed");
+        ({ session } = await res.json());
+      } else {
+        const res = await fetch(`/api/candidates/${candidate.id}/sessions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...form,
+            inviteEmails: selectedEmails,
+            ...(gcalConfigured && selectedCalendarId ? { calendarId: selectedCalendarId } : {}),
+          }),
+        });
+        if (!res.ok) throw new Error("Failed");
+        ({ session } = await res.json());
+      }
       setSaved(session);
       setSavedEmails(selectedEmails);
       onSaved(session);
@@ -300,7 +315,7 @@ export function ScheduleModal({
         <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <div className="flex items-center gap-2">
             <CalendarDays className="h-5 w-5" style={{ color: "#ffffff" }} />
-            <h2 className="font-semibold text-foreground">Schedule Session</h2>
+            <h2 className="font-semibold text-foreground">{mode === "edit" ? "Edit Session" : "Schedule Session"}</h2>
           </div>
           <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
             <X className="h-5 w-5" />
@@ -528,7 +543,7 @@ export function ScheduleModal({
                 className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-60 transition-opacity"
               >
                 <CalendarDays className="h-4 w-4" style={{ color: "#ffffff" }} />
-                {saving ? "Saving…" : "Save & Get Invite"}
+                {saving ? "Saving…" : mode === "edit" ? "Save Changes" : "Save & Get Invite"}
               </button>
             </div>
           </>
@@ -538,14 +553,14 @@ export function ScheduleModal({
             <div className="flex items-center gap-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-4 py-3">
               <Check className="h-5 w-5 text-emerald-400 shrink-0" />
               <div>
-                <p className="text-sm font-medium text-emerald-400">Session saved!</p>
+                <p className="text-sm font-medium text-emerald-400">{mode === "edit" ? "Session updated!" : "Session saved!"}</p>
                 <p className="text-xs text-muted-foreground">
                   {saved.title} · {new Date(saved.date + "T" + saved.time).toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })} at {saved.time}
                 </p>
               </div>
             </div>
 
-            {saved.googleEventId ? (
+            {(saved.googleEventId || (mode === "edit" && initialSession?.googleEventId)) ? (
               /* Google Calendar created the event in-system */
               <div className="rounded-xl border border-[#4285F4]/30 bg-[#4285F4]/5 px-4 py-4 space-y-2">
                 <div className="flex items-center gap-3">
@@ -558,8 +573,8 @@ export function ScheduleModal({
                     </svg>
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-foreground">Added to Google Calendar</p>
-                    <p className="text-xs text-muted-foreground">Invites sent directly — no redirect needed</p>
+                    <p className="text-sm font-semibold text-foreground">{mode === "edit" ? "Google Calendar updated" : "Added to Google Calendar"}</p>
+                    <p className="text-xs text-muted-foreground">{mode === "edit" ? "Attendees notified of the changes" : "Invites sent directly — no redirect needed"}</p>
                   </div>
                   <Check className="h-4 w-4 text-emerald-400 ml-auto shrink-0" />
                 </div>

@@ -265,6 +265,7 @@ export interface Session {
   createdAt: string;
   createdBy: string;
   googleEventId?: string;
+  googleCalendarId?: string;
 }
 
 export interface Candidate {
