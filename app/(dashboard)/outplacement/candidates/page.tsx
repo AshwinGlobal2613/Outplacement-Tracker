@@ -196,8 +196,81 @@ function CandidatesContent() {
         </button>
       </PageHeader>
 
-      {/* Tabs — scrollable on mobile */}
-      <div className="flex flex-col gap-3">
+      {/* Global search bar */}
+      <div className="relative">
+        <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search candidates by name, client, partner, coach…"
+          className="w-full rounded-xl border border-border bg-card pl-10 pr-10 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors"
+        />
+        {search && (
+          <button
+            onClick={() => setSearch("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      {/* Search results across all tabs */}
+      {search && (
+        <div className="flex flex-col gap-2">
+          {(() => {
+            const q = search.toLowerCase();
+            const allMatches = candidates.filter((c) =>
+              c.candidateName.toLowerCase().includes(q) ||
+              c.clientName?.toLowerCase().includes(q) ||
+              c.partner?.toLowerCase().includes(q) ||
+              c.leadCoach?.toLowerCase().includes(q) ||
+              c.email?.toLowerCase().includes(q)
+            );
+            if (allMatches.length === 0) return (
+              <div className="flex h-24 items-center justify-center rounded-xl border border-dashed border-border">
+                <p className="text-sm text-muted-foreground">No candidates match &ldquo;{search}&rdquo;</p>
+              </div>
+            );
+            return (
+              <>
+                <p className="text-xs text-muted-foreground">{allMatches.length} result{allMatches.length !== 1 ? "s" : ""} across all statuses</p>
+                <div className="flex flex-col gap-2">
+                  {allMatches.map((c) => {
+                    const tab = tabs.find((t) => t.key === c.status);
+                    return (
+                      <Link
+                        key={c.id}
+                        href={`/outplacement/candidates/${c.id}?from=${c.status}`}
+                        className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3 hover:bg-sidebar-accent/40 transition-colors group"
+                      >
+                        <Avatar name={c.candidateName} color="emerald" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-foreground text-sm">{c.candidateName}</p>
+                            {tab && (
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold bg-muted", tab.color)}>
+                                {tab.label}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {[c.clientName, c.partner, c.leadCoach && `Coach: ${c.leadCoach}`].filter(Boolean).join(" · ")}
+                          </p>
+                        </div>
+                        <ExternalLink className="h-4 w-4 text-primary/40 group-hover:text-primary transition-colors shrink-0" />
+                      </Link>
+                    );
+                  })}
+                </div>
+              </>
+            );
+          })()}
+        </div>
+      )}
+
+      {/* Tabs — scrollable on mobile (hidden when searching) */}
+      {!search && <div className="flex flex-col gap-3">
         <div className="flex overflow-x-auto rounded-xl border border-border bg-card p-1 scrollbar-none gap-1">
           {tabs.map(({ key, label, icon: Icon, color }) => (
             <button
@@ -222,19 +295,10 @@ function CandidatesContent() {
           ))}
         </div>
 
-        {/* Search + Filters */}
+        {/* Filters */}
         <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-          {/* Search + filter toggle row */}
+          {/* Filter toggle row (mobile) */}
           <div className="flex items-center gap-2">
-            <div className="relative flex-1 sm:flex-none">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search name, client, coach…"
-                className="w-full sm:w-52 rounded-lg border border-border bg-card pl-9 pr-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-              />
-            </div>
             {/* Mobile filter toggle */}
             <button
               onClick={() => setShowFilters((v) => !v)}
@@ -309,6 +373,7 @@ function CandidatesContent() {
         <SimpleTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab}
           isAdmin={isAdmin} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
       )}
+      </div>}
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
