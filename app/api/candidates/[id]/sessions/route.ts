@@ -241,8 +241,8 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     notes: updates.notes ?? existing.notes,
   };
 
-  // Update Google Calendar event if one exists
-  if (updatedSession.googleEventId) {
+  // Sync with Google Calendar if configured
+  if (isGoogleCalendarConfigured()) {
     try {
       const users = await getUsers();
       const coachUser = candidate.leadCoach
@@ -253,15 +253,30 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         : null;
       const allEmails = [candidate.email, coachUser?.email, supportUser?.email].filter(Boolean) as string[];
 
-      await updateCalendarEvent(
-        updatedSession.googleEventId,
-        updatedSession,
-        candidate.candidateName,
-        allEmails,
-        updatedSession.googleCalendarId
-      );
+      if (updatedSession.googleEventId) {
+        // Event already exists — patch it
+        await updateCalendarEvent(
+          updatedSession.googleEventId,
+          updatedSession,
+          candidate.candidateName,
+          allEmails,
+          updatedSession.googleCalendarId
+        );
+      } else {
+        // Session predates Google Calendar integration — create the event now
+        const googleEventId = await createCalendarEvent(
+          updatedSession,
+          candidate.candidateName,
+          allEmails,
+          process.env.GOOGLE_CALENDAR_ID
+        );
+        if (googleEventId) {
+          updatedSession.googleEventId = googleEventId;
+          updatedSession.googleCalendarId = process.env.GOOGLE_CALENDAR_ID;
+        }
+      }
     } catch (err) {
-      console.error("[google-calendar] Failed to update calendar event:", err);
+      console.error("[google-calendar] Failed to sync calendar event on edit:", err);
     }
   }
 
