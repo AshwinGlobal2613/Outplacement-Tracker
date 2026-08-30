@@ -269,8 +269,9 @@ function CandidatesContent() {
         </div>
       )}
 
-      {/* Tabs — scrollable on mobile (hidden when searching) */}
-      {!search && <div className="flex flex-col gap-3">
+      {/* Tabs, filters, section label, and table — hidden when searching */}
+      {!search && (<>
+      <div className="flex flex-col gap-3">
         <div className="flex overflow-x-auto rounded-xl border border-border bg-card p-1 scrollbar-none gap-1">
           {tabs.map(({ key, label, icon: Icon, color }) => (
             <button
@@ -373,7 +374,7 @@ function CandidatesContent() {
         <SimpleTable candidates={filtered} supportColors={supportColors} onRefresh={load} activeTab={activeTab}
           isAdmin={isAdmin} selectedIds={selectedIds} onToggleSelect={toggleSelect} onToggleAll={toggleAll} />
       )}
-      </div>}
+      </>)}
 
       {/* Bulk action bar */}
       {selectedIds.size > 0 && (
