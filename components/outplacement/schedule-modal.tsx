@@ -215,8 +215,9 @@ export function ScheduleModal({
           rows.push({ id: `r${idx++}`, label: candidate.candidateName, email: candidate.email, role: "Candidate", checked: true, removable: false });
         }
 
-        // In edit mode all recipients default to checked; in create mode coaches/support start unchecked
-        const defaultChecked = mode === "edit";
+        // In edit mode, check only the emails that were originally invited (if stored).
+        // Fall back to all-checked if no record exists; in create mode coaches/support start unchecked.
+        const knownInvites = initialSession?.inviteEmails;
 
         // Lead coaches
         const coachNames = candidate.leadCoach
@@ -226,7 +227,8 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked: defaultChecked, removable: true });
+            const checked = knownInvites ? knownInvites.includes(em) : false;
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked, removable: true });
           }
         }
 
@@ -238,7 +240,8 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked: defaultChecked, removable: true });
+            const checked = knownInvites ? knownInvites.includes(em) : false;
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked, removable: true });
           }
         }
 
@@ -284,7 +287,7 @@ export function ScheduleModal({
         const res = await fetch(`/api/candidates/${candidate.id}/sessions`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId: initialSession.id, ...form }),
+          body: JSON.stringify({ sessionId: initialSession.id, ...form, inviteEmails: selectedEmails }),
         });
         if (!res.ok) throw new Error("Failed");
         ({ session } = await res.json());

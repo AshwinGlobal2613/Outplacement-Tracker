@@ -59,6 +59,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   }
 
+  // Store which emails were actually invited so edit mode can pre-check them
+  const explicitEmailsForStorage = Array.isArray(body.inviteEmails) && body.inviteEmails.length > 0
+    ? body.inviteEmails as string[]
+    : undefined;
+  if (explicitEmailsForStorage) newSession.inviteEmails = explicitEmailsForStorage;
+
   const sessions = [...(candidate.sessions ?? []), newSession];
   const now = new Date();
   const sessionsCompleted = sessions.filter(
@@ -239,6 +245,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     location: updates.location ?? existing.location,
     meetingLink: updates.meetingLink ?? existing.meetingLink,
     notes: updates.notes ?? existing.notes,
+    inviteEmails: Array.isArray(updates.inviteEmails) && updates.inviteEmails.length > 0
+      ? updates.inviteEmails
+      : existing.inviteEmails,
   };
 
   // Sync with Google Calendar if configured

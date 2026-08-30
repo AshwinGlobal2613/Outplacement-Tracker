@@ -266,6 +266,7 @@ export interface Session {
   createdBy: string;
   googleEventId?: string;
   googleCalendarId?: string;
+  inviteEmails?: string[];
 }
 
 export interface Candidate {
