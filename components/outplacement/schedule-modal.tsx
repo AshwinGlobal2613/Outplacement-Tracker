@@ -215,7 +215,10 @@ export function ScheduleModal({
           rows.push({ id: `r${idx++}`, label: candidate.candidateName, email: candidate.email, role: "Candidate", checked: true, removable: false });
         }
 
-        // Lead coaches — unchecked by default, user selects which to include
+        // In edit mode all recipients default to checked; in create mode coaches/support start unchecked
+        const defaultChecked = mode === "edit";
+
+        // Lead coaches
         const coachNames = candidate.leadCoach
           ? candidate.leadCoach.split(",").map((n) => n.trim()).filter(Boolean)
           : [];
@@ -223,11 +226,11 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked: false, removable: true });
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked: defaultChecked, removable: true });
           }
         }
 
-        // Supports — unchecked by default, user selects which to include
+        // Supports
         const supportNames = candidate.support
           ? candidate.support.split(",").map((n) => n.trim()).filter(Boolean)
           : [];
@@ -235,7 +238,7 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked: false, removable: true });
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked: defaultChecked, removable: true });
           }
         }
 
@@ -247,7 +250,7 @@ export function ScheduleModal({
       }
     }
     loadInviteRows();
-  }, [candidate]);
+  }, [candidate, mode]);
 
   useEffect(() => {
     fetch("/api/google/calendars")
