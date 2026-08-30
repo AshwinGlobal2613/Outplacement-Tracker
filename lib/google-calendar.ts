@@ -2,16 +2,15 @@ import { google } from "googleapis";
 import type { Session } from "./types";
 
 function getAuth() {
-  const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL;
-  const key = process.env.GOOGLE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
 
-  if (!email || !key) return null;
+  if (!clientId || !clientSecret || !refreshToken) return null;
 
-  return new google.auth.JWT({
-    email,
-    key,
-    scopes: ["https://www.googleapis.com/auth/calendar"],
-  });
+  const oauth2 = new google.auth.OAuth2(clientId, clientSecret);
+  oauth2.setCredentials({ refresh_token: refreshToken });
+  return oauth2;
 }
 
 export async function listCalendars(): Promise<{ id: string; summary: string; primary?: boolean }[]> {
@@ -57,7 +56,7 @@ export async function createCalendarEvent(
 
   const event = await calendar.events.insert({
     calendarId: targetCalendarId,
-    sendUpdates: "all",       // Google sends invites to all attendees
+    sendUpdates: "all",
     requestBody: {
       summary: `${session.title} — ${candidateName}`,
       description,
@@ -68,8 +67,8 @@ export async function createCalendarEvent(
       reminders: {
         useDefault: false,
         overrides: [
-          { method: "email", minutes: 24 * 60 },   // 1 day before
-          { method: "popup", minutes: 30 },         // 30 min before
+          { method: "email", minutes: 24 * 60 },
+          { method: "popup", minutes: 30 },
         ],
       },
     },
@@ -89,8 +88,9 @@ export async function deleteCalendarEvent(eventId: string, calendarId?: string):
 
 export function isGoogleCalendarConfigured(): boolean {
   return !!(
-    process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL &&
-    process.env.GOOGLE_PRIVATE_KEY &&
+    process.env.GOOGLE_CLIENT_ID &&
+    process.env.GOOGLE_CLIENT_SECRET &&
+    process.env.GOOGLE_REFRESH_TOKEN &&
     process.env.GOOGLE_CALENDAR_ID
   );
 }
