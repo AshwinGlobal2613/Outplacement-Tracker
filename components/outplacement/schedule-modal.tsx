@@ -289,9 +289,10 @@ export function ScheduleModal({
       .then((data: { configured: boolean; calendars: GCal[] }) => {
         if (data.configured && data.calendars.length) {
           setGcalConfigured(true);
-          setGcalList(data.calendars);
-          const primary = data.calendars.find((c) => c.primary) ?? data.calendars[0];
-          setSelectedCalendarId(primary.id);
+          const globalsPlan = data.calendars.find((c) => c.summary === "Global's Plan");
+          const filtered = globalsPlan ? [globalsPlan] : data.calendars;
+          setGcalList(filtered);
+          setSelectedCalendarId(filtered[0].id);
         }
       })
       .catch(() => {});
