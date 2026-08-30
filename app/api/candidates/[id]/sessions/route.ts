@@ -22,6 +22,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const body = await req.json();
 
+  const recurrence = (body.recurrence ?? "none") as string;
+  const recurrenceCount = Math.max(1, Math.min(52, Number(body.recurrenceCount) || 1));
+  const recurrenceGroupId = recurrence !== "none" && recurrenceCount > 1 ? uuidv4() : undefined;
+
+  const selectedEmails: string[] = Array.isArray(body.inviteEmails) ? body.inviteEmails as string[] : [];
+
+  // Build the first (base) session
   const newSession: Session = {
     id: `sess_${uuidv4().slice(0, 8)}`,
     type: body.type || "Session",
@@ -34,22 +41,50 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     notes: body.notes || "",
     createdAt: new Date().toISOString(),
     createdBy: authSession.user.name || "Unknown",
+    inviteEmails: selectedEmails.length > 0 ? selectedEmails : undefined,
+    ...(recurrenceGroupId ? { recurrence: recurrence as Session["recurrence"], recurrenceCount, recurrenceGroupId } : {}),
   };
 
-  // If Google Calendar is configured, create the event there first
-  // (Google handles sending invites to all attendees automatically)
+  // Build all sessions (one per occurrence)
+  function addOccurrenceDate(baseDate: string, recurrence: string, n: number): string {
+    const [y, m, d] = baseDate.split("-").map(Number);
+    if (recurrence === "monthly") {
+      const dt = new Date(y, m - 1 + n, d);
+      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    }
+    const days = recurrence === "daily" ? 1 : recurrence === "weekly" ? 7 : 14;
+    const dt = new Date(y, m - 1, d + days * n);
+    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+  }
+
+  const allNewSessions: Session[] = [newSession];
+  if (recurrenceGroupId && recurrenceCount > 1) {
+    for (let i = 1; i < recurrenceCount; i++) {
+      allNewSessions.push({
+        ...newSession,
+        id: `sess_${uuidv4().slice(0, 8)}`,
+        date: addOccurrenceDate(body.date, recurrence, i),
+        googleEventId: undefined,
+        googleCalendarId: undefined,
+      });
+    }
+  }
+
+  // Create Google Calendar event (recurring rule on the first session)
   if (isGoogleCalendarConfigured()) {
     try {
-      const users = await getUsers();
-      const coachUser = candidate.leadCoach
-        ? users.find((u) => u.name.trim().toLowerCase() === candidate.leadCoach.trim().toLowerCase())
-        : null;
-      const supportUser = candidate.support
-        ? users.find((u) => u.name.trim().toLowerCase() === candidate.support.trim().toLowerCase())
-        : null;
-      const allEmails = [candidate.email, coachUser?.email, supportUser?.email].filter(Boolean) as string[];
+      const gcalEmails = selectedEmails.length > 0
+        ? selectedEmails
+        : [candidate.email].filter(Boolean) as string[];
 
-      const googleEventId = await createCalendarEvent(newSession, candidate.candidateName, allEmails, body.calendarId);
+      let rrule: string | undefined;
+      if (recurrenceGroupId && recurrenceCount > 1) {
+        const freq = recurrence === "daily" ? "DAILY" : recurrence === "monthly" ? "MONTHLY" : "WEEKLY";
+        const interval = recurrence === "biweekly" ? ";INTERVAL=2" : "";
+        rrule = `RRULE:FREQ=${freq}${interval};COUNT=${recurrenceCount}`;
+      }
+
+      const googleEventId = await createCalendarEvent(newSession, candidate.candidateName, gcalEmails, body.calendarId, rrule);
       if (googleEventId) {
         newSession.googleEventId = googleEventId;
         newSession.googleCalendarId = body.calendarId || process.env.GOOGLE_CALENDAR_ID;
@@ -59,13 +94,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   }
 
-  // Store which emails were actually invited so edit mode can pre-check them
-  const explicitEmailsForStorage = Array.isArray(body.inviteEmails) && body.inviteEmails.length > 0
-    ? body.inviteEmails as string[]
-    : undefined;
-  if (explicitEmailsForStorage) newSession.inviteEmails = explicitEmailsForStorage;
-
-  const sessions = [...(candidate.sessions ?? []), newSession];
+  const sessions = [...(candidate.sessions ?? []), ...allNewSessions];
   const now = new Date();
   const sessionsCompleted = sessions.filter(
     (s) => new Date(`${s.date}T${s.time || "00:00"}`) < now
@@ -245,11 +274,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     location: updates.location ?? existing.location,
     meetingLink: updates.meetingLink ?? existing.meetingLink,
     notes: updates.notes ?? existing.notes,
-    inviteEmails: existing.inviteEmails,
+    inviteEmails: Array.isArray(updates.inviteEmails) ? updates.inviteEmails as string[] : existing.inviteEmails,
   };
 
   // Sync with Google Calendar if configured
-  // Use the stored inviteEmails so the attendee list matches exactly who was selected
+  // Use the newly selected inviteEmails (from the edit form) for Google Calendar attendees
   const gcalAttendees = (updatedSession.inviteEmails ?? [candidate.email]).filter(Boolean) as string[];
 
   if (isGoogleCalendarConfigured()) {

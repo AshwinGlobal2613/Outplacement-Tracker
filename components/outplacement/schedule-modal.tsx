@@ -5,6 +5,14 @@ import { X, CalendarDays, Clock, MapPin, Link2, FileDown, Check, ExternalLink, L
 import { Candidate, Session } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
+const RECURRENCES = [
+  { label: "Does not repeat", value: "none" },
+  { label: "Daily", value: "daily" },
+  { label: "Weekly", value: "weekly" },
+  { label: "Every 2 weeks", value: "biweekly" },
+  { label: "Monthly", value: "monthly" },
+];
+
 const SESSION_TYPES = [
   "Introductory Session",
   "CV Session",
@@ -171,6 +179,8 @@ export function ScheduleModal({
     location: initialSession?.location ?? "Zoom",
     meetingLink: initialSession?.meetingLink ?? "",
     notes: initialSession?.notes ?? "",
+    recurrence: "none" as string,
+    recurrenceCount: 4,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Session | null>(null);
@@ -215,8 +225,8 @@ export function ScheduleModal({
           rows.push({ id: `r${idx++}`, label: candidate.candidateName, email: candidate.email, role: "Candidate", checked: true, removable: false });
         }
 
-        // Coaches/support always start unchecked so the user explicitly picks
-        // who to notify of this change (whether creating or editing).
+        // In edit mode pre-check exactly the stored inviteEmails; in create mode start unchecked
+        const storedInvites = mode === "edit" ? (initialSession?.inviteEmails ?? null) : null;
 
         // Lead coaches
         const coachNames = candidate.leadCoach
@@ -226,7 +236,8 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked: false, removable: true });
+            const checked = storedInvites ? storedInvites.includes(em) : false;
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked, removable: true });
           }
         }
 
@@ -238,7 +249,8 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked: false, removable: true });
+            const checked = storedInvites ? storedInvites.includes(em) : false;
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked, removable: true });
           }
         }
 
@@ -422,6 +434,38 @@ export function ScheduleModal({
                   placeholder="Optional agenda or context…"
                 />
               </div>
+
+              {/* Recurrence — only in create mode */}
+              {mode === "create" && (
+                <div className="space-y-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs text-muted-foreground">Repeat</label>
+                      <select value={form.recurrence} onChange={(e) => set("recurrence", e.target.value)} className={inputCls}>
+                        {RECURRENCES.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                      </select>
+                    </div>
+                    {form.recurrence !== "none" && (
+                      <div className="space-y-1">
+                        <label className="text-xs text-muted-foreground">Number of sessions</label>
+                        <input
+                          type="number"
+                          min={2}
+                          max={52}
+                          value={form.recurrenceCount}
+                          onChange={(e) => set("recurrenceCount", Math.max(2, Math.min(52, Number(e.target.value))))}
+                          className={inputCls}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {form.recurrence !== "none" && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Creates {form.recurrenceCount} sessions · Google Calendar invite will repeat {form.recurrenceCount} times
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Google Calendar picker — only shown when service account is configured */}
               {gcalConfigured && gcalList.length > 0 && (

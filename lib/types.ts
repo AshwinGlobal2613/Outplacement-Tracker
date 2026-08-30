@@ -267,6 +267,9 @@ export interface Session {
   googleEventId?: string;
   googleCalendarId?: string;
   inviteEmails?: string[];
+  recurrence?: "none" | "daily" | "weekly" | "biweekly" | "monthly";
+  recurrenceCount?: number;
+  recurrenceGroupId?: string;
 }
 
 export interface Candidate {

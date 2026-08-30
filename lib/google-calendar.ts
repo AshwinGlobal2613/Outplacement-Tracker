@@ -31,7 +31,8 @@ export async function createCalendarEvent(
   session: Session,
   candidateName: string,
   attendeeEmails: string[],
-  calendarId?: string
+  calendarId?: string,
+  recurrenceRule?: string
 ): Promise<string | null> {
   const auth = getAuth();
   const targetCalendarId = calendarId || process.env.GOOGLE_CALENDAR_ID;
@@ -77,6 +78,7 @@ export async function createCalendarEvent(
           { method: "popup", minutes: 30 },
         ],
       },
+      ...(recurrenceRule ? { recurrence: [recurrenceRule] } : {}),
     },
   });
 
