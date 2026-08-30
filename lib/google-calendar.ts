@@ -43,11 +43,17 @@ export async function createCalendarEvent(
 
   const calendar = google.calendar({ version: "v3", auth });
 
+  const tz = process.env.GOOGLE_CALENDAR_TIMEZONE || "Asia/Dubai";
+  const pad = (n: number) => String(n).padStart(2, "0");
   const [year, month, day] = session.date.split("-").map(Number);
   const [hours, minutes] = session.time.split(":").map(Number);
+  const endMinutes = hours * 60 + minutes + session.duration;
+  const endH = Math.floor(endMinutes / 60) % 24;
+  const endM = endMinutes % 60;
+  const endDay = day + Math.floor((hours * 60 + minutes + session.duration) / (24 * 60));
 
-  const startDateTime = new Date(year, month - 1, day, hours, minutes);
-  const endDateTime = new Date(startDateTime.getTime() + session.duration * 60 * 1000);
+  const startStr = `${year}-${pad(month)}-${pad(day)}T${pad(hours)}:${pad(minutes)}:00`;
+  const endStr   = `${year}-${pad(month)}-${pad(endDay)}T${pad(endH)}:${pad(endM)}:00`;
 
   const description = [
     session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
@@ -61,8 +67,8 @@ export async function createCalendarEvent(
       summary: `${session.title} — ${candidateName}`,
       description,
       location: session.meetingLink || session.location,
-      start: { dateTime: startDateTime.toISOString() },
-      end:   { dateTime: endDateTime.toISOString() },
+      start: { dateTime: startStr, timeZone: tz },
+      end:   { dateTime: endStr,   timeZone: tz },
       attendees: attendeeEmails.map((email) => ({ email })),
       reminders: {
         useDefault: false,
