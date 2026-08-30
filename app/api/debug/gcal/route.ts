@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { listCalendars, isGoogleCalendarConfigured } from "@/lib/google-calendar";
+import { google } from "googleapis";
+import { isGoogleCalendarConfigured } from "@/lib/google-calendar";
 
 export async function GET() {
   const configured = isGoogleCalendarConfigured();
@@ -14,13 +15,17 @@ export async function GET() {
   }
 
   try {
-    const calendars = await listCalendars();
-    return NextResponse.json({ configured: true, calendars, error: null });
-  } catch (err) {
-    return NextResponse.json({
-      configured: true,
-      calendars: [],
-      error: err instanceof Error ? err.message : String(err),
-    });
+    const oauth2 = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+    );
+    oauth2.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
+    const calendar = google.calendar({ version: "v3", auth: oauth2 });
+    const res = await calendar.calendarList.list({ minAccessRole: "writer" });
+    return NextResponse.json({ configured: true, items: res.data.items ?? [], error: null });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    const details = (err as { response?: { data?: unknown } })?.response?.data;
+    return NextResponse.json({ configured: true, items: [], error: message, details });
   }
 }
