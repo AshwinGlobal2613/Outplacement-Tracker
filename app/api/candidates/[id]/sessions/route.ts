@@ -24,6 +24,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const recurrence = (body.recurrence ?? "none") as string;
   const recurrenceCount = Math.max(1, Math.min(52, Number(body.recurrenceCount) || 1));
+  const customInterval = Math.max(1, Math.min(99, Number(body.customInterval) || 1));
+  const customUnit = (body.customUnit ?? "weeks") as "days" | "weeks" | "months";
   const recurrenceGroupId = recurrence !== "none" && recurrenceCount > 1 ? uuidv4() : undefined;
 
   const selectedEmails: string[] = Array.isArray(body.inviteEmails) ? body.inviteEmails as string[] : [];
@@ -42,19 +44,27 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     createdAt: new Date().toISOString(),
     createdBy: authSession.user.name || "Unknown",
     inviteEmails: selectedEmails.length > 0 ? selectedEmails : undefined,
-    ...(recurrenceGroupId ? { recurrence: recurrence as Session["recurrence"], recurrenceCount, recurrenceGroupId } : {}),
+    ...(recurrenceGroupId ? {
+      recurrence: recurrence as Session["recurrence"],
+      recurrenceCount,
+      recurrenceGroupId,
+      ...(recurrence === "custom" ? { customInterval, customUnit } : {}),
+    } : {}),
   };
 
   // Build all sessions (one per occurrence)
   function addOccurrenceDate(baseDate: string, recurrence: string, n: number): string {
     const [y, m, d] = baseDate.split("-").map(Number);
-    if (recurrence === "monthly") {
-      const dt = new Date(y, m - 1 + n, d);
-      return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    const fmt = (dt: Date) =>
+      `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    if (recurrence === "monthly") return fmt(new Date(y, m - 1 + n, d));
+    if (recurrence === "custom") {
+      if (customUnit === "months") return fmt(new Date(y, m - 1 + customInterval * n, d));
+      const days = customUnit === "weeks" ? customInterval * 7 : customInterval;
+      return fmt(new Date(y, m - 1, d + days * n));
     }
     const days = recurrence === "daily" ? 1 : recurrence === "weekly" ? 7 : 14;
-    const dt = new Date(y, m - 1, d + days * n);
-    return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    return fmt(new Date(y, m - 1, d + days * n));
   }
 
   const allNewSessions: Session[] = [newSession];
@@ -79,8 +89,15 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
       let rrule: string | undefined;
       if (recurrenceGroupId && recurrenceCount > 1) {
-        const freq = recurrence === "daily" ? "DAILY" : recurrence === "monthly" ? "MONTHLY" : "WEEKLY";
-        const interval = recurrence === "biweekly" ? ";INTERVAL=2" : "";
+        let freq: string;
+        let interval = "";
+        if (recurrence === "custom") {
+          freq = customUnit === "months" ? "MONTHLY" : customUnit === "days" ? "DAILY" : "WEEKLY";
+          if (customInterval > 1) interval = `;INTERVAL=${customInterval}`;
+        } else {
+          freq = recurrence === "daily" ? "DAILY" : recurrence === "monthly" ? "MONTHLY" : "WEEKLY";
+          if (recurrence === "biweekly") interval = ";INTERVAL=2";
+        }
         rrule = `RRULE:FREQ=${freq}${interval};COUNT=${recurrenceCount}`;
       }
 

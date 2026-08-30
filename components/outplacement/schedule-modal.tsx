@@ -11,6 +11,13 @@ const RECURRENCES = [
   { label: "Weekly", value: "weekly" },
   { label: "Every 2 weeks", value: "biweekly" },
   { label: "Monthly", value: "monthly" },
+  { label: "Custom…", value: "custom" },
+];
+
+const CUSTOM_UNITS = [
+  { label: "days", value: "days" },
+  { label: "weeks", value: "weeks" },
+  { label: "months", value: "months" },
 ];
 
 const SESSION_TYPES = [
@@ -181,6 +188,8 @@ export function ScheduleModal({
     notes: initialSession?.notes ?? "",
     recurrence: "none" as string,
     recurrenceCount: 4,
+    customInterval: 2,
+    customUnit: "weeks" as string,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Session | null>(null);
@@ -459,6 +468,22 @@ export function ScheduleModal({
                       </div>
                     )}
                   </div>
+                  {form.recurrence === "custom" && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground shrink-0">Every</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={99}
+                        value={form.customInterval}
+                        onChange={(e) => set("customInterval", Math.max(1, Math.min(99, Number(e.target.value))))}
+                        className={cn(inputCls, "w-20")}
+                      />
+                      <select value={form.customUnit} onChange={(e) => set("customUnit", e.target.value)} className={inputCls}>
+                        {CUSTOM_UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                      </select>
+                    </div>
+                  )}
                   {form.recurrence !== "none" && (
                     <p className="text-[11px] text-muted-foreground">
                       Creates {form.recurrenceCount} sessions · Google Calendar invite will repeat {form.recurrenceCount} times

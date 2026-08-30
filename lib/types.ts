@@ -267,7 +267,9 @@ export interface Session {
   googleEventId?: string;
   googleCalendarId?: string;
   inviteEmails?: string[];
-  recurrence?: "none" | "daily" | "weekly" | "biweekly" | "monthly";
+  recurrence?: "none" | "daily" | "weekly" | "biweekly" | "monthly" | "custom";
+  customInterval?: number;
+  customUnit?: "days" | "weeks" | "months";
   recurrenceCount?: number;
   recurrenceGroupId?: string;
 }
