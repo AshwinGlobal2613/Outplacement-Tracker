@@ -49,7 +49,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         : null;
       const allEmails = [candidate.email, coachUser?.email, supportUser?.email].filter(Boolean) as string[];
 
-      const googleEventId = await createCalendarEvent(newSession, candidate.candidateName, allEmails);
+      const googleEventId = await createCalendarEvent(newSession, candidate.candidateName, allEmails, body.calendarId);
       if (googleEventId) newSession.googleEventId = googleEventId;
     } catch (err) {
       console.error("[google-calendar] Failed to create calendar event:", err);

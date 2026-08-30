@@ -14,15 +14,30 @@ function getAuth() {
   });
 }
 
+export async function listCalendars(): Promise<{ id: string; summary: string; primary?: boolean }[]> {
+  const auth = getAuth();
+  if (!auth) return [];
+  try {
+    const calendar = google.calendar({ version: "v3", auth });
+    const res = await calendar.calendarList.list({ minAccessRole: "writer" });
+    return (res.data.items ?? [])
+      .map((c) => ({ id: c.id ?? "", summary: c.summary ?? c.id ?? "", primary: c.primary ?? false }))
+      .filter((c) => c.id);
+  } catch {
+    return [];
+  }
+}
+
 export async function createCalendarEvent(
   session: Session,
   candidateName: string,
-  attendeeEmails: string[]
+  attendeeEmails: string[],
+  calendarId?: string
 ): Promise<string | null> {
   const auth = getAuth();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID;
+  const targetCalendarId = calendarId || process.env.GOOGLE_CALENDAR_ID;
 
-  if (!auth || !calendarId) {
+  if (!auth || !targetCalendarId) {
     console.warn("[google-calendar] Credentials not configured — skipping calendar event creation");
     return null;
   }
@@ -41,7 +56,7 @@ export async function createCalendarEvent(
   ].filter(Boolean).join("\n\n");
 
   const event = await calendar.events.insert({
-    calendarId,
+    calendarId: targetCalendarId,
     sendUpdates: "all",       // Google sends invites to all attendees
     requestBody: {
       summary: `${session.title} — ${candidateName}`,
@@ -63,13 +78,13 @@ export async function createCalendarEvent(
   return event.data.id ?? null;
 }
 
-export async function deleteCalendarEvent(eventId: string): Promise<void> {
+export async function deleteCalendarEvent(eventId: string, calendarId?: string): Promise<void> {
   const auth = getAuth();
-  const calendarId = process.env.GOOGLE_CALENDAR_ID;
-  if (!auth || !calendarId) return;
+  const targetCalendarId = calendarId || process.env.GOOGLE_CALENDAR_ID;
+  if (!auth || !targetCalendarId) return;
 
   const calendar = google.calendar({ version: "v3", auth });
-  await calendar.events.delete({ calendarId, eventId, sendUpdates: "all" });
+  await calendar.events.delete({ calendarId: targetCalendarId, eventId, sendUpdates: "all" });
 }
 
 export function isGoogleCalendarConfigured(): boolean {

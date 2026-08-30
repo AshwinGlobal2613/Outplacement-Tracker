@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, CalendarDays, Clock, MapPin, Link2, FileDown, Check, ExternalLink, Loader2, Video, Mail, Users } from "lucide-react";
+import { X, CalendarDays, Clock, MapPin, Link2, FileDown, Check, ExternalLink, Loader2, Video, Mail } from "lucide-react";
 import { Candidate, Session } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -172,6 +172,11 @@ export function ScheduleModal({
   const [saved, setSaved] = useState<Session | null>(null);
   const [savedEmails, setSavedEmails] = useState<string[]>([]);
 
+  type GCal = { id: string; summary: string; primary?: boolean };
+  const [gcalConfigured, setGcalConfigured] = useState(false);
+  const [gcalList, setGcalList] = useState<GCal[]>([]);
+  const [selectedCalendarId, setSelectedCalendarId] = useState("");
+
   // Each recipient row: label, email, checked (included in invite), removable
   type RecipientRow = { id: string; label: string; email: string; role: string; checked: boolean; removable: boolean };
   const [inviteRows, setInviteRows] = useState<RecipientRow[]>([]);
@@ -240,6 +245,20 @@ export function ScheduleModal({
     loadInviteRows();
   }, [candidate]);
 
+  useEffect(() => {
+    fetch("/api/google/calendars")
+      .then((r) => r.json())
+      .then((data: { configured: boolean; calendars: GCal[] }) => {
+        if (data.configured && data.calendars.length) {
+          setGcalConfigured(true);
+          setGcalList(data.calendars);
+          const primary = data.calendars.find((c) => c.primary) ?? data.calendars[0];
+          setSelectedCalendarId(primary.id);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
@@ -256,7 +275,11 @@ export function ScheduleModal({
       const res = await fetch(`/api/candidates/${candidate.id}/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, inviteEmails: selectedEmails }),
+        body: JSON.stringify({
+          ...form,
+          inviteEmails: selectedEmails,
+          ...(gcalConfigured && selectedCalendarId ? { calendarId: selectedCalendarId } : {}),
+        }),
       });
       if (!res.ok) throw new Error("Failed");
       const { session } = await res.json();
@@ -380,6 +403,29 @@ export function ScheduleModal({
                   placeholder="Optional agenda or context…"
                 />
               </div>
+
+              {/* Google Calendar picker — only shown when service account is configured */}
+              {gcalConfigured && gcalList.length > 0 && (
+                <div className="space-y-1">
+                  <label className="text-xs text-muted-foreground flex items-center gap-1">
+                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none">
+                      <path d="M6 2v2M18 2v2M2 8h20M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="#4285F4" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                    Send invite from calendar
+                  </label>
+                  <select
+                    value={selectedCalendarId}
+                    onChange={(e) => setSelectedCalendarId(e.target.value)}
+                    className={inputCls}
+                  >
+                    {gcalList.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.summary}{c.primary ? " (primary)" : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             {/* Editable invite recipients */}
@@ -499,17 +545,11 @@ export function ScheduleModal({
               </div>
             </div>
 
-            <p className="text-sm text-muted-foreground">Now add it to your calendar:</p>
-
-            <div className="space-y-3">
-              <a
-                href={formatGoogleCalendarLink(saved, candidate, savedEmails)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors"
-              >
+            {saved.googleEventId ? (
+              /* Google Calendar created the event in-system */
+              <div className="rounded-xl border border-[#4285F4]/30 bg-[#4285F4]/5 px-4 py-4 space-y-2">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white">
                     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
                       <path d="M6 2v2M18 2v2M2 8h20M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="#4285F4" strokeWidth="1.5" strokeLinecap="round" />
                       <path d="M8 13h2v2H8z" fill="#34A853" />
@@ -518,28 +558,62 @@ export function ScheduleModal({
                     </svg>
                   </div>
                   <div>
-                    <p className="font-medium text-foreground">Open in Google Calendar</p>
-                    <p className="text-xs text-muted-foreground">Opens pre-filled — add attendees and click Save</p>
+                    <p className="text-sm font-semibold text-foreground">Added to Google Calendar</p>
+                    <p className="text-xs text-muted-foreground">Invites sent directly — no redirect needed</p>
                   </div>
+                  <Check className="h-4 w-4 text-emerald-400 ml-auto shrink-0" />
                 </div>
-                <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
-              </a>
+                {savedEmails.length > 0 && (
+                  <p className="text-[11px] text-muted-foreground pl-12">
+                    Invited: {savedEmails.join(", ")}
+                  </p>
+                )}
+              </div>
+            ) : (
+              /* Fallback: Google Calendar not configured, show manual options */
+              <>
+                <p className="text-sm text-muted-foreground">Now add it to your calendar:</p>
+                <div className="space-y-3">
+                  <a
+                    href={formatGoogleCalendarLink(saved, candidate, savedEmails)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white">
+                        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none">
+                          <path d="M6 2v2M18 2v2M2 8h20M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" stroke="#4285F4" strokeWidth="1.5" strokeLinecap="round" />
+                          <path d="M8 13h2v2H8z" fill="#34A853" />
+                          <path d="M11 13h2v2h-2z" fill="#FBBC04" />
+                          <path d="M14 13h2v2h-2z" fill="#EA4335" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">Open in Google Calendar</p>
+                        <p className="text-xs text-muted-foreground">Opens pre-filled — add attendees and click Save</p>
+                      </div>
+                    </div>
+                    <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0" />
+                  </a>
 
-              <button
-                onClick={() => downloadICS(generateICS(saved, candidate, savedEmails), `${saved.title.replace(/\s+/g, "_")}.ics`)}
-                className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
-                    <FileDown className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium text-foreground">Download .ics file</p>
-                    <p className="text-xs text-muted-foreground">Works with Outlook, Apple Calendar & others</p>
-                  </div>
+                  <button
+                    onClick={() => downloadICS(generateICS(saved, candidate, savedEmails), `${saved.title.replace(/\s+/g, "_")}.ics`)}
+                    className="flex w-full items-center justify-between gap-3 rounded-lg border border-border bg-sidebar/40 px-4 py-3 text-sm hover:bg-sidebar-accent transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/20">
+                        <FileDown className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-foreground">Download .ics file</p>
+                        <p className="text-xs text-muted-foreground">Works with Outlook, Apple Calendar & others</p>
+                      </div>
+                    </div>
+                  </button>
                 </div>
-              </button>
-            </div>
+              </>
+            )}
 
             <button onClick={onClose} className="w-full rounded-lg border border-border py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
               Done
