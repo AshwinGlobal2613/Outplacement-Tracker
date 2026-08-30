@@ -335,48 +335,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   ).length;
   const updated = await updateCandidate(params.id, { sessions: newSessions, sessionsCompleted });
 
-  // Fire-and-forget: re-send updated invite emails
-  getUsers()
-    .then((users) => {
-      function findUser(name: string) {
-        const s = name.toLowerCase().trim();
-        return users.find((u) => u.name.toLowerCase() === s) ||
-               users.find((u) => u.name.toLowerCase().startsWith(s + " ")) ||
-               users.find((u) => u.name.toLowerCase().includes(s));
-      }
-      const coachNames   = candidate.leadCoach ? candidate.leadCoach.split(",").map((n) => n.trim()).filter(Boolean) : [];
-      const supportNames = candidate.support    ? candidate.support.split(",").map((n) => n.trim()).filter(Boolean) : [];
-      const coachUsers   = coachNames.map(findUser).filter(Boolean);
-      const supportUsers = supportNames.map(findUser).filter(Boolean);
-      const coachEmails   = coachUsers.flatMap((u) => [u!.email, ...(u!.additionalEmails ?? [])]).filter(Boolean) as string[];
-      const supportEmails = supportUsers.flatMap((u) => [u!.email, ...(u!.additionalEmails ?? [])]).filter(Boolean) as string[];
-      const allEmails     = [...new Set([candidate.email, ...coachEmails, ...supportEmails].filter(Boolean))] as string[];
-      const invites: Promise<void>[] = [];
-      if (candidate.email) {
-        invites.push(
-          sendSessionInviteEmail(candidate.email, candidate.candidateName, "Candidate", updatedSession, candidate.candidateName, candidate.id, allEmails)
-            .catch((e) => console.error("[email] Updated invite to candidate failed:", e))
-        );
-      }
-      for (const u of coachUsers) {
-        for (const em of [u!.email, ...(u!.additionalEmails ?? [])].filter(Boolean) as string[]) {
+  // Fire-and-forget: re-send updated invite emails to exactly the stored invitees
+  const editInviteEmails = updatedSession.inviteEmails;
+  if (editInviteEmails && editInviteEmails.length > 0) {
+    getUsers()
+      .then((users) => {
+        const allEmails = [...new Set(editInviteEmails)];
+        const invites: Promise<void>[] = [];
+        for (const em of allEmails) {
+          const matchedUser = users.find((u) => u.email === em || (u.additionalEmails ?? []).includes(em));
+          const name = matchedUser?.name ?? em;
+          const role = em === candidate.email ? "Candidate"
+            : matchedUser?.name && candidate.leadCoach?.includes(matchedUser.name) ? "Lead Coach"
+            : matchedUser?.name && candidate.support?.includes(matchedUser.name) ? "Support"
+            : "Attendee";
           invites.push(
-            sendSessionInviteEmail(em, u!.name, "Lead Coach", updatedSession, candidate.candidateName, candidate.id, allEmails)
-              .catch((e) => console.error("[email] Updated invite to coach failed:", e))
+            sendSessionInviteEmail(em, name, role, updatedSession, candidate.candidateName, candidate.id, allEmails)
+              .catch((e) => console.error(`[email] Updated invite to ${em} failed:`, e))
           );
         }
-      }
-      for (const u of supportUsers) {
-        for (const em of [u!.email, ...(u!.additionalEmails ?? [])].filter(Boolean) as string[]) {
-          invites.push(
-            sendSessionInviteEmail(em, u!.name, "Support", updatedSession, candidate.candidateName, candidate.id, allEmails)
-              .catch((e) => console.error("[email] Updated invite to support failed:", e))
-          );
-        }
-      }
-      return Promise.all(invites);
-    })
-    .catch((e) => console.error("[email] Updated session invite lookup failed:", e));
+        return Promise.all(invites);
+      })
+      .catch((e) => console.error("[email] Updated session invite lookup failed:", e));
+  }
 
   return NextResponse.json({ candidate: updated, session: updatedSession });
 }
