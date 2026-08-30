@@ -245,30 +245,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     location: updates.location ?? existing.location,
     meetingLink: updates.meetingLink ?? existing.meetingLink,
     notes: updates.notes ?? existing.notes,
-    inviteEmails: Array.isArray(updates.inviteEmails) && updates.inviteEmails.length > 0
-      ? updates.inviteEmails
-      : existing.inviteEmails,
+    inviteEmails: existing.inviteEmails,
   };
 
   // Sync with Google Calendar if configured
+  // Use the stored inviteEmails so the attendee list matches exactly who was selected
+  const gcalAttendees = (updatedSession.inviteEmails ?? [candidate.email]).filter(Boolean) as string[];
+
   if (isGoogleCalendarConfigured()) {
     try {
-      const users = await getUsers();
-      const coachUser = candidate.leadCoach
-        ? users.find((u) => u.name.trim().toLowerCase() === candidate.leadCoach.trim().toLowerCase())
-        : null;
-      const supportUser = candidate.support
-        ? users.find((u) => u.name.trim().toLowerCase() === candidate.support.trim().toLowerCase())
-        : null;
-      const allEmails = [candidate.email, coachUser?.email, supportUser?.email].filter(Boolean) as string[];
-
       if (updatedSession.googleEventId) {
-        // Event already exists — patch it
         await updateCalendarEvent(
           updatedSession.googleEventId,
           updatedSession,
           candidate.candidateName,
-          allEmails,
+          gcalAttendees,
           updatedSession.googleCalendarId
         );
       } else {
@@ -276,7 +267,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         const googleEventId = await createCalendarEvent(
           updatedSession,
           candidate.candidateName,
-          allEmails,
+          gcalAttendees,
           process.env.GOOGLE_CALENDAR_ID
         );
         if (googleEventId) {

@@ -215,9 +215,8 @@ export function ScheduleModal({
           rows.push({ id: `r${idx++}`, label: candidate.candidateName, email: candidate.email, role: "Candidate", checked: true, removable: false });
         }
 
-        // In edit mode, check only the emails that were originally invited (if stored).
-        // Fall back to all-checked if no record exists; in create mode coaches/support start unchecked.
-        const knownInvites = initialSession?.inviteEmails;
+        // Coaches/support always start unchecked so the user explicitly picks
+        // who to notify of this change (whether creating or editing).
 
         // Lead coaches
         const coachNames = candidate.leadCoach
@@ -227,8 +226,7 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            const checked = knownInvites ? knownInvites.includes(em) : false;
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked, removable: true });
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Lead Coach", checked: false, removable: true });
           }
         }
 
@@ -240,8 +238,7 @@ export function ScheduleModal({
           const u = findUser(n, users);
           const emails = u ? [u.email, ...(u.additionalEmails ?? [])].filter(Boolean) : [];
           for (const em of emails) {
-            const checked = knownInvites ? knownInvites.includes(em) : false;
-            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked, removable: true });
+            rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked: false, removable: true });
           }
         }
 
@@ -253,7 +250,7 @@ export function ScheduleModal({
       }
     }
     loadInviteRows();
-  }, [candidate, mode]);
+  }, [candidate]);
 
   useEffect(() => {
     fetch("/api/google/calendars")
