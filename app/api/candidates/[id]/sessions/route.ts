@@ -292,11 +292,23 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     meetingLink: updates.meetingLink ?? existing.meetingLink,
     notes: updates.notes ?? existing.notes,
     inviteEmails: Array.isArray(updates.inviteEmails) ? updates.inviteEmails as string[] : existing.inviteEmails,
+    ...(updates.recurrence && updates.recurrence !== "none"
+      ? {
+          recurrence: updates.recurrence as Session["recurrence"],
+          recurrenceCount: updates.recurrenceCount ?? existing.recurrenceCount,
+          ...(updates.recurrence === "custom"
+            ? { customInterval: updates.customInterval ?? existing.customInterval, customUnit: updates.customUnit ?? existing.customUnit }
+            : {}),
+        }
+      : {}),
   };
 
   // Sync with Google Calendar if configured
-  // Use the newly selected inviteEmails (from the edit form) for Google Calendar attendees
-  const gcalAttendees = (updatedSession.inviteEmails ?? [candidate.email]).filter(Boolean) as string[];
+  // Use the newly selected inviteEmails; fall back to candidate email if list is empty
+  const gcalAttendees = (updatedSession.inviteEmails && updatedSession.inviteEmails.length > 0
+    ? updatedSession.inviteEmails
+    : [candidate.email]
+  ).filter(Boolean) as string[];
 
   if (isGoogleCalendarConfigured()) {
     try {

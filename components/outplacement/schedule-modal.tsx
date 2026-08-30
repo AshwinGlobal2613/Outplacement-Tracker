@@ -186,10 +186,10 @@ export function ScheduleModal({
     location: initialSession?.location ?? "Zoom",
     meetingLink: initialSession?.meetingLink ?? "",
     notes: initialSession?.notes ?? "",
-    recurrence: "none" as string,
-    recurrenceCount: 4,
-    customInterval: 2,
-    customUnit: "weeks" as string,
+    recurrence: (initialSession?.recurrence ?? "none") as string,
+    recurrenceCount: initialSession?.recurrenceCount ?? 4,
+    customInterval: initialSession?.customInterval ?? 2,
+    customUnit: (initialSession?.customUnit ?? "weeks") as string,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<Session | null>(null);
@@ -260,6 +260,16 @@ export function ScheduleModal({
           for (const em of emails) {
             const checked = storedInvites ? storedInvites.includes(em) : false;
             rows.push({ id: `r${idx++}`, label: u?.name ?? n, email: em, role: "Support", checked, removable: true });
+          }
+        }
+
+        // In edit mode, add any extra emails stored in inviteEmails that aren't already in rows
+        if (storedInvites) {
+          const existingEmails = new Set(rows.map((r) => r.email));
+          for (const em of storedInvites) {
+            if (!existingEmails.has(em)) {
+              rows.push({ id: `r${idx++}`, label: em, email: em, role: "Additional", checked: true, removable: true });
+            }
           }
         }
 
@@ -444,8 +454,8 @@ export function ScheduleModal({
                 />
               </div>
 
-              {/* Recurrence — only in create mode */}
-              {mode === "create" && (
+              {/* Recurrence */}
+              {(
                 <div className="space-y-2">
                   <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1">
