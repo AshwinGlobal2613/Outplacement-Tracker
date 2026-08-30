@@ -559,7 +559,7 @@ function AppearancePanel({ currentStyle, onStyleChange }: { currentStyle: CVStyl
               <p className={labelCls}>Font</p>
               <select value={currentStyle.fontFamily} onChange={(e) => onStyleChange({ fontFamily: e.target.value })}
                 className="w-full rounded-lg border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-primary/30">
-                {FONT_OPTIONS.map((f) => <option key={f.value} value={f.value}>{f.label}</option>)}
+                {FONT_OPTIONS.map((f) => <option key={f.value} value={f.value} style={{ color: "#000", background: "#fff" }}>{f.label}</option>)}
               </select>
             </div>
             <div>
