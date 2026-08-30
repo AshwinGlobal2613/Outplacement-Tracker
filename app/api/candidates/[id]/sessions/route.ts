@@ -281,6 +281,12 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (idx === -1) return NextResponse.json({ error: "Session not found" }, { status: 404 });
 
   const existing = sessions[idx];
+
+  const newRecurrence = (updates.recurrence ?? existing.recurrence ?? "none") as Session["recurrence"];
+  const newCount = Math.max(1, Math.min(52, Number(updates.recurrenceCount ?? existing.recurrenceCount ?? 1)));
+  const newCustomInterval = Math.max(1, Math.min(99, Number(updates.customInterval ?? existing.customInterval ?? 1)));
+  const newCustomUnit = (updates.customUnit ?? existing.customUnit ?? "weeks") as "days" | "weeks" | "months";
+
   const updatedSession: Session = {
     ...existing,
     type: updates.type ?? existing.type,
@@ -292,19 +298,87 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     meetingLink: updates.meetingLink ?? existing.meetingLink,
     notes: updates.notes ?? existing.notes,
     inviteEmails: Array.isArray(updates.inviteEmails) ? updates.inviteEmails as string[] : existing.inviteEmails,
-    ...(updates.recurrence && updates.recurrence !== "none"
+    ...(newRecurrence && newRecurrence !== "none"
       ? {
-          recurrence: updates.recurrence as Session["recurrence"],
-          recurrenceCount: updates.recurrenceCount ?? existing.recurrenceCount,
-          ...(updates.recurrence === "custom"
-            ? { customInterval: updates.customInterval ?? existing.customInterval, customUnit: updates.customUnit ?? existing.customUnit }
-            : {}),
+          recurrence: newRecurrence,
+          recurrenceCount: newCount,
+          ...(newRecurrence === "custom" ? { customInterval: newCustomInterval, customUnit: newCustomUnit } : {}),
         }
       : {}),
   };
 
-  // Sync with Google Calendar if configured
-  // Use the newly selected inviteEmails; fall back to candidate email if list is empty
+  // Helper to compute dates for recurring series
+  function occurrenceDate(baseDate: string, recurrence: string, n: number, interval: number, unit: string): string {
+    const [y, m, d] = baseDate.split("-").map(Number);
+    const fmt = (dt: Date) =>
+      `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}-${String(dt.getDate()).padStart(2, "0")}`;
+    if (recurrence === "monthly") return fmt(new Date(y, m - 1 + n, d));
+    if (recurrence === "custom") {
+      if (unit === "months") return fmt(new Date(y, m - 1 + interval * n, d));
+      const days = unit === "weeks" ? interval * 7 : interval;
+      return fmt(new Date(y, m - 1, d + days * n));
+    }
+    const days = recurrence === "daily" ? 1 : recurrence === "weekly" ? 7 : 14;
+    return fmt(new Date(y, m - 1, d + days * n));
+  }
+
+  // Propagate changes across the recurrence group
+  const recurrenceGroupId = existing.recurrenceGroupId;
+  let finalSessions: Session[];
+
+  if (recurrenceGroupId) {
+    // All sessions in this group, sorted by date
+    const groupSessions = sessions
+      .filter((s) => s.recurrenceGroupId === recurrenceGroupId)
+      .sort((a, b) => `${a.date}${a.time}`.localeCompare(`${b.date}${b.time}`));
+
+    const baseDate = groupSessions[0].date;
+    const oldCount = groupSessions.length;
+
+    // Build updated group: same non-date fields, recalculated dates
+    const updatedGroup: Session[] = [];
+    for (let i = 0; i < newCount; i++) {
+      const date = occurrenceDate(baseDate, newRecurrence ?? "weekly", i, newCustomInterval, newCustomUnit);
+      if (i < oldCount) {
+        updatedGroup.push({
+          ...groupSessions[i],
+          type: updatedSession.type,
+          title: updatedSession.title,
+          time: updatedSession.time,
+          duration: updatedSession.duration,
+          location: updatedSession.location,
+          meetingLink: updatedSession.meetingLink,
+          notes: updatedSession.notes,
+          inviteEmails: updatedSession.inviteEmails,
+          recurrence: newRecurrence,
+          recurrenceCount: newCount,
+          ...(newRecurrence === "custom" ? { customInterval: newCustomInterval, customUnit: newCustomUnit } : {}),
+          date,
+        });
+      } else {
+        // New session added to the series
+        updatedGroup.push({
+          ...updatedSession,
+          id: `sess_${uuidv4().slice(0, 8)}`,
+          date,
+          googleEventId: undefined,
+          googleCalendarId: undefined,
+        });
+      }
+    }
+    // (sessions beyond newCount are simply not included — removed)
+
+    const groupIds = new Set(groupSessions.map((s) => s.id));
+    finalSessions = [...sessions.filter((s) => !groupIds.has(s.id)), ...updatedGroup];
+    // Replace updatedSession with the one from the group that matches sessionId
+    const matchInGroup = updatedGroup.find((s) => s.id === existing.id);
+    if (matchInGroup) Object.assign(updatedSession, matchInGroup);
+  } else {
+    finalSessions = [...sessions];
+    finalSessions[idx] = updatedSession;
+  }
+
+  // Sync with Google Calendar
   const gcalAttendees = (updatedSession.inviteEmails && updatedSession.inviteEmails.length > 0
     ? updatedSession.inviteEmails
     : [candidate.email]
@@ -316,30 +390,29 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       if (updatedSession.googleEventId) {
         const calendarChanged = targetCalendarId && targetCalendarId !== updatedSession.googleCalendarId;
         if (calendarChanged) {
-          // Move event: delete from old calendar, create on new
           deleteCalendarEvent(updatedSession.googleEventId, updatedSession.googleCalendarId).catch(() => {});
           const newEventId = await createCalendarEvent(updatedSession, candidate.candidateName, gcalAttendees, targetCalendarId);
           if (newEventId) {
             updatedSession.googleEventId = newEventId;
             updatedSession.googleCalendarId = targetCalendarId;
+            // Propagate new GCal IDs to the first session in group
+            if (recurrenceGroupId) {
+              const first = finalSessions.find((s) => s.recurrenceGroupId === recurrenceGroupId && s.id === existing.id);
+              if (first) { first.googleEventId = newEventId; first.googleCalendarId = targetCalendarId; }
+            }
           }
         } else {
-          await updateCalendarEvent(
-            updatedSession.googleEventId,
-            updatedSession,
-            candidate.candidateName,
-            gcalAttendees,
-            updatedSession.googleCalendarId
-          );
+          // Build updated RRULE if recurrence changed
+          let rrule: string | undefined;
+          if (recurrenceGroupId && newRecurrence && newRecurrence !== "none") {
+            const freq = newRecurrence === "daily" ? "DAILY" : newRecurrence === "monthly" ? "MONTHLY" : "WEEKLY";
+            const interval = newRecurrence === "biweekly" ? ";INTERVAL=2" : newRecurrence === "custom" && newCustomInterval > 1 ? `;INTERVAL=${newCustomInterval}` : "";
+            rrule = `RRULE:FREQ=${freq}${interval};COUNT=${newCount}`;
+          }
+          await updateCalendarEvent(updatedSession.googleEventId, updatedSession, candidate.candidateName, gcalAttendees, updatedSession.googleCalendarId, rrule);
         }
       } else {
-        // Session predates Google Calendar integration — create the event now
-        const googleEventId = await createCalendarEvent(
-          updatedSession,
-          candidate.candidateName,
-          gcalAttendees,
-          targetCalendarId
-        );
+        const googleEventId = await createCalendarEvent(updatedSession, candidate.candidateName, gcalAttendees, targetCalendarId);
         if (googleEventId) {
           updatedSession.googleEventId = googleEventId;
           updatedSession.googleCalendarId = targetCalendarId;
@@ -350,14 +423,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
   }
 
-  const newSessions = [...sessions];
-  newSessions[idx] = updatedSession;
-
   const now = new Date();
-  const sessionsCompleted = newSessions.filter(
+  const sessionsCompleted = finalSessions.filter(
     (s) => new Date(`${s.date}T${s.time || "00:00"}`) < now
   ).length;
-  const updated = await updateCandidate(params.id, { sessions: newSessions, sessionsCompleted });
+  const updated = await updateCandidate(params.id, { sessions: finalSessions, sessionsCompleted });
 
   // Fire-and-forget: re-send updated invite emails to exactly the stored invitees
   const editInviteEmails = updatedSession.inviteEmails;

@@ -90,7 +90,8 @@ export async function updateCalendarEvent(
   session: Session,
   candidateName: string,
   attendeeEmails: string[],
-  calendarId?: string
+  calendarId?: string,
+  recurrenceRule?: string
 ): Promise<void> {
   const auth = getAuth();
   const targetCalendarId = calendarId || process.env.GOOGLE_CALENDAR_ID;
@@ -126,6 +127,7 @@ export async function updateCalendarEvent(
       start: { dateTime: startStr, timeZone: tz },
       end:   { dateTime: endStr,   timeZone: tz },
       attendees: attendeeEmails.map((email) => ({ email })),
+      ...(recurrenceRule ? { recurrence: [recurrenceRule] } : {}),
     },
   });
 }
