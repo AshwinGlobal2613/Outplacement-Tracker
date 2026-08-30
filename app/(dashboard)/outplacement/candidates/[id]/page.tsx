@@ -929,7 +929,7 @@ function SessionRow({ session, formatDate, formatDuration, onDelete, onEdit, isU
         )}
         {session.notes && <p className="mt-1 text-xs text-muted-foreground">{session.notes}</p>}
       </div>
-      <div className="ml-2 flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+      <div className="ml-2 flex shrink-0 items-center gap-1">
         <button onClick={() => onEdit(session)}
           className="text-muted-foreground/50 hover:text-primary transition-colors"
           title="Edit session">
