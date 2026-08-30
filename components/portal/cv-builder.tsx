@@ -1297,8 +1297,13 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
 
     const data: { cvProfile: CVProfile; sections: string[] } = await res.json();
 
-    // Populate the CV form with parsed data (keep existing style + sectionOrder)
-    setCv((prev) => ({ ...prev, ...data.cvProfile, style: prev.style, sectionOrder: prev.sectionOrder }));
+    // Populate the CV form with parsed data; apply detected style, keep existing sectionOrder
+    setCv((prev) => ({
+      ...prev,
+      ...data.cvProfile,
+      style: { ...DEFAULT_STYLE, ...(prev.style ?? {}), ...(data.cvProfile.style ?? {}) },
+      sectionOrder: prev.sectionOrder,
+    }));
 
     // Auto-add any newly-parsed sections that aren't in the editor yet
     setAddedSections((prev) => {

@@ -57,14 +57,30 @@ Use this exact structure (omit any field that has no data):
   "interests": ["Photography", "Hiking"],
   "projects": [
     { "id": "proj_1", "title": "Project Name", "description": "What it does and your role", "link": "", "from": "Jan 2023", "to": "Jun 2023" }
-  ]
+  ],
+  "customSections": [
+    {
+      "id": "cust_1",
+      "sectionTitle": "Section Heading As Written",
+      "entries": [
+        { "id": "cust_e_1", "title": "Entry title or role", "subtitle": "Organisation or location", "from": "Jan 2020", "to": "Jun 2021", "description": "Description text" }
+      ]
+    }
+  ],
+  "style": {
+    "accentColor": "#hex — the dominant non-black colour used for headings, rules, or accents in the CV; use #e11d48 if no colour is detectable",
+    "fontFamily": "one of exactly: 'Inter, system-ui, sans-serif' | 'Georgia, Times New Roman, serif' | 'Arial, Helvetica, sans-serif' | 'Palatino Linotype, Palatino, serif'"
+  }
 }
 
 Rules:
 - proficiency must be exactly one of: Native, Fluent, Advanced, Intermediate, Basic
 - dates should be "Mon YYYY" (e.g. "Jan 2020") or just "YYYY" for education years
 - for current roles set "current": true and "to": ""
-- generate short unique ids like exp_1, exp_2, edu_1 etc.
+- generate short unique ids like exp_1, exp_2, edu_1, cust_1, cust_e_1 etc.
+- IMPORTANT: any section whose heading does not clearly match summary, experience, education, skills, languages, certifications, awards, interests, or projects must be placed in customSections — do not discard it
+- common examples of sections that belong in customSections: Volunteering, Publications, Conferences, Professional Memberships, Patents, Research, Community Service, Military Service, Extracurriculars
+- for style.fontFamily pick the closest match from the four allowed values based on the CV's apparent font; default to 'Arial, Helvetica, sans-serif' if uncertain
 - return ONLY the raw JSON object, nothing else`;
 
 // ─── Gemini ───────────────────────────────────────────────────────────────────
@@ -231,7 +247,12 @@ export async function POST(
     awards:         parsed.awards?.length        ? parsed.awards         : (existing.awards         ?? []),
     interests:      parsed.interests?.length     ? parsed.interests      : (existing.interests      ?? []),
     projects:       parsed.projects?.length      ? parsed.projects       : (existing.projects       ?? []),
+    customSections: parsed.customSections?.length? parsed.customSections : (existing.customSections ?? []),
     contact: { ...existing.contact, ...(parsed.contact ?? {}) },
+    // Apply detected style (font + accent colour) from the uploaded CV
+    style: parsed.style
+      ? { ...(existing.style ?? {}), ...parsed.style }
+      : (existing.style ?? {}),
   };
 
   // Which sections were successfully parsed
@@ -250,6 +271,11 @@ export async function POST(
   const sections = Object.entries(sectionMap)
     .filter(([, v]) => (Array.isArray(v) ? v.length > 0 : Boolean(v)))
     .map(([k]) => k);
+
+  // Add the "custom" section ID if any unrecognised sections were detected
+  if (merged.customSections && merged.customSections.length > 0) {
+    sections.push("custom");
+  }
 
   return NextResponse.json({ cvProfile: merged, sections });
 }
