@@ -311,26 +311,38 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   ).filter(Boolean) as string[];
 
   if (isGoogleCalendarConfigured()) {
+    const targetCalendarId = (updates.calendarId as string | undefined) || updatedSession.googleCalendarId || process.env.GOOGLE_CALENDAR_ID;
     try {
       if (updatedSession.googleEventId) {
-        await updateCalendarEvent(
-          updatedSession.googleEventId,
-          updatedSession,
-          candidate.candidateName,
-          gcalAttendees,
-          updatedSession.googleCalendarId
-        );
+        const calendarChanged = targetCalendarId && targetCalendarId !== updatedSession.googleCalendarId;
+        if (calendarChanged) {
+          // Move event: delete from old calendar, create on new
+          deleteCalendarEvent(updatedSession.googleEventId, updatedSession.googleCalendarId).catch(() => {});
+          const newEventId = await createCalendarEvent(updatedSession, candidate.candidateName, gcalAttendees, targetCalendarId);
+          if (newEventId) {
+            updatedSession.googleEventId = newEventId;
+            updatedSession.googleCalendarId = targetCalendarId;
+          }
+        } else {
+          await updateCalendarEvent(
+            updatedSession.googleEventId,
+            updatedSession,
+            candidate.candidateName,
+            gcalAttendees,
+            updatedSession.googleCalendarId
+          );
+        }
       } else {
         // Session predates Google Calendar integration — create the event now
         const googleEventId = await createCalendarEvent(
           updatedSession,
           candidate.candidateName,
           gcalAttendees,
-          process.env.GOOGLE_CALENDAR_ID
+          targetCalendarId
         );
         if (googleEventId) {
           updatedSession.googleEventId = googleEventId;
-          updatedSession.googleCalendarId = process.env.GOOGLE_CALENDAR_ID;
+          updatedSession.googleCalendarId = targetCalendarId;
         }
       }
     } catch (err) {

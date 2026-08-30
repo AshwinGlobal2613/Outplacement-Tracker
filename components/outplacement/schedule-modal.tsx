@@ -315,7 +315,12 @@ export function ScheduleModal({
         const res = await fetch(`/api/candidates/${candidate.id}/sessions`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sessionId: initialSession.id, ...form, inviteEmails: selectedEmails }),
+          body: JSON.stringify({
+            sessionId: initialSession.id,
+            ...form,
+            inviteEmails: selectedEmails,
+            ...(gcalConfigured && selectedCalendarId ? { calendarId: selectedCalendarId } : {}),
+          }),
         });
         if (!res.ok) throw new Error("Failed");
         ({ session } = await res.json());
