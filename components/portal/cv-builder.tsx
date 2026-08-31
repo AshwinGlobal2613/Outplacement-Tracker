@@ -1135,14 +1135,17 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
             {/* Contact row — centered, separated by dots */}
             {hasContact && (
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "0", fontSize: px(basePx * 0.82), color: "#4b5563" }}>
-                {[
-                  contact.email    ? `✉ ${contact.email}`    : null,
-                  contact.phone    ? `📞 ${contact.phone}`   : null,
-                  contact.location ? `📍 ${contact.location}` : null,
-                  contact.website  ? `🔗 ${contact.website}`  : null,
-                ].filter(Boolean).map((item, i, arr) => (
+                {([
+                  contact.email    ? { text: `✉ ${contact.email}`,    href: null } : null,
+                  contact.phone    ? { text: `📞 ${contact.phone}`,   href: null } : null,
+                  contact.location ? { text: `📍 ${contact.location}`, href: null } : null,
+                  contact.website  ? { text: `🔗 ${contact.website}`,  href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}` } : null,
+                ] as ({ text: string; href: string | null } | null)[]).filter(Boolean).map((item, i, arr) => (
                   <span key={i} style={{ display: "flex", alignItems: "center" }}>
-                    <span>{item}</span>
+                    {item!.href
+                      ? <a href={item!.href} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>{item!.text}</a>
+                      : <span>{item!.text}</span>
+                    }
                     {i < arr.length - 1 && <span style={{ margin: "0 8px", color: "#d1d5db" }}>·</span>}
                   </span>
                 ))}
