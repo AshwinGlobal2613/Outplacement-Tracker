@@ -241,13 +241,16 @@ function buildGoogleCalendarLink(session: Session, candidateName: string, attend
   return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
+const ICS_TIMEZONE = process.env.GOOGLE_CALENDAR_TIMEZONE || "Asia/Dubai";
+
 function buildICS(session: Session, candidateName: string, attendeeEmails: string[]): string {
   const [year, month, day] = session.date.split("-").map(Number);
   const [hours, minutes]   = session.time.split(":").map(Number);
   const pad = (n: number) => String(n).padStart(2, "0");
-  const startStr = `${year}${pad(month)}${pad(day)}T${pad(hours)}${pad(minutes)}00`;
+  // Use TZID so Outlook/Apple Calendar interpret the time in the correct timezone
+  const startStr = `TZID=${ICS_TIMEZONE}:${year}${pad(month)}${pad(day)}T${pad(hours)}${pad(minutes)}00`;
   const endDate  = new Date(year, month - 1, day, hours, minutes + session.duration);
-  const endStr   = `${endDate.getFullYear()}${pad(endDate.getMonth()+1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
+  const endStr   = `TZID=${ICS_TIMEZONE}:${endDate.getFullYear()}${pad(endDate.getMonth()+1)}${pad(endDate.getDate())}T${pad(endDate.getHours())}${pad(endDate.getMinutes())}00`;
   const desc = [
     session.meetingLink ? `Meeting Link: ${session.meetingLink}` : "",
     session.notes ? `Notes: ${session.notes}` : "",
@@ -256,7 +259,7 @@ function buildICS(session: Session, candidateName: string, attendeeEmails: strin
     "BEGIN:VCALENDAR", "VERSION:2.0",
     "PRODID:-//Global Management Consultants//OMS//EN", "METHOD:REQUEST",
     "BEGIN:VEVENT",
-    `DTSTART:${startStr}`, `DTEND:${endStr}`,
+    `DTSTART;${startStr}`, `DTEND;${endStr}`,
     `SUMMARY:${session.title} — ${candidateName}`,
     `DESCRIPTION:${desc}`,
     `LOCATION:${session.meetingLink || session.location}`,
@@ -271,11 +274,12 @@ function buildICS(session: Session, candidateName: string, attendeeEmails: strin
 export async function sendSessionInviteEmail(
   to: string, recipientName: string, recipientRole: string,
   session: Session, candidateName: string, candidateId: string,
-  allAttendeeEmails: string[]
+  allAttendeeEmails: string[],
+  gcalInviteSent = false   // true when Google Calendar already sent its own invite
 ): Promise<void> {
   const googleLink  = buildGoogleCalendarLink(session, candidateName, allAttendeeEmails);
-  const icsContent  = buildICS(session, candidateName, allAttendeeEmails);
-  const icsBase64   = Buffer.from(icsContent).toString("base64");
+  const icsContent  = gcalInviteSent ? null : buildICS(session, candidateName, allAttendeeEmails);
+  const icsBase64   = icsContent ? Buffer.from(icsContent).toString("base64") : null;
   const [year, month, day] = session.date.split("-").map(Number);
   const [hours, minutes]   = session.time.split(":").map(Number);
   const formattedDate = new Date(year, month - 1, day).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -306,8 +310,10 @@ export async function sendSessionInviteEmail(
       ${recipientRole ? `— you are the <strong style="color:#f0eaf5;">${recipientRole}</strong>.` : "."}
     </p>
     ${detailsTable(rows)}
-    ${ctaButton("Add to Google Calendar", googleLink)}
-    <p style="color:#475569;font-size:12px;margin:-16px 0 24px;">A calendar (.ics) file is also attached — open it to add to any calendar app.</p>
+    ${gcalInviteSent
+      ? `<p style="color:#475569;font-size:12px;margin:-16px 0 24px;">A Google Calendar invite has been sent separately — check your calendar.</p>`
+      : `${ctaButton("Add to Google Calendar", googleLink)}<p style="color:#475569;font-size:12px;margin:-16px 0 24px;">A calendar (.ics) file is also attached — open it to add to any calendar app.</p>`
+    }
     ${divider()}
     ${footerLink("View candidate profile in OMS", candidateUrl)}
   `);
@@ -319,11 +325,11 @@ export async function sendSessionInviteEmail(
       from: FROM, to,
       subject: `Session Scheduled: ${session.title} — ${candidateName} · ${formattedDate}`,
       html,
-      attachments: [{
+      ...(icsBase64 ? { attachments: [{
         filename: `${session.title.replace(/\s+/g,"_")}.ics`,
         content: icsBase64,
         content_type: "text/calendar; method=REQUEST; charset=utf-8",
-      }],
+      }] } : {}),
     }),
   });
   if (!res.ok) { const b = await res.text(); throw new Error(`Resend error ${res.status}: ${b}`); }
