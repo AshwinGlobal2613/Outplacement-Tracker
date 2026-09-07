@@ -490,35 +490,55 @@ function PersonalInfoCard({ name, headline, contact, accentColor, onHeadlineChan
 }) {
   return (
     <div className="rounded-2xl border border-border/60 bg-card overflow-hidden shadow-sm">
-      <div className="h-1 w-full" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}80)` }} />
-      <div className="p-5">
-        <div className="flex gap-4 items-start">
-          <div className="shrink-0">
-            <div className="h-16 w-16 rounded-full border-2 border-dashed border-border/50 bg-muted/30 flex flex-col items-center justify-center gap-0.5">
-              <Camera className="h-5 w-5 text-muted-foreground/30" />
-              <span className="text-[9px] text-muted-foreground/30">Photo</span>
-            </div>
+      {/* Accent bar */}
+      <div className="h-1.5 w-full" style={{ background: `linear-gradient(90deg, ${accentColor}, ${accentColor}55)` }} />
+
+      {/* Name + photo row */}
+      <div className="px-5 pt-5 pb-4">
+        <div className="flex gap-4 items-center">
+          {/* Photo placeholder */}
+          <div className="shrink-0 h-[72px] w-[72px] rounded-full border-2 border-dashed flex flex-col items-center justify-center gap-1 transition-colors"
+            style={{ borderColor: `${accentColor}55`, background: `${accentColor}0d` }}>
+            <Camera className="h-5 w-5" style={{ color: `${accentColor}99` }} />
+            <span className="text-[9px] font-medium uppercase tracking-wide" style={{ color: `${accentColor}99` }}>Photo</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xl font-bold text-foreground leading-tight">{name || "Your Name"}</p>
-            <input value={headline} onChange={(e) => onHeadlineChange(e.target.value)}
-              placeholder="Professional headline, e.g. Senior Product Manager" className={cn(inputCls, "mt-2 text-sm")} />
+
+          {/* Name + headline */}
+          <div className="flex-1 min-w-0 space-y-2">
+            <p className="text-2xl font-bold text-foreground leading-tight truncate">
+              {name || <span className="text-muted-foreground/40 font-normal text-lg">Your Name</span>}
+            </p>
+            <input
+              value={headline}
+              onChange={(e) => onHeadlineChange(e.target.value)}
+              placeholder="Professional headline — e.g. Senior Product Manager"
+              className="w-full bg-transparent text-sm text-muted-foreground placeholder:text-muted-foreground/35 focus:outline-none focus:text-foreground transition-colors"
+            />
           </div>
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          {([
-            { icon: Mail,   key: "email",    ph: "Email address" },
-            { icon: Phone,  key: "phone",    ph: "Phone number" },
-            { icon: MapPin, key: "location", ph: "City, Country" },
-            { icon: Globe,  key: "website",  ph: "LinkedIn or website URL" },
-          ] as { icon: React.ElementType; key: string; ph: string }[]).map(({ icon: Icon, key, ph }) => (
-            <div key={key} className="flex items-center gap-2.5 rounded-lg border border-border/60 bg-muted/30 px-3 py-1.5 focus-within:ring-2 focus-within:ring-primary/30 transition-colors">
-              <Icon className="h-3.5 w-3.5 text-muted-foreground/50 shrink-0" />
-              <input value={(contact as Record<string, string>)[key] ?? ""} onChange={(e) => onContactChange({ ...contact, [key]: e.target.value })}
-                placeholder={ph} className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/40 focus:outline-none" />
-            </div>
-          ))}
-        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="mx-5 border-t border-border/40" />
+
+      {/* Contact fields */}
+      <div className="px-5 py-4 grid grid-cols-2 gap-2.5">
+        {([
+          { icon: Mail,   key: "email",    ph: "Email address" },
+          { icon: Phone,  key: "phone",    ph: "Phone number" },
+          { icon: MapPin, key: "location", ph: "City, Country" },
+          { icon: Globe,  key: "website",  ph: "LinkedIn / Website" },
+        ] as { icon: React.ElementType; key: string; ph: string }[]).map(({ icon: Icon, key, ph }) => (
+          <label key={key} className="flex items-center gap-2.5 rounded-xl border border-border/50 bg-muted/20 px-3 py-2 cursor-text focus-within:border-primary/40 focus-within:bg-muted/40 transition-all">
+            <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50" />
+            <input
+              value={(contact as Record<string, string>)[key] ?? ""}
+              onChange={(e) => onContactChange({ ...contact, [key]: e.target.value })}
+              placeholder={ph}
+              className="flex-1 min-w-0 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/35 focus:outline-none"
+            />
+          </label>
+        ))}
       </div>
     </div>
   );
