@@ -252,7 +252,7 @@ export async function POST(
     // Apply detected style (font + accent colour) from the uploaded CV
     style: parsed.style
       ? { ...(existing.style ?? {}), ...parsed.style }
-      : (existing.style ?? {}),
+      : (existing.style ?? undefined),
   };
 
   // Which sections were successfully parsed
