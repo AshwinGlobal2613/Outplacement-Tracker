@@ -278,8 +278,12 @@ function buildICS(session: Session, candidateName: string, attendeeEmails: strin
     `SUMMARY:${session.title} — ${candidateName}`,
     `DESCRIPTION:${desc}`,
     `LOCATION:${session.meetingLink || session.location}`,
-    ...attendeeEmails.map((e) => `ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:${e}`),
+    // ORGANIZER is required for Gmail/Outlook to show Accept/Decline and auto-add to calendar
+    `ORGANIZER;CN="Global Management Consultants":mailto:${process.env.SMTP_FROM || "team@global-dubai.com"}`,
+    ...attendeeEmails.map((e) => `ATTENDEE;ROLE=REQ-PARTICIPANT;RSVP=TRUE:mailto:${e}`),
     `UID:${session.id}@gmc-oms`,
+    "STATUS:CONFIRMED",
+    "SEQUENCE:0",
     "END:VEVENT",
     "END:VCALENDAR",
   ].filter(Boolean).join("\r\n");
