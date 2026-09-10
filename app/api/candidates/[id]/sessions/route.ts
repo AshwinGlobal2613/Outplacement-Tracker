@@ -81,7 +81,8 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   }
 
   // Create Google Calendar event (recurring rule on the first session).
-  // GCal uses sendUpdates:"none" — Resend handles the single invitation email.
+  // GCal uses sendUpdates:"all" — it sends the calendar invite; Resend sends a plain confirmation.
+  let gcalInviteSent = false;
   if (isGoogleCalendarConfigured()) {
     try {
       const gcalEmails = selectedEmails.length > 0
@@ -106,6 +107,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       if (googleEventId) {
         newSession.googleEventId = googleEventId;
         newSession.googleCalendarId = body.calendarId || process.env.GOOGLE_CALENDAR_ID;
+        gcalInviteSent = true;
       }
     } catch (err) {
       console.error("[google-calendar] Failed to create calendar event:", err);
@@ -150,7 +152,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
             : matchedUser?.name && candidate.support?.includes(matchedUser.name) ? "Support"
             : "Attendee";
           invites.push(
-            sendSessionInviteEmail(em, name, role, newSession, candidate.candidateName, candidate.id, allEmails)
+            sendSessionInviteEmail(em, name, role, newSession, candidate.candidateName, candidate.id, allEmails, gcalInviteSent)
               .catch((e) => console.error(`[email] Invite to ${em} failed:`, e))
           );
         }
@@ -168,14 +170,14 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
         if (candidate.email) {
           invites.push(
-            sendSessionInviteEmail(candidate.email, candidate.candidateName, "Candidate", newSession, candidate.candidateName, candidate.id, allEmails)
+            sendSessionInviteEmail(candidate.email, candidate.candidateName, "Candidate", newSession, candidate.candidateName, candidate.id, allEmails, gcalInviteSent)
               .catch((e) => console.error("[email] Candidate invite failed:", e))
           );
         }
         for (const u of coachUsers) {
           for (const em of [u!.email, ...(u!.additionalEmails ?? [])].filter(Boolean) as string[]) {
             invites.push(
-              sendSessionInviteEmail(em, u!.name, "Lead Coach", newSession, candidate.candidateName, candidate.id, allEmails)
+              sendSessionInviteEmail(em, u!.name, "Lead Coach", newSession, candidate.candidateName, candidate.id, allEmails, gcalInviteSent)
                 .catch((e) => console.error("[email] Coach invite failed:", e))
             );
           }
@@ -183,7 +185,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         for (const u of supportUsers) {
           for (const em of [u!.email, ...(u!.additionalEmails ?? [])].filter(Boolean) as string[]) {
             invites.push(
-              sendSessionInviteEmail(em, u!.name, "Support", newSession, candidate.candidateName, candidate.id, allEmails)
+              sendSessionInviteEmail(em, u!.name, "Support", newSession, candidate.candidateName, candidate.id, allEmails, gcalInviteSent)
                 .catch((e) => console.error("[email] Support invite failed:", e))
             );
           }
@@ -430,8 +432,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   ).length;
   const updated = await updateCandidate(params.id, { sessions: finalSessions, sessionsCompleted });
 
-  // Fire-and-forget: re-send updated invite emails (with ICS) to exactly the stored invitees.
-  // GCal uses sendUpdates:"none" so Resend is the single notification channel.
+  // Fire-and-forget: re-send updated invite emails to exactly the stored invitees.
+  // GCal sendUpdates:"all" already notified attendees; Resend sends a plain confirmation.
+  const gcalEditInviteSent = isGoogleCalendarConfigured() && !!updatedSession.googleEventId;
   const editInviteEmails = updatedSession.inviteEmails;
   if (editInviteEmails && editInviteEmails.length > 0) {
     getUsers()
@@ -446,7 +449,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
             : matchedUser?.name && candidate.support?.includes(matchedUser.name) ? "Support"
             : "Attendee";
           invites.push(
-            sendSessionInviteEmail(em, name, role, updatedSession, candidate.candidateName, candidate.id, allEmails)
+            sendSessionInviteEmail(em, name, role, updatedSession, candidate.candidateName, candidate.id, allEmails, gcalEditInviteSent)
               .catch((e) => console.error(`[email] Updated invite to ${em} failed:`, e))
           );
         }

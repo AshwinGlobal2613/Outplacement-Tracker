@@ -294,11 +294,12 @@ function buildICS(session: Session, candidateName: string, attendeeEmails: strin
 export async function sendSessionInviteEmail(
   to: string, recipientName: string, recipientRole: string,
   session: Session, candidateName: string, candidateId: string,
-  allAttendeeEmails: string[]
+  allAttendeeEmails: string[],
+  gcalInviteSent = false  // true = GCal already sent the calendar invite; send plain confirmation only
 ): Promise<void> {
   const googleLink  = buildGoogleCalendarLink(session, candidateName, allAttendeeEmails);
-  const icsContent  = buildICS(session, candidateName, allAttendeeEmails);
-  const icsBase64   = Buffer.from(icsContent).toString("base64");
+  const icsContent  = gcalInviteSent ? null : buildICS(session, candidateName, allAttendeeEmails);
+  const icsBase64   = icsContent ? Buffer.from(icsContent).toString("base64") : null;
   const [year, month, day] = session.date.split("-").map(Number);
   const [hours, minutes]   = session.time.split(":").map(Number);
   const formattedDate = new Date(year, month - 1, day).toLocaleDateString("en-GB", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -329,8 +330,10 @@ export async function sendSessionInviteEmail(
       ${recipientRole ? `— you are the <strong style="color:#f0eaf5;">${recipientRole}</strong>.` : "."}
     </p>
     ${detailsTable(rows)}
-    ${ctaButton("Add to Google Calendar", googleLink)}
-    <p style="color:#475569;font-size:12px;margin:-16px 0 24px;">A calendar (.ics) file is also attached — open it to add to Outlook, Apple Calendar, or any other calendar app.</p>
+    ${gcalInviteSent
+      ? `<p style="color:#475569;font-size:13px;margin:0 0 24px;">A Google Calendar invite has been sent to your inbox — accept it to add this session to your calendar.</p>`
+      : `${ctaButton("Add to Google Calendar", googleLink)}<p style="color:#475569;font-size:12px;margin:-16px 0 24px;">A calendar (.ics) file is also attached — open it to add to Outlook, Apple Calendar, or any other calendar app.</p>`
+    }
     ${divider()}
     ${footerLink("View candidate profile in OMS", candidateUrl)}
   `);
@@ -342,11 +345,11 @@ export async function sendSessionInviteEmail(
       from: FROM, to,
       subject: `Session Scheduled: ${session.title} — ${candidateName} · ${formattedDate}`,
       html,
-      attachments: [{
+      ...(icsBase64 ? { attachments: [{
         filename: `${session.title.replace(/\s+/g,"_")}.ics`,
         content: icsBase64,
         content_type: "text/calendar; method=REQUEST; charset=utf-8",
-      }],
+      }] } : {}),
     }),
   });
   if (!res.ok) { const b = await res.text(); throw new Error(`Resend error ${res.status}: ${b}`); }
