@@ -63,7 +63,7 @@ export async function createCalendarEvent(
 
   const event = await calendar.events.insert({
     calendarId: targetCalendarId,
-    sendUpdates: "all",
+    sendUpdates: "none",
     requestBody: {
       summary: `${session.title} — ${candidateName}`,
       description,
@@ -119,7 +119,7 @@ export async function updateCalendarEvent(
   await calendar.events.patch({
     calendarId: targetCalendarId,
     eventId,
-    sendUpdates: "all",
+    sendUpdates: "none",
     requestBody: {
       summary: `${session.title} — ${candidateName}`,
       description,
