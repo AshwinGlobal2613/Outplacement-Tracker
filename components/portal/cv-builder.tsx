@@ -1240,36 +1240,23 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
           </div>
         </div>{/* end cv-preview-panel */}
 
-        {/* Page break overlays */}
+        {/* Page break indicators — thin dashed line, doesn't obscure content */}
         {pageBreaks.map((y, i) => (
           <div key={i} style={{
-            position: "absolute", top: y, left: 0, right: 0, height: "20px",
-            background: "#64748b",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            zIndex: 5,
+            position: "absolute", top: y, left: 0, right: 0, height: 0,
+            borderTop: "2px dashed #94a3b8",
+            zIndex: 5, pointerEvents: "none",
           }}>
-            <span style={{ color: "#94a3b8", fontSize: "10px", fontFamily: "Arial,sans-serif", letterSpacing: "0.5px" }}>
-              — Page {i + 2} —
+            <span style={{
+              position: "absolute", right: "10px", top: "-11px",
+              background: "#64748b", color: "#f1f5f9",
+              fontSize: "9px", fontFamily: "Arial,sans-serif",
+              padding: "1px 7px", borderRadius: "999px", letterSpacing: "0.3px",
+            }}>
+              p.{i + 2}
             </span>
           </div>
         ))}
-
-        {/* Shadow under each page for depth */}
-        {Array.from({ length: pageCount }).map((_, i) => {
-          const wrapW = wrapperRef.current?.offsetWidth ?? 440;
-          const pageH = (wrapW - 24) * A4_RATIO;
-          return (
-            <div key={i} style={{
-              position: "absolute",
-              top: i * (pageH + 20),
-              left: 0, right: 0,
-              height: pageH,
-              boxShadow: "0 4px 16px rgba(0,0,0,0.25)",
-              pointerEvents: "none",
-              zIndex: 4,
-            }} />
-          );
-        })}
       </div>{/* end relative wrapper */}
     </div>
   );
