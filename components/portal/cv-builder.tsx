@@ -1161,7 +1161,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
       </div>
 
       {/* Relative wrapper so page-break overlays are positioned correctly */}
-      <div style={{ position: "relative", boxShadow: "0 8px 40px rgba(0,0,0,0.18)", borderRadius: "4px" }}>
+      <div style={{ position: "relative", boxShadow: "0 4px 24px rgba(0,0,0,0.2)" }}>
         {/* The actual CV content */}
         <div
           ref={contentRef}
@@ -1240,20 +1240,17 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
           </div>
         </div>{/* end cv-preview-panel */}
 
-        {/* Page break indicators — thin dashed line, doesn't obscure content */}
+        {/* Page separators — gray band matching outer background, simulates distinct paper cards */}
         {pageBreaks.map((y, i) => (
           <div key={i} style={{
-            position: "absolute", top: y, left: 0, right: 0, height: 0,
-            borderTop: "2px dashed #94a3b8",
-            zIndex: 5, pointerEvents: "none",
+            position: "absolute", top: y, left: 0, right: 0, height: "28px",
+            background: "#dde3eb",
+            boxShadow: "inset 0 5px 8px -3px rgba(0,0,0,0.18), inset 0 -5px 8px -3px rgba(0,0,0,0.18)",
+            zIndex: 10, pointerEvents: "none",
+            display: "flex", alignItems: "center", justifyContent: "center",
           }}>
-            <span style={{
-              position: "absolute", right: "10px", top: "-11px",
-              background: "#64748b", color: "#f1f5f9",
-              fontSize: "9px", fontFamily: "Arial,sans-serif",
-              padding: "1px 7px", borderRadius: "999px", letterSpacing: "0.3px",
-            }}>
-              p.{i + 2}
+            <span style={{ fontSize: "9px", fontFamily: "Arial,sans-serif", color: "#94a3b8", letterSpacing: "0.4px" }}>
+              — Page {i + 2} —
             </span>
           </div>
         ))}
