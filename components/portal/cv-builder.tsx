@@ -1865,8 +1865,8 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
           </div>
 
           {/* Centered A4 preview */}
-          <div className="flex justify-center py-8 px-4">
-            <div className="w-full max-w-[560px]">
+          <div className="flex justify-center py-8 px-6">
+            <div className="w-full max-w-[740px]">
               <CVPreview
                 cv={cv}
                 name={candidateName}
