@@ -1150,24 +1150,12 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
   const hasContact = contact.email || contact.phone || contact.location || contact.website;
 
-  // Outer print-preview shell (shown to user) + inner content (used for print)
-  return (
-    <div ref={wrapperRef} id="cv-print-root">
-      {/* Page count badge */}
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
-        <span style={{ background: "rgba(0,0,0,0.18)", color: "#fff", fontSize: "11px", fontFamily: "Arial,sans-serif", padding: "2px 10px", borderRadius: "999px" }}>
-          {pageCount} page{pageCount !== 1 ? "s" : ""}
-        </span>
-      </div>
+  // Shared content style applied to both the hidden measurement div and each page window
+  const cvContentStyle: React.CSSProperties = { background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#1a1a1a", minHeight: `${pageH}px` };
 
-      {/* Relative wrapper so page-break overlays are positioned correctly */}
-      <div style={{ position: "relative", boxShadow: "0 4px 24px rgba(0,0,0,0.2)" }}>
-        {/* The actual CV content */}
-        <div
-          ref={contentRef}
-          id="cv-preview-panel"
-          style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#1a1a1a", minHeight: `${pageH}px` }}
-        >
+  // Content JSX shared between measurement div and N visual page clones
+  const cvInner = (
+    <>
           {/* ── Header ── */}
           {templateId === "gmc" ? (
             /* GMC template: dark purple bg, name ALLCAPS, crimson headline */
@@ -1238,23 +1226,45 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
           <div style={{ padding: templateId === "gmc" ? "28px 52px 48px" : "22px 52px 48px" }}>
             {visible.map((id) => renderSection(id))}
           </div>
-        </div>{/* end cv-preview-panel */}
+        </>
+  );
 
-        {/* Page separators — gray band matching outer background, simulates distinct paper cards */}
-        {pageBreaks.map((y, i) => (
-          <div key={i} style={{
-            position: "absolute", top: y, left: 0, right: 0, height: "28px",
-            background: "#dde3eb",
-            boxShadow: "inset 0 5px 8px -3px rgba(0,0,0,0.18), inset 0 -5px 8px -3px rgba(0,0,0,0.18)",
-            zIndex: 10, pointerEvents: "none",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <span style={{ fontSize: "9px", fontFamily: "Arial,sans-serif", color: "#94a3b8", letterSpacing: "0.4px" }}>
-              — Page {i + 2} —
-            </span>
+  return (
+    <div ref={wrapperRef} id="cv-print-root" style={{ position: "relative" }}>
+      {/* Hidden measurement + print target */}
+      <div
+        ref={contentRef}
+        id="cv-preview-panel"
+        style={{ ...cvContentStyle, position: "absolute", top: 0, left: 0, right: 0, visibility: "hidden", pointerEvents: "none", zIndex: -1 }}
+      >
+        {cvInner}
+      </div>
+
+      {/* Page count badge */}
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
+        <span style={{ background: "rgba(0,0,0,0.18)", color: "#fff", fontSize: "11px", fontFamily: "Arial,sans-serif", padding: "2px 10px", borderRadius: "999px" }}>
+          {pageCount} page{pageCount !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* Visual stacked pages — each clips to exactly one A4 page of content */}
+      <div className="cv-page-windows" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+        {Array.from({ length: pageCount }, (_, i) => (
+          <div
+            key={i}
+            style={{
+              height: `${pageH}px`,
+              overflow: "hidden",
+              boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
+              position: "relative",
+            }}
+          >
+            <div style={{ ...cvContentStyle, transform: `translateY(-${i * pageH}px)` }}>
+              {cvInner}
+            </div>
           </div>
         ))}
-      </div>{/* end relative wrapper */}
+      </div>
     </div>
   );
 }
@@ -1312,9 +1322,11 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
         html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
         body > * { display: none !important; }
         #cv-print-root { display: block !important; }
+        .cv-page-windows { display: none !important; }
         #cv-preview-panel {
           display: block !important;
           position: static !important;
+          visibility: visible !important;
           width: 100% !important;
           min-height: 0 !important;
           border-radius: 0 !important;
