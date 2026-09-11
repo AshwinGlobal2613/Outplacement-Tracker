@@ -838,8 +838,8 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 
   function SH({ title }: { title: string }) {
     return (
-      <div style={{ marginBottom: px(gap * 0.6), paddingBottom: "4px", borderBottom: `1.5px solid #1a1a1a` }}>
-        <p style={{ fontSize: em(basePx * 0.78), fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "#1a1a1a", margin: 0 }}>
+      <div style={{ marginBottom: px(gap * 0.65), paddingBottom: "5px", borderBottom: `1.5px solid #111827` }}>
+        <p style={{ fontSize: em(basePx * 0.77), fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#111827", margin: 0 }}>
           {title}
         </p>
       </div>
@@ -1137,33 +1137,35 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
           id="cv-preview-panel"
           style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#1a1a1a", minHeight: `${pageH}px` }}
         >
-          {/* ── FlowCV-style header ── */}
-          <div style={{ padding: "32px 36px 20px", textAlign: "center", borderBottom: `2px solid ${accent}` }}>
-            {/* Name */}
-            <p style={{ fontSize: px(basePx * 2), fontWeight: 700, color: "#0f172a", lineHeight: 1.1, letterSpacing: "-0.02em", margin: "0 0 4px" }}>
-              {name || "Your Name"}
-            </p>
-            {/* Headline */}
-            {cv.headline && (
-              <p style={{ fontSize: px(basePx * 1.05), color: "#6b7280", fontStyle: "italic", fontWeight: 400, margin: "0 0 12px" }}>
+          {/* ── Header — matches CV layout: headline top, name below in ALLCAPS italic ── */}
+          <div style={{ padding: "28px 36px 18px", textAlign: "center", borderBottom: `1.5px solid #1a1a1a` }}>
+            {/* Headline / role — large, bold */}
+            {cv.headline ? (
+              <p style={{ fontSize: px(basePx * 2.1), fontWeight: 700, color: "#0f172a", lineHeight: 1.1, letterSpacing: "-0.01em", margin: "0 0 6px" }}>
                 {cv.headline}
               </p>
+            ) : (
+              <p style={{ fontSize: px(basePx * 2.1), fontWeight: 700, color: "#d1d5db", lineHeight: 1.1, margin: "0 0 6px" }}>Your Title</p>
             )}
+            {/* Name — smaller, italic, ALL CAPS */}
+            <p style={{ fontSize: px(basePx * 1.05), fontWeight: 400, fontStyle: "italic", color: "#374151", letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 14px" }}>
+              {name || "Your Name"}
+            </p>
             {/* Contact row — centered, separated by dots */}
             {hasContact && (
               <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "0", fontSize: px(basePx * 0.82), color: "#4b5563" }}>
                 {([
-                  contact.email    ? { text: `✉ ${contact.email}`,    href: null } : null,
-                  contact.phone    ? { text: `📞 ${contact.phone}`,   href: null } : null,
-                  contact.location ? { text: `📍 ${contact.location}`, href: null } : null,
-                  contact.website  ? { text: `🔗 ${contact.website}`,  href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}` } : null,
+                  contact.email    ? { text: `✉  ${contact.email}`,    href: null } : null,
+                  contact.phone    ? { text: `✆  ${contact.phone}`,    href: null } : null,
+                  contact.location ? { text: `⌖  ${contact.location}`, href: null } : null,
+                  contact.website  ? { text: contact.website, href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}` } : null,
                 ] as ({ text: string; href: string | null } | null)[]).filter(Boolean).map((item, i, arr) => (
                   <span key={i} style={{ display: "flex", alignItems: "center" }}>
                     {item!.href
-                      ? <a href={item!.href} target="_blank" rel="noopener noreferrer" style={{ color: "inherit", textDecoration: "underline" }}>{item!.text}</a>
+                      ? <a href={item!.href} target="_blank" rel="noopener noreferrer" style={{ color: "#4b5563", textDecoration: "none" }}>{item!.text}</a>
                       : <span>{item!.text}</span>
                     }
-                    {i < arr.length - 1 && <span style={{ margin: "0 8px", color: "#d1d5db" }}>·</span>}
+                    {i < arr.length - 1 && <span style={{ margin: "0 10px", color: "#d1d5db" }}>·</span>}
                   </span>
                 ))}
               </div>
