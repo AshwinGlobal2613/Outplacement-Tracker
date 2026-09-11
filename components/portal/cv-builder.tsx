@@ -1138,7 +1138,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
           style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#1a1a1a", minHeight: `${pageH}px` }}
         >
           {/* ── Header — matches CV layout: headline top, name below in ALLCAPS italic ── */}
-          <div style={{ padding: "28px 36px 18px", textAlign: "center", borderBottom: `1.5px solid #1a1a1a` }}>
+          <div style={{ padding: "36px 52px 22px", textAlign: "center", borderBottom: `1.5px solid #1a1a1a` }}>
             {/* Headline / role — large, bold */}
             {cv.headline ? (
               <p style={{ fontSize: px(basePx * 2.1), fontWeight: 700, color: "#0f172a", lineHeight: 1.1, letterSpacing: "-0.01em", margin: "0 0 6px" }}>
@@ -1173,7 +1173,7 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
           </div>
 
           {/* ── Sections body ── */}
-          <div style={{ padding: "20px 36px 32px" }}>
+          <div style={{ padding: "22px 52px 48px" }}>
             {visible.map((id) => renderSection(id))}
           </div>
         </div>{/* end cv-preview-panel */}
