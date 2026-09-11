@@ -233,7 +233,14 @@ export async function POST(
   }
 
   // ── Merge with existing CV ────────────────────────────────────────────────
-  const existing: Partial<CVProfile> = candidate.cvProfile ?? {};
+  const cvId = formData.get("cvId") as string | null;
+  let existing: Partial<CVProfile> = {};
+  if (cvId && candidate.cvProfiles?.length) {
+    const named = candidate.cvProfiles.find((p) => p.id === cvId);
+    if (named) existing = named.profile;
+  } else {
+    existing = candidate.cvProfile ?? {};
+  }
 
   const merged: Partial<CVProfile> = {
     ...existing,

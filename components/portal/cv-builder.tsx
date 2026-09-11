@@ -25,6 +25,7 @@ const FONT_OPTIONS = [
   { label: "Classic",      value: "Georgia, 'Times New Roman', serif" },
   { label: "Professional", value: "Arial, Helvetica, sans-serif" },
   { label: "Elegant",      value: "'Palatino Linotype', Palatino, serif" },
+  { label: "Corbel",       value: "Corbel, Calibri, 'Gill Sans', sans-serif" },
 ];
 
 const ACCENT_PRESETS = [
@@ -558,6 +559,26 @@ function AppearancePanel({ currentStyle, onStyleChange }: { currentStyle: CVStyl
       {open && (
         <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-4">
           <div>
+            <p className={labelCls}>Template</p>
+            <div className="flex gap-2 mt-1">
+              {([
+                { id: "classic", label: "Classic", desc: "Clean & professional" },
+                { id: "gmc",     label: "GMC",     desc: "Branded — crimson & purple" },
+              ] as const).map((t) => (
+                <button key={t.id}
+                  onClick={() => onStyleChange({ templateId: t.id })}
+                  className={cn("flex-1 rounded-xl border px-3 py-2 text-left transition-all",
+                    (currentStyle.templateId ?? "classic") === t.id
+                      ? "border-primary bg-primary/10"
+                      : "border-border/60 hover:border-border"
+                  )}>
+                  <p className="text-xs font-semibold text-foreground">{t.label}</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{t.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
             <p className={labelCls}>Accent Colour</p>
             <div className="flex flex-wrap items-center gap-2 mt-1">
               {ACCENT_PRESETS.map((c) => (
@@ -825,18 +846,28 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
     return () => ro.disconnect();
   }, [cv, addedSections, hiddenFromPreview]);
 
-  const style  = { ...DEFAULT_STYLE, ...(cv.style ?? {}) };
-  const accent = style.accentColor;
-  const ff     = style.fontFamily;
-  const basePx = FONT_SIZE_PX[style.fontSize ?? "md"];
-  const gap    = SPACING_GAP[style.spacing ?? "normal"];
-  const visible = addedSections.filter((id) => !hiddenFromPreview.has(id));
-  const contact = cv.contact ?? {};
+  const style      = { ...DEFAULT_STYLE, ...(cv.style ?? {}) };
+  const templateId = style.templateId ?? "classic";
+  const accent     = templateId === "gmc" ? "#BE3758" : style.accentColor;
+  const ff         = templateId === "gmc" ? "Corbel, Calibri, 'Gill Sans', sans-serif" : style.fontFamily;
+  const basePx     = FONT_SIZE_PX[style.fontSize ?? "md"];
+  const gap        = SPACING_GAP[style.spacing ?? "normal"];
+  const visible    = addedSections.filter((id) => !hiddenFromPreview.has(id));
+  const contact    = cv.contact ?? {};
 
   const px = (n: number) => `${n}px`;
   const em = (n: number) => `${(n / basePx).toFixed(3)}em`;
 
   function SH({ title }: { title: string }) {
+    if (templateId === "gmc") {
+      return (
+        <div style={{ marginBottom: px(gap * 0.65), paddingBottom: "5px", borderBottom: `2px solid #BE3758` }}>
+          <p style={{ fontSize: em(basePx * 0.77), fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#332A3F", margin: 0 }}>
+            {title}
+          </p>
+        </div>
+      );
+    }
     return (
       <div style={{ marginBottom: px(gap * 0.65), paddingBottom: "5px", borderBottom: `1.5px solid #111827` }}>
         <p style={{ fontSize: em(basePx * 0.77), fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#111827", margin: 0 }}>
@@ -1137,43 +1168,74 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
           id="cv-preview-panel"
           style={{ background: "#ffffff", fontFamily: ff, fontSize: px(basePx), color: "#1a1a1a", minHeight: `${pageH}px` }}
         >
-          {/* ── Header — matches CV layout: headline top, name below in ALLCAPS italic ── */}
-          <div style={{ padding: "36px 52px 22px", textAlign: "center", borderBottom: `1.5px solid #1a1a1a` }}>
-            {/* Headline / role — large, bold */}
-            {cv.headline ? (
-              <p style={{ fontSize: px(basePx * 2.1), fontWeight: 700, color: "#0f172a", lineHeight: 1.1, letterSpacing: "-0.01em", margin: "0 0 6px" }}>
-                {cv.headline}
+          {/* ── Header ── */}
+          {templateId === "gmc" ? (
+            /* GMC template: dark purple bg, name ALLCAPS, crimson headline */
+            <div style={{ background: "#332A3F", padding: "36px 52px 28px", textAlign: "center" }}>
+              <p style={{ fontSize: px(basePx * 1.8), fontWeight: 700, color: "#ffffff", letterSpacing: "0.12em", textTransform: "uppercase", margin: "0 0 6px", fontFamily: ff }}>
+                {name || "YOUR NAME"}
               </p>
-            ) : (
-              <p style={{ fontSize: px(basePx * 2.1), fontWeight: 700, color: "#d1d5db", lineHeight: 1.1, margin: "0 0 6px" }}>Your Title</p>
-            )}
-            {/* Name — smaller, italic, ALL CAPS */}
-            <p style={{ fontSize: px(basePx * 1.05), fontWeight: 400, fontStyle: "italic", color: "#374151", letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 14px" }}>
-              {name || "Your Name"}
-            </p>
-            {/* Contact row — centered, separated by dots */}
-            {hasContact && (
-              <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "0", fontSize: px(basePx * 0.82), color: "#4b5563" }}>
-                {([
-                  contact.email    ? { text: `✉  ${contact.email}`,    href: null } : null,
-                  contact.phone    ? { text: `✆  ${contact.phone}`,    href: null } : null,
-                  contact.location ? { text: `⌖  ${contact.location}`, href: null } : null,
-                  contact.website  ? { text: contact.website, href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}` } : null,
-                ] as ({ text: string; href: string | null } | null)[]).filter(Boolean).map((item, i, arr) => (
-                  <span key={i} style={{ display: "flex", alignItems: "center" }}>
-                    {item!.href
-                      ? <a href={item!.href} target="_blank" rel="noopener noreferrer" style={{ color: "#4b5563", textDecoration: "none" }}>{item!.text}</a>
-                      : <span>{item!.text}</span>
-                    }
-                    {i < arr.length - 1 && <span style={{ margin: "0 10px", color: "#d1d5db" }}>·</span>}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
+              <div style={{ width: "56px", height: "2px", background: "#BE3758", margin: "0 auto 10px" }} />
+              {cv.headline && (
+                <p style={{ fontSize: px(basePx * 1.0), color: "#BE3758", fontWeight: 600, letterSpacing: "0.04em", margin: "0 0 14px", fontFamily: ff }}>
+                  {cv.headline}
+                </p>
+              )}
+              {hasContact && (
+                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "0", fontSize: px(basePx * 0.82), color: "rgba(255,255,255,0.7)" }}>
+                  {([
+                    contact.email    ? { text: `✉  ${contact.email}`,    href: null } : null,
+                    contact.phone    ? { text: `✆  ${contact.phone}`,    href: null } : null,
+                    contact.location ? { text: `⌖  ${contact.location}`, href: null } : null,
+                    contact.website  ? { text: contact.website, href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}` } : null,
+                  ] as ({ text: string; href: string | null } | null)[]).filter(Boolean).map((item, i, arr) => (
+                    <span key={i} style={{ display: "flex", alignItems: "center" }}>
+                      {item!.href
+                        ? <a href={item!.href} target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,0.7)", textDecoration: "none" }}>{item!.text}</a>
+                        : <span>{item!.text}</span>
+                      }
+                      {i < arr.length - 1 && <span style={{ margin: "0 10px", color: "rgba(255,255,255,0.3)" }}>·</span>}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            /* Classic template: headline top, name ALLCAPS italic below */
+            <div style={{ padding: "36px 52px 22px", textAlign: "center", borderBottom: `1.5px solid #1a1a1a` }}>
+              {cv.headline ? (
+                <p style={{ fontSize: px(basePx * 2.1), fontWeight: 700, color: "#0f172a", lineHeight: 1.1, letterSpacing: "-0.01em", margin: "0 0 6px" }}>
+                  {cv.headline}
+                </p>
+              ) : (
+                <p style={{ fontSize: px(basePx * 2.1), fontWeight: 700, color: "#d1d5db", lineHeight: 1.1, margin: "0 0 6px" }}>Your Title</p>
+              )}
+              <p style={{ fontSize: px(basePx * 1.05), fontWeight: 400, fontStyle: "italic", color: "#374151", letterSpacing: "0.06em", textTransform: "uppercase", margin: "0 0 14px" }}>
+                {name || "Your Name"}
+              </p>
+              {hasContact && (
+                <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "0", fontSize: px(basePx * 0.82), color: "#4b5563" }}>
+                  {([
+                    contact.email    ? { text: `✉  ${contact.email}`,    href: null } : null,
+                    contact.phone    ? { text: `✆  ${contact.phone}`,    href: null } : null,
+                    contact.location ? { text: `⌖  ${contact.location}`, href: null } : null,
+                    contact.website  ? { text: contact.website, href: contact.website.startsWith("http") ? contact.website : `https://${contact.website}` } : null,
+                  ] as ({ text: string; href: string | null } | null)[]).filter(Boolean).map((item, i, arr) => (
+                    <span key={i} style={{ display: "flex", alignItems: "center" }}>
+                      {item!.href
+                        ? <a href={item!.href} target="_blank" rel="noopener noreferrer" style={{ color: "#4b5563", textDecoration: "none" }}>{item!.text}</a>
+                        : <span>{item!.text}</span>
+                      }
+                      {i < arr.length - 1 && <span style={{ margin: "0 10px", color: "#d1d5db" }}>·</span>}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* ── Sections body ── */}
-          <div style={{ padding: "22px 52px 48px" }}>
+          <div style={{ padding: templateId === "gmc" ? "28px 52px 48px" : "22px 52px 48px" }}>
             {visible.map((id) => renderSection(id))}
           </div>
         </div>{/* end cv-preview-panel */}
@@ -1247,12 +1309,15 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
   const [editingName,       setEditingName]      = useState(false);
   const [saving,            setSaving]           = useState(false);
   const [saved,             setSaved]            = useState(false);
+  const [autoSaveStatus,    setAutoSaveStatus]   = useState<"idle" | "saving" | "saved">("idle");
   const [importMsg,         setImportMsg]        = useState<string | null>(null);
   const [addedSections,     setAddedSections]    = useState<string[]>(() => initialCv?.sectionOrder ?? []);
   const [hiddenFromPreview, setHiddenFromPreview]= useState<Set<string>>(new Set());
   const [openSection,       setOpenSection]      = useState<string | null>(null);
   const [dragItem,          setDragItem]         = useState<string | null>(null);
   const [dragOver,          setDragOver]         = useState<string | null>(null);
+  const autoSaveTimer  = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isFirstRender  = useRef(true);
 
   useEffect(() => {
     const el = document.createElement("style");
@@ -1278,6 +1343,25 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
     document.head.appendChild(el);
     return () => { document.getElementById("cv-print-style")?.remove(); };
   }, []);
+
+  // ── Autosave — debounced 2.5 s after any cv/section change ───────────────────
+  useEffect(() => {
+    if (isFirstRender.current) { isFirstRender.current = false; return; }
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(async () => {
+      setAutoSaveStatus("saving");
+      await fetch(`/api/candidates/${candidateId}/cv`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cvId, name: cvNameState, ...cv, sectionOrder: addedSections }),
+      });
+      setCv((p) => ({ ...p, sectionOrder: addedSections }));
+      setAutoSaveStatus("saved");
+      setTimeout(() => setAutoSaveStatus("idle"), 2500);
+    }, 2500);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cv, addedSections, cvNameState]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1306,6 +1390,7 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
   async function uploadResume(file: File) {
     const form = new FormData();
     form.append("file", file);
+    form.append("cvId", cvId);
 
     const res = await fetch(`/api/candidates/${candidateId}/cv/import`, {
       method: "POST",
@@ -1699,7 +1784,15 @@ export function CVBuilder({ candidateId, candidateName, cvId, cvName: initialCvN
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {autoSaveStatus === "saving" && (
+            <span className="flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Saving…
+            </span>
+          )}
+          {autoSaveStatus === "saved" && (
+            <span className="text-[11px] text-emerald-400">✓ Saved</span>
+          )}
           <button
             onClick={() => window.print()}
             className="flex items-center gap-1.5 rounded-lg border border-border/60 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
