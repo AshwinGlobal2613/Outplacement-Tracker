@@ -818,11 +818,10 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
-  const [pageBreaks, setPageBreaks] = useState<number[]>([]);
-  const [pageCount, setPageCount]   = useState(1);
-  const [pageH,     setPageH]       = useState(792); // A4 at 560px wide: 560 × 297/210 ≈ 792
+  const [pageSlices, setPageSlices] = useState<{ start: number; height: number }[]>([{ start: 0, height: 792 }]);
+  const [pageH,      setPageH]      = useState(792);
 
-  // Recalculate page breaks whenever content height changes
+  // Recalculate page slices with smart break detection at block boundaries
   useEffect(() => {
     const el = contentRef.current;
     const wr = wrapperRef.current;
@@ -830,19 +829,49 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
     function recalc() {
       if (!el || !wr) return;
       const rawWidth = wr.offsetWidth;
-      if (rawWidth < 50) return; // layout not settled yet — skip
+      if (rawWidth < 50) return;
       const ph = Math.max(600, Math.round(rawWidth * A4_RATIO));
       setPageH(ph);
-      const total = el.offsetHeight;
-      const count = Math.max(1, Math.ceil(total / ph));
-      setPageCount(count);
-      setPageBreaks(
-        Array.from({ length: count - 1 }, (_, i) => Math.round(ph * (i + 1)))
-      );
+      const totalH = el.offsetHeight;
+      if (totalH <= ph) { setPageSlices([{ start: 0, height: totalH }]); return; }
+
+      // Collect Y positions of block boundaries (section tops + entry tops)
+      const elRect = el.getBoundingClientRect();
+      const candidates = new Set<number>();
+      const bodyDiv = el.children.length > 1 ? el.children[el.children.length - 1] as HTMLElement : null;
+      if (bodyDiv) {
+        for (const section of Array.from(bodyDiv.children) as HTMLElement[]) {
+          const sy = Math.round(section.getBoundingClientRect().top - elRect.top);
+          if (sy > 0) candidates.add(sy);
+          // entry-level breaks inside sections (experience entries, education entries, etc.)
+          if (section.children.length > 1) {
+            const entryContainer = section.children[section.children.length - 1] as HTMLElement;
+            for (const entry of Array.from(entryContainer.children) as HTMLElement[]) {
+              const ey = Math.round(entry.getBoundingClientRect().top - elRect.top);
+              if (ey > 0) candidates.add(ey);
+            }
+          }
+        }
+      }
+      const sorted = Array.from(candidates).sort((a, b) => a - b);
+
+      // Build slices: for each page, find the latest clean block boundary before the ideal break
+      const slices: { start: number; height: number }[] = [];
+      let cur = 0;
+      const LOOKBACK = 160; // px to search back from ideal page boundary for a clean break
+      while (cur + ph < totalH) {
+        const idealEnd = cur + ph;
+        const nearby = sorted.filter(c => c > cur + 80 && c <= idealEnd && c >= idealEnd - LOOKBACK);
+        const breakAt = nearby.length > 0 ? nearby[nearby.length - 1] : idealEnd;
+        slices.push({ start: cur, height: breakAt - cur });
+        cur = breakAt;
+      }
+      slices.push({ start: cur, height: totalH - cur });
+      setPageSlices(slices);
     }
     recalc();
     const ro = new ResizeObserver(recalc);
-    ro.observe(wr); // watch wrapper width changes too
+    ro.observe(wr);
     return () => ro.disconnect();
   }, [cv, addedSections, hiddenFromPreview]);
 
@@ -1243,23 +1272,24 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
       {/* Page count badge */}
       <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "6px" }}>
         <span style={{ background: "rgba(0,0,0,0.18)", color: "#fff", fontSize: "11px", fontFamily: "Arial,sans-serif", padding: "2px 10px", borderRadius: "999px" }}>
-          {pageCount} page{pageCount !== 1 ? "s" : ""}
+          {pageSlices.length} page{pageSlices.length !== 1 ? "s" : ""}
         </span>
       </div>
 
-      {/* Visual stacked pages — each clips to exactly one A4 page of content */}
+      {/* Visual stacked pages — each clips cleanly at a block boundary */}
       <div className="cv-page-windows" style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-        {Array.from({ length: pageCount }, (_, i) => (
+        {pageSlices.map(({ start, height }, i) => (
           <div
             key={i}
             style={{
-              height: `${pageH}px`,
+              height: `${height}px`,
               overflow: "hidden",
               boxShadow: "0 4px 24px rgba(0,0,0,0.2)",
               position: "relative",
+              minHeight: "120px",
             }}
           >
-            <div style={{ ...cvContentStyle, transform: `translateY(-${i * pageH}px)` }}>
+            <div style={{ ...cvContentStyle, transform: `translateY(-${start}px)` }}>
               {cvInner}
             </div>
           </div>
