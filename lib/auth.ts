@@ -2,6 +2,21 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { getUserByEmail, updateUser } from "./db";
+import type { User } from "./types";
+
+// Dev fallback: reads from data/db.json when Supabase is unavailable locally
+async function getUserByEmailLocal(email: string): Promise<User | undefined> {
+  try {
+    const fs = await import("fs");
+    const path = await import("path");
+    const dbPath = path.join(process.cwd(), "data", "db.json");
+    const raw = fs.readFileSync(dbPath, "utf-8");
+    const db = JSON.parse(raw) as { users: User[] };
+    return db.users.find((u) => u.email === email);
+  } catch {
+    return undefined;
+  }
+}
 
 declare module "next-auth" {
   interface User {
@@ -44,7 +59,18 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const user = await getUserByEmail(credentials.email);
+        let user: User | null | undefined;
+        try {
+          user = await getUserByEmail(credentials.email);
+        } catch {
+          if (process.env.NODE_ENV === "development") {
+            user = await getUserByEmailLocal(credentials.email) ?? null;
+          }
+        }
+        if (!user && process.env.NODE_ENV === "development") {
+          // Supabase returned null (no error) — also try local JSON in dev
+          user = await getUserByEmailLocal(credentials.email) ?? null;
+        }
         if (!user) return null;
         const isValid = await bcrypt.compare(credentials.password, user.password);
         if (!isValid) return null;

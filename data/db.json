@@ -19,6 +19,17 @@
       "createdAt": "2026-05-06T06:24:51.343Z",
       "phone": "",
       "disabled": false
+    },
+    {
+      "id": "usr_test_candidate",
+      "name": "Joanna Rodrigues",
+      "email": "test.candidate@elevate-vue.com",
+      "password": "$2a$10$usBwyCAe895G/t84c98BjeK3xtVEFuY83r2jY34lN.u7zGPD5CMQq",
+      "role": "candidate",
+      "candidateId": "cand_001",
+      "createdAt": "2026-10-18T00:00:00.000Z",
+      "phone": "",
+      "disabled": false
     }
   ],
   "candidates": [

@@ -10,6 +10,7 @@ import {
 import { cn } from "@/lib/utils";
 import { WeeklyGoal, CVProfile, CVNamedProfile } from "@/lib/types";
 import { CVBuilder } from "@/components/portal/cv-builder";
+import { OnboardingWizard } from "@/components/portal/onboarding-wizard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -656,6 +657,7 @@ export default function PortalPage() {
   const [tab, setTab] = useState<Tab>("program");
 
   const isCandidateRole = session?.user?.role === "candidate";
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   async function load() {
     try {
@@ -668,7 +670,11 @@ export default function PortalPage() {
         return;
       }
       const data = await res.json();
-      setCandidate(isCandidateRole ? data : (Array.isArray(data) ? data[0] ?? null : data));
+      const loaded: PortalCandidate = isCandidateRole ? data : (Array.isArray(data) ? data[0] ?? null : data);
+      setCandidate(loaded);
+      if (loaded && !localStorage.getItem(`elevate_onboarded_${loaded.id}`)) {
+        setShowOnboarding(true);
+      }
     } catch {
       setError("Failed to load your profile.");
     }
@@ -707,6 +713,14 @@ export default function PortalPage() {
   ];
 
   return (
+    <>
+    {showOnboarding && candidate && (
+      <OnboardingWizard
+        candidateName={candidate.candidateName}
+        candidateId={candidate.id}
+        onComplete={() => setShowOnboarding(false)}
+      />
+    )}
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -746,5 +760,6 @@ export default function PortalPage() {
       {tab === "documents" && <DocumentsTab candidate={candidate} onUpload={load} />}
       {tab === "cv"        && <CVBuilderTab  candidate={candidate} />}
     </div>
+    </>
   );
 }
