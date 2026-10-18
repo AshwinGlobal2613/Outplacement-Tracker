@@ -65,7 +65,7 @@ const GOAL_FIELDS: Record<string, { jobTitle: string; location: string; industry
   "new-role":      { jobTitle: "Your desired job title",    location: "Your desired location",    industry: "Your desired industry",    bio: "Tell us about yourself, including your goals, what you are seeking from your next role, motivations, and more" },
   "career-change": { jobTitle: "Your desired job title",    location: "Your desired location",    industry: "Your desired industry",    bio: "Tell us about yourself, including your goals, what you are seeking from your next role, motivations, and more" },
   "own-business":  { jobTitle: "What business opportunities are you interested in?", location: "Your desired location", industry: "Your desired industry", bio: "" },
-  "retirement":    { jobTitle: "Any part-time role in mind", location: "Preferred location",        industry: "Area of interest",          bio: "Tell us about your vision for the next chapter and what you'd like to focus on" },
+  "retirement":    { jobTitle: "", location: "Your desired location", industry: "", bio: "Tell us more about your retirement expectations. When do you plan on retiring?" },
 };
 
 interface AboutInfo {
@@ -220,8 +220,34 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
                   <p className="text-sm text-muted-foreground mt-1">We&apos;ll use this info to customise your platform experience.</p>
                 </div>
 
-                {/* Own-business: simplified 3-field layout */}
-                {goal === "own-business" ? (
+                {/* Retirement: textarea + location only */}
+                {goal === "retirement" ? (
+                  <div className="space-y-4">
+                    <div className="flex flex-col">
+                      <label className={labelCls}>{fields.bio}</label>
+                      <textarea
+                        value={about.bio}
+                        onChange={(e) => setAboutField("bio", e.target.value.slice(0, bioMax))}
+                        placeholder="Share your thoughts..."
+                        rows={6}
+                        className={cn(inputCls, "resize-none")}
+                      />
+                      <p className="text-right text-xs text-muted-foreground mt-1">
+                        {bioMax - about.bio.length} characters remaining
+                      </p>
+                    </div>
+                    <div>
+                      <label className={labelCls}>{fields.location}</label>
+                      <input
+                        type="text"
+                        value={about.location}
+                        onChange={(e) => setAboutField("location", e.target.value)}
+                        placeholder="e.g. Dubai, UAE"
+                        className={inputCls}
+                      />
+                    </div>
+                  </div>
+                ) : goal === "own-business" ? (
                   <div className="space-y-4">
                     <div>
                       <label className={labelCls}>{fields.jobTitle}</label>
