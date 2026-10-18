@@ -16,13 +16,21 @@ const GOAL_OPTIONS = [
   { id: "retirement",    label: "Transition to retirement", Icon: Trophy },
 ];
 
-const PRIORITY_OPTIONS = [
-  { id: "cv",         label: "Polishing my CV" },
-  { id: "linkedin",   label: "LinkedIn presence" },
-  { id: "networking", label: "Building my network" },
-  { id: "interviews", label: "Interview preparation" },
-  { id: "salary",     label: "Salary negotiation" },
-  { id: "clarity",    label: "Career clarity" },
+const LAST_ROLE_OPTIONS = [
+  { id: "individual", label: "Employee or Individual Contributor" },
+  { id: "manager",    label: "Manager" },
+];
+
+const EXPERIENCE_LEVEL_OPTIONS = [
+  { id: "entry",   label: "Entry to Mid-Level" },
+  { id: "mid",     label: "Manager to Director" },
+  { id: "senior",  label: "VP to C Level" },
+];
+
+const UPSKILLING_OPTIONS = [
+  { id: "yes",       label: "Yes" },
+  { id: "no",        label: "No" },
+  { id: "not-sure",  label: "I'm not sure" },
 ];
 
 // Context-aware field labels for step 3 based on goal
@@ -52,7 +60,9 @@ interface Props {
 export function OnboardingWizard({ candidateName, candidateId, onComplete }: Props) {
   const [step, setStep] = useState(1);
   const [goal, setGoal] = useState("");
-  const [priorities, setPriorities] = useState<string[]>([]);
+  const [lastRole, setLastRole] = useState("");
+  const [experienceLevel, setExperienceLevel] = useState("");
+  const [upskilling, setUpskilling] = useState("");
   const [about, setAbout] = useState<AboutInfo>({
     jobTitle: "", location: "", industry: "", timezone: "",
     linkedin: "", bio: "", cvFileName: "",
@@ -77,10 +87,6 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
     if (step > 1) setStep((s) => s - 1);
   }
 
-  function togglePriority(id: string) {
-    setPriorities((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
-  }
-
   function setAboutField(key: keyof AboutInfo, value: string) {
     setAbout((a) => ({ ...a, [key]: value }));
   }
@@ -88,8 +94,8 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
   const canContinue =
     step === 1 ? true :
     step === 2 ? !!goal :
-    step === 3 ? true :  // all step 3 fields optional
-    step === 4 ? priorities.length > 0 :
+    step === 3 ? true :
+    step === 4 ? !!lastRole && !!experienceLevel && !!upskilling :
     true;
 
   const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all";
@@ -290,33 +296,87 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
               </div>
             )}
 
-            {/* Step 4 — Priorities */}
+            {/* Step 4 — Your Experience */}
             {step === 4 && (
-              <div className="space-y-5">
+              <div className="space-y-6">
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">What are your priorities?</h2>
-                  <p className="text-sm text-muted-foreground mt-1">Select everything that applies to you.</p>
+                  <h2 className="text-xl font-bold text-foreground">Your Experience</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Help us personalise your programme.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {PRIORITY_OPTIONS.map((o) => {
-                    const active = priorities.includes(o.id);
-                    return (
-                      <button key={o.id} onClick={() => togglePriority(o.id)}
-                        className={cn(
-                          "rounded-xl border px-4 py-3 text-left transition-all",
-                          active
-                            ? "border-primary bg-primary/10"
-                            : "border-border hover:border-primary/40 hover:bg-sidebar-accent"
+
+                {/* Q1 */}
+                <div className="space-y-2.5">
+                  <p className="text-sm font-semibold text-foreground">How would you describe your last role?</p>
+                  <div className="space-y-2">
+                    {LAST_ROLE_OPTIONS.map((o) => (
+                      <label key={o.id} className={cn(
+                        "flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all",
+                        lastRole === o.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/40 hover:bg-sidebar-accent"
+                      )}>
+                        <div className={cn(
+                          "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
+                          lastRole === o.id ? "border-primary" : "border-muted-foreground"
                         )}>
-                        <div className="flex items-center gap-2">
-                          {active && <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-primary" />}
-                          <p className={cn("text-sm font-medium", active ? "text-foreground" : "text-muted-foreground")}>
-                            {o.label}
-                          </p>
+                          {lastRole === o.id && <div className="h-2 w-2 rounded-full bg-primary" />}
                         </div>
-                      </button>
-                    );
-                  })}
+                        <input type="radio" name="lastRole" value={o.id} checked={lastRole === o.id}
+                          onChange={() => setLastRole(o.id)} className="sr-only" />
+                        <span className={cn("text-sm font-medium", lastRole === o.id ? "text-foreground" : "text-muted-foreground")}>
+                          {o.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Q2 */}
+                <div className="space-y-2.5">
+                  <p className="text-sm font-semibold text-foreground">What is your professional experience level?</p>
+                  <div className="space-y-2">
+                    {EXPERIENCE_LEVEL_OPTIONS.map((o) => (
+                      <label key={o.id} className={cn(
+                        "flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all",
+                        experienceLevel === o.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/40 hover:bg-sidebar-accent"
+                      )}>
+                        <div className={cn(
+                          "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
+                          experienceLevel === o.id ? "border-primary" : "border-muted-foreground"
+                        )}>
+                          {experienceLevel === o.id && <div className="h-2 w-2 rounded-full bg-primary" />}
+                        </div>
+                        <input type="radio" name="experienceLevel" value={o.id} checked={experienceLevel === o.id}
+                          onChange={() => setExperienceLevel(o.id)} className="sr-only" />
+                        <span className={cn("text-sm font-medium", experienceLevel === o.id ? "text-foreground" : "text-muted-foreground")}>
+                          {o.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Q3 */}
+                <div className="space-y-2.5">
+                  <p className="text-sm font-semibold text-foreground">Are you looking for retraining, education, or upskilling opportunities?</p>
+                  <div className="space-y-2">
+                    {UPSKILLING_OPTIONS.map((o) => (
+                      <label key={o.id} className={cn(
+                        "flex items-center gap-3 rounded-xl border px-4 py-3 cursor-pointer transition-all",
+                        upskilling === o.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/40 hover:bg-sidebar-accent"
+                      )}>
+                        <div className={cn(
+                          "h-4 w-4 rounded-full border-2 flex items-center justify-center shrink-0 transition-all",
+                          upskilling === o.id ? "border-primary" : "border-muted-foreground"
+                        )}>
+                          {upskilling === o.id && <div className="h-2 w-2 rounded-full bg-primary" />}
+                        </div>
+                        <input type="radio" name="upskilling" value={o.id} checked={upskilling === o.id}
+                          onChange={() => setUpskilling(o.id)} className="sr-only" />
+                        <span className={cn("text-sm font-medium", upskilling === o.id ? "text-foreground" : "text-muted-foreground")}>
+                          {o.label}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
