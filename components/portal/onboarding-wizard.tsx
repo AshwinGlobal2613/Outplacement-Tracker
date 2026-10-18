@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, CheckCircle2, Zap } from "lucide-react";
+import { ArrowLeft, ArrowRight, CheckCircle2, Zap } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STEPS = 5;
@@ -51,6 +51,10 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
   function next() {
     if (step < STEPS) setStep((s) => s + 1);
     else finish();
+  }
+
+  function back() {
+    if (step > 1) setStep((s) => s - 1);
   }
 
   function togglePriority(id: string) {
@@ -217,16 +221,25 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
               className="text-sm text-muted-foreground hover:text-foreground transition-colors hover:underline underline-offset-4">
               Skip to Dashboard
             </button>
-            <button onClick={next} disabled={!canContinue}
-              className={cn(
-                "flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all",
-                canContinue
-                  ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
-                  : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
-              )}>
-              {step === STEPS ? "Go to Dashboard" : "Continue"}
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              {step > 1 && (
+                <button onClick={back}
+                  className="flex items-center gap-1.5 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all">
+                  <ArrowLeft className="h-4 w-4" />
+                  Back
+                </button>
+              )}
+              <button onClick={next} disabled={!canContinue}
+                className={cn(
+                  "flex items-center gap-2 rounded-xl px-6 py-2.5 text-sm font-semibold transition-all",
+                  canContinue
+                    ? "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm"
+                    : "bg-muted text-muted-foreground cursor-not-allowed opacity-50"
+                )}>
+                {step === STEPS ? "Go to Dashboard" : "Continue"}
+                <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
