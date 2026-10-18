@@ -1,10 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   ArrowLeft, ArrowRight, CheckCircle2, Zap,
-  Briefcase, Shuffle, Store, Trophy,
-  Flame, CalendarClock, Compass, Infinity,
+  Briefcase, Shuffle, Store, Trophy, Paperclip,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -17,13 +16,6 @@ const GOAL_OPTIONS = [
   { id: "retirement",    label: "Transition to retirement", Icon: Trophy },
 ];
 
-const TIMELINE_OPTIONS = [
-  { id: "asap",      label: "As soon as possible", Icon: Flame },
-  { id: "3months",   label: "Within 3 months",     Icon: CalendarClock },
-  { id: "6months",   label: "Within 6 months",     Icon: Compass },
-  { id: "no-rush",   label: "No set timeline",     Icon: Infinity },
-];
-
 const PRIORITY_OPTIONS = [
   { id: "cv",         label: "Polishing my CV" },
   { id: "linkedin",   label: "LinkedIn presence" },
@@ -32,6 +24,24 @@ const PRIORITY_OPTIONS = [
   { id: "salary",     label: "Salary negotiation" },
   { id: "clarity",    label: "Career clarity" },
 ];
+
+// Context-aware field labels for step 3 based on goal
+const GOAL_FIELDS: Record<string, { jobTitle: string; location: string; industry: string; bio: string }> = {
+  "new-role":      { jobTitle: "Your desired job title",    location: "Your desired location",    industry: "Your desired industry",    bio: "Tell us about yourself, including your goals, what you are seeking from your next role, motivations, and more" },
+  "career-change": { jobTitle: "Target job title or field", location: "Preferred location",        industry: "Target industry",           bio: "Tell us about your background and what you're hoping to transition into" },
+  "own-business":  { jobTitle: "Type of business or role",  location: "Where you plan to operate", industry: "Your sector or niche",       bio: "Tell us about your business idea, goals, and what support would help most" },
+  "retirement":    { jobTitle: "Any part-time role in mind", location: "Preferred location",        industry: "Area of interest",          bio: "Tell us about your vision for the next chapter and what you'd like to focus on" },
+};
+
+interface AboutInfo {
+  jobTitle: string;
+  location: string;
+  industry: string;
+  timezone: string;
+  linkedin: string;
+  bio: string;
+  cvFileName: string;
+}
 
 interface Props {
   candidateName: string;
@@ -42,10 +52,16 @@ interface Props {
 export function OnboardingWizard({ candidateName, candidateId, onComplete }: Props) {
   const [step, setStep] = useState(1);
   const [goal, setGoal] = useState("");
-  const [timeline, setTimeline] = useState("");
   const [priorities, setPriorities] = useState<string[]>([]);
+  const [about, setAbout] = useState<AboutInfo>({
+    jobTitle: "", location: "", industry: "", timezone: "",
+    linkedin: "", bio: "", cvFileName: "",
+  });
+  const cvInputRef = useRef<HTMLInputElement>(null);
+  const bioMax = 500;
 
   const firstName = candidateName.split(" ")[0];
+  const fields = GOAL_FIELDS[goal] ?? GOAL_FIELDS["new-role"];
 
   function finish() {
     localStorage.setItem(`elevate_onboarded_${candidateId}`, "1");
@@ -65,16 +81,23 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
     setPriorities((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   }
 
+  function setAboutField(key: keyof AboutInfo, value: string) {
+    setAbout((a) => ({ ...a, [key]: value }));
+  }
+
   const canContinue =
     step === 1 ? true :
     step === 2 ? !!goal :
-    step === 3 ? !!timeline :
+    step === 3 ? true :  // all step 3 fields optional
     step === 4 ? priorities.length > 0 :
     true;
 
+  const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all";
+  const labelCls = "block text-sm font-semibold text-foreground mb-1.5";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm px-4">
-      <div className="w-full max-w-lg">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-sm px-4 py-6 overflow-y-auto">
+      <div className="w-full max-w-2xl my-auto">
         {/* Step tracker */}
         <div className="mb-8 flex items-center justify-center">
           {Array.from({ length: STEPS }, (_, i) => i + 1).map((s) => (
@@ -104,7 +127,7 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
 
         {/* Card */}
         <div className="rounded-2xl border border-border bg-card shadow-2xl overflow-hidden">
-          <div className="p-8 min-h-[340px] flex flex-col justify-center">
+          <div className={cn("p-8 flex flex-col justify-center", step === 3 ? "min-h-[400px]" : "min-h-[340px]")}>
 
             {/* Step 1 — Welcome */}
             {step === 1 && (
@@ -138,7 +161,7 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
                           "relative flex flex-col items-center justify-center gap-3 rounded-xl border px-4 py-6 text-center transition-all",
                           active
                             ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border hover:border-primary/40 hover:bg-sidebar-accent text-muted-foreground"
+                            : "border-border hover:border-primary/40 hover:bg-sidebar-accent"
                         )}>
                         {active && (
                           <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-primary-foreground" />
@@ -154,34 +177,115 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
               </div>
             )}
 
-            {/* Step 3 — Timeline */}
+            {/* Step 3 — Getting to know you */}
             {step === 3 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">What&apos;s your timeline?</h2>
-                  <p className="text-sm text-muted-foreground mt-1">How soon are you looking to land?</p>
+                  <h2 className="text-xl font-bold text-foreground">Getting to know you better.</h2>
+                  <p className="text-sm text-muted-foreground mt-1">We&apos;ll use this info to customise your platform experience.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {TIMELINE_OPTIONS.map(({ id, label, Icon }) => {
-                    const active = timeline === id;
-                    return (
-                      <button key={id} onClick={() => setTimeline(id)}
-                        className={cn(
-                          "relative flex flex-col items-center justify-center gap-3 rounded-xl border px-4 py-6 text-center transition-all",
-                          active
-                            ? "border-primary bg-primary text-primary-foreground"
-                            : "border-border hover:border-primary/40 hover:bg-sidebar-accent text-muted-foreground"
-                        )}>
-                        {active && (
-                          <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-primary-foreground" />
-                        )}
-                        <Icon className={cn("h-7 w-7", active ? "text-primary-foreground" : "text-muted-foreground")} />
-                        <p className={cn("text-sm font-semibold leading-snug", active ? "text-primary-foreground" : "text-foreground")}>
-                          {label}
-                        </p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  {/* Left column */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className={labelCls}>{fields.jobTitle}</label>
+                      <input
+                        type="text"
+                        value={about.jobTitle}
+                        onChange={(e) => setAboutField("jobTitle", e.target.value)}
+                        placeholder="e.g. Marketing Manager"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>{fields.location}</label>
+                      <input
+                        type="text"
+                        value={about.location}
+                        onChange={(e) => setAboutField("location", e.target.value)}
+                        placeholder="e.g. Dubai, UAE"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>{fields.industry}</label>
+                      <input
+                        type="text"
+                        value={about.industry}
+                        onChange={(e) => setAboutField("industry", e.target.value)}
+                        placeholder="e.g. Finance & Banking"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div>
+                      <label className={labelCls}>Time zone</label>
+                      <select
+                        value={about.timezone}
+                        onChange={(e) => setAboutField("timezone", e.target.value)}
+                        className={cn(inputCls, "cursor-pointer")}
+                      >
+                        <option value="">Select time zone...</option>
+                        <option value="Asia/Dubai">Asia/Dubai (GST +4)</option>
+                        <option value="Asia/Riyadh">Asia/Riyadh (AST +3)</option>
+                        <option value="Europe/London">Europe/London (GMT)</option>
+                        <option value="Europe/Paris">Europe/Paris (CET +1)</option>
+                        <option value="America/New_York">America/New York (EST -5)</option>
+                        <option value="America/Los_Angeles">America/Los Angeles (PST -8)</option>
+                        <option value="Asia/Singapore">Asia/Singapore (SGT +8)</option>
+                        <option value="Australia/Sydney">Australia/Sydney (AEDT +11)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className={labelCls}>Please upload your CV here</label>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Don&apos;t have one? No worries! We will help create one with you.
+                      </p>
+                      <input
+                        ref={cvInputRef}
+                        type="file"
+                        accept=".pdf,.doc,.docx"
+                        className="hidden"
+                        onChange={(e) => setAboutField("cvFileName", e.target.files?.[0]?.name ?? "")}
+                      />
+                      <button
+                        onClick={() => cvInputRef.current?.click()}
+                        className="flex items-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all"
+                      >
+                        <Paperclip className="h-4 w-4" />
+                        {about.cvFileName ? about.cvFileName : "Upload CV"}
                       </button>
-                    );
-                  })}
+                    </div>
+                  </div>
+
+                  {/* Right column */}
+                  <div className="space-y-4">
+                    <div>
+                      <label className={labelCls}>Please enter your LinkedIn URL</label>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Don&apos;t have one? We can help! Resources are on your dashboard.
+                      </p>
+                      <input
+                        type="url"
+                        value={about.linkedin}
+                        onChange={(e) => setAboutField("linkedin", e.target.value)}
+                        placeholder="https://linkedin.com/in/yourname"
+                        className={inputCls}
+                      />
+                    </div>
+                    <div className="flex flex-col">
+                      <label className={labelCls}>{fields.bio}</label>
+                      <textarea
+                        value={about.bio}
+                        onChange={(e) => setAboutField("bio", e.target.value.slice(0, bioMax))}
+                        placeholder="Share a bit about yourself..."
+                        rows={7}
+                        className={cn(inputCls, "resize-none")}
+                      />
+                      <p className="text-right text-xs text-muted-foreground mt-1">
+                        {bioMax - about.bio.length} characters remaining
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
