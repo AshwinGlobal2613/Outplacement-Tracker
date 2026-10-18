@@ -1,23 +1,27 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, ArrowRight, CheckCircle2, Zap } from "lucide-react";
+import {
+  ArrowLeft, ArrowRight, CheckCircle2, Zap,
+  Briefcase, Shuffle, Store, Trophy,
+  Flame, CalendarClock, Compass, Infinity,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const STEPS = 5;
 
 const GOAL_OPTIONS = [
-  { id: "new-role",      label: "Find a new role",          desc: "Same industry, next opportunity" },
-  { id: "career-change", label: "Change careers",           desc: "New direction, new possibilities" },
-  { id: "own-business",  label: "Start my own business",    desc: "Entrepreneurship & consulting" },
-  { id: "retirement",    label: "Transition to retirement", desc: "Phased retirement planning" },
+  { id: "new-role",      label: "Find a new role",          Icon: Briefcase },
+  { id: "career-change", label: "Change careers",           Icon: Shuffle },
+  { id: "own-business",  label: "Work for myself",          Icon: Store },
+  { id: "retirement",    label: "Transition to retirement", Icon: Trophy },
 ];
 
 const TIMELINE_OPTIONS = [
-  { id: "asap",      label: "As soon as possible", desc: "Actively searching now" },
-  { id: "3months",   label: "Within 3 months",     desc: "Focused but thoughtful" },
-  { id: "6months",   label: "Within 6 months",     desc: "Taking time to explore" },
-  { id: "no-rush",   label: "No set timeline",     desc: "Open to the right fit" },
+  { id: "asap",      label: "As soon as possible", Icon: Flame },
+  { id: "3months",   label: "Within 3 months",     Icon: CalendarClock },
+  { id: "6months",   label: "Within 6 months",     Icon: Compass },
+  { id: "no-rush",   label: "No set timeline",     Icon: Infinity },
 ];
 
 const PRIORITY_OPTIONS = [
@@ -75,16 +79,24 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
         <div className="mb-8 flex items-center justify-center">
           {Array.from({ length: STEPS }, (_, i) => i + 1).map((s) => (
             <div key={s} className="flex items-center">
-              <div className={cn(
-                "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all",
-                s < step  ? "bg-primary text-primary-foreground" :
-                s === step ? "bg-primary text-primary-foreground ring-4 ring-primary/20" :
-                "bg-muted text-muted-foreground"
-              )}>
-                {s < step ? <CheckCircle2 className="h-4 w-4" /> : s}
+              <div className="flex flex-col items-center gap-1.5">
+                <div className={cn(
+                  "flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-all",
+                  s < step  ? "bg-primary text-primary-foreground" :
+                  s === step ? "bg-primary text-primary-foreground ring-4 ring-primary/20" :
+                  "bg-muted text-muted-foreground"
+                )}>
+                  {s < step ? <CheckCircle2 className="h-4 w-4" /> : s}
+                </div>
+                <span className={cn(
+                  "text-[10px] font-medium whitespace-nowrap",
+                  s === step ? "text-foreground" : "text-muted-foreground"
+                )}>
+                  Step {s}
+                </span>
               </div>
               {s < STEPS && (
-                <div className={cn("h-px w-12 transition-all", s < step ? "bg-primary" : "bg-border")} />
+                <div className={cn("h-px w-10 mb-5 transition-all", s < step ? "bg-primary" : "bg-border")} />
               )}
             </div>
           ))}
@@ -114,22 +126,30 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
             {step === 2 && (
               <div className="space-y-5">
                 <div>
-                  <h2 className="text-xl font-bold text-foreground">What&apos;s your primary goal?</h2>
-                  <p className="text-sm text-muted-foreground mt-1">This helps us tailor your programme.</p>
+                  <h2 className="text-xl font-bold text-foreground">What are you looking for?</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Right now I&apos;m interested in...</p>
                 </div>
-                <div className="space-y-2.5">
-                  {GOAL_OPTIONS.map((o) => (
-                    <button key={o.id} onClick={() => setGoal(o.id)}
-                      className={cn(
-                        "w-full rounded-xl border px-4 py-3.5 text-left transition-all",
-                        goal === o.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/40 hover:bg-sidebar-accent"
-                      )}>
-                      <p className="text-sm font-semibold text-foreground">{o.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{o.desc}</p>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-3">
+                  {GOAL_OPTIONS.map(({ id, label, Icon }) => {
+                    const active = goal === id;
+                    return (
+                      <button key={id} onClick={() => setGoal(id)}
+                        className={cn(
+                          "relative flex flex-col items-center justify-center gap-3 rounded-xl border px-4 py-6 text-center transition-all",
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border hover:border-primary/40 hover:bg-sidebar-accent text-muted-foreground"
+                        )}>
+                        {active && (
+                          <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-primary-foreground" />
+                        )}
+                        <Icon className={cn("h-7 w-7", active ? "text-primary-foreground" : "text-muted-foreground")} />
+                        <p className={cn("text-sm font-semibold leading-snug", active ? "text-primary-foreground" : "text-foreground")}>
+                          {label}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -141,19 +161,27 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
                   <h2 className="text-xl font-bold text-foreground">What&apos;s your timeline?</h2>
                   <p className="text-sm text-muted-foreground mt-1">How soon are you looking to land?</p>
                 </div>
-                <div className="space-y-2.5">
-                  {TIMELINE_OPTIONS.map((o) => (
-                    <button key={o.id} onClick={() => setTimeline(o.id)}
-                      className={cn(
-                        "w-full rounded-xl border px-4 py-3.5 text-left transition-all",
-                        timeline === o.id
-                          ? "border-primary bg-primary/10"
-                          : "border-border hover:border-primary/40 hover:bg-sidebar-accent"
-                      )}>
-                      <p className="text-sm font-semibold text-foreground">{o.label}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{o.desc}</p>
-                    </button>
-                  ))}
+                <div className="grid grid-cols-2 gap-3">
+                  {TIMELINE_OPTIONS.map(({ id, label, Icon }) => {
+                    const active = timeline === id;
+                    return (
+                      <button key={id} onClick={() => setTimeline(id)}
+                        className={cn(
+                          "relative flex flex-col items-center justify-center gap-3 rounded-xl border px-4 py-6 text-center transition-all",
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border hover:border-primary/40 hover:bg-sidebar-accent text-muted-foreground"
+                        )}>
+                        {active && (
+                          <CheckCircle2 className="absolute top-2.5 right-2.5 h-4 w-4 text-primary-foreground" />
+                        )}
+                        <Icon className={cn("h-7 w-7", active ? "text-primary-foreground" : "text-muted-foreground")} />
+                        <p className={cn("text-sm font-semibold leading-snug", active ? "text-primary-foreground" : "text-foreground")}>
+                          {label}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
