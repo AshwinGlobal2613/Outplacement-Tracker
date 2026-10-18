@@ -7,7 +7,34 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const STEPS = 5;
+const STEPS = 6;
+
+const NOTIFICATION_OPTIONS = [
+  {
+    id: "basic",
+    label: "Basic",
+    icon: "🌿",
+    primary: "We will only send you notifications when absolutely necessary.",
+    secondary: "This will include basic account notifications like security alerts and forgot password emails.",
+    recommended: false,
+  },
+  {
+    id: "standard",
+    label: "Standard",
+    icon: "🌱",
+    primary: "We will send you important account notifications about helpful career transition resources related to assessments, workshops, guides and much more.",
+    secondary: "If your account is about to expire, or you've got an update from a Career Coach, we'll let you know.",
+    recommended: true,
+  },
+  {
+    id: "comprehensive",
+    label: "Comprehensive",
+    icon: "🌲",
+    primary: "We will send you the most relevant resources for your programme. Our goal is to consistently provide useful tips.",
+    secondary: "If your account is about to expire, or you've got an update from a Career Coach, we'll let you know.",
+    recommended: false,
+  },
+];
 
 const GOAL_OPTIONS = [
   { id: "new-role",      label: "Find a new role",          Icon: Briefcase },
@@ -63,6 +90,7 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
   const [lastRole, setLastRole] = useState("");
   const [experienceLevel, setExperienceLevel] = useState("");
   const [upskilling, setUpskilling] = useState("");
+  const [notificationPref, setNotificationPref] = useState("standard");
   const [about, setAbout] = useState<AboutInfo>({
     jobTitle: "", location: "", industry: "", timezone: "",
     linkedin: "", bio: "", cvFileName: "",
@@ -96,6 +124,7 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
     step === 2 ? !!goal :
     step === 3 ? true :
     step === 4 ? !!lastRole && !!experienceLevel && !!upskilling :
+    step === 5 ? !!notificationPref :
     true;
 
   const inputCls = "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all";
@@ -418,8 +447,47 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
               </div>
             )}
 
-            {/* Step 5 — Ready */}
+            {/* Step 5 — Notification preferences */}
             {step === 5 && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-xl font-bold text-foreground">Almost Done!</h2>
+                  <p className="text-sm text-muted-foreground mt-1">Tell us how involved you&apos;d like us to be — we&apos;re excited to make your experience amazing!</p>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  {NOTIFICATION_OPTIONS.map((o) => {
+                    const active = notificationPref === o.id;
+                    return (
+                      <button key={o.id} onClick={() => setNotificationPref(o.id)}
+                        className={cn(
+                          "relative flex flex-col items-center rounded-xl border-2 pt-8 pb-5 px-4 text-center transition-all",
+                          active ? "border-primary" : "border-border hover:border-primary/40"
+                        )}>
+                        {o.recommended && (
+                          <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-primary px-3 py-0.5 text-xs font-bold text-primary-foreground whitespace-nowrap">
+                            Recommended
+                          </span>
+                        )}
+                        <div className={cn(
+                          "mb-4 flex h-14 w-14 items-center justify-center rounded-full border-2 text-2xl",
+                          active ? "border-primary bg-primary/10" : "border-border bg-muted/30"
+                        )}>
+                          {o.icon}
+                        </div>
+                        <p className="text-base font-bold text-foreground mb-3">{o.label}</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mb-3">{o.primary}</p>
+                        <div className="border-t border-border w-full pt-3">
+                          <p className="text-xs text-muted-foreground leading-relaxed">{o.secondary}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Step 6 — Ready */}
+            {step === 6 && (
               <div className="text-center space-y-5">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500/20">
                   <CheckCircle2 className="h-7 w-7 text-emerald-400" />
