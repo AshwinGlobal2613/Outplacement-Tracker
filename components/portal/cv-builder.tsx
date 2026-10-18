@@ -560,14 +560,15 @@ function AppearancePanel({ currentStyle, onStyleChange }: { currentStyle: CVStyl
         <div className="border-t border-border/40 px-4 pb-4 pt-3 space-y-4">
           <div>
             <p className={labelCls}>Template</p>
-            <div className="flex gap-2 mt-1">
+            <div className="grid grid-cols-3 gap-2 mt-1">
               {([
-                { id: "classic", label: "Classic", desc: "Clean & professional" },
-                { id: "gmc",     label: "GMC",     desc: "Branded — crimson & purple" },
+                { id: "classic",    label: "Classic",    desc: "Single column" },
+                { id: "two-column", label: "Two Column", desc: "Split layout" },
+                { id: "gmc",        label: "GMC",        desc: "Crimson & purple" },
               ] as const).map((t) => (
                 <button key={t.id}
                   onClick={() => onStyleChange({ templateId: t.id })}
-                  className={cn("flex-1 rounded-xl border px-3 py-2 text-left transition-all",
+                  className={cn("rounded-xl border px-2 py-2 text-left transition-all",
                     (currentStyle.templateId ?? "classic") === t.id
                       ? "border-primary bg-primary/10"
                       : "border-border/60 hover:border-border"
@@ -1252,9 +1253,29 @@ function CVPreview({ cv, name, addedSections, hiddenFromPreview }: {
           )}
 
           {/* ── Sections body ── */}
-          <div style={{ padding: templateId === "gmc" ? "28px 52px 48px" : "22px 52px 48px" }}>
-            {visible.map((id) => renderSection(id))}
-          </div>
+          {templateId === "two-column" ? (
+            /* Two-column layout: main sections left, supplementary right */
+            (() => {
+              const LEFT_IDS = new Set(["summary", "experience", "education"]);
+              const leftSections  = visible.filter(id =>  LEFT_IDS.has(id));
+              const rightSections = visible.filter(id => !LEFT_IDS.has(id));
+              return (
+                <div style={{ display: "flex", padding: "22px 36px 48px", gap: "0", alignItems: "flex-start" }}>
+                  <div style={{ flex: "0 0 57%", paddingRight: "22px" }}>
+                    {leftSections.map(id => renderSection(id))}
+                  </div>
+                  <div style={{ width: "1px", background: "#e5e7eb", alignSelf: "stretch", flexShrink: 0 }} />
+                  <div style={{ flex: 1, paddingLeft: "22px" }}>
+                    {rightSections.map(id => renderSection(id))}
+                  </div>
+                </div>
+              );
+            })()
+          ) : (
+            <div style={{ padding: templateId === "gmc" ? "28px 52px 48px" : "22px 52px 48px" }}>
+              {visible.map((id) => renderSection(id))}
+            </div>
+          )}
         </>
   );
 

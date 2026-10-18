@@ -206,7 +206,7 @@ export interface CVStyle {
   fontFamily: string;                           // css font-family string
   fontSize: "sm" | "md" | "lg";
   spacing: "compact" | "normal" | "relaxed";
-  templateId?: "classic" | "gmc";
+  templateId?: "classic" | "gmc" | "two-column";
 }
 
 export interface CVProfile {
