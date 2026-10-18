@@ -37,7 +37,7 @@ const UPSKILLING_OPTIONS = [
 const GOAL_FIELDS: Record<string, { jobTitle: string; location: string; industry: string; bio: string }> = {
   "new-role":      { jobTitle: "Your desired job title",    location: "Your desired location",    industry: "Your desired industry",    bio: "Tell us about yourself, including your goals, what you are seeking from your next role, motivations, and more" },
   "career-change": { jobTitle: "Your desired job title",    location: "Your desired location",    industry: "Your desired industry",    bio: "Tell us about yourself, including your goals, what you are seeking from your next role, motivations, and more" },
-  "own-business":  { jobTitle: "Type of business or role",  location: "Where you plan to operate", industry: "Your sector or niche",       bio: "Tell us about your business idea, goals, and what support would help most" },
+  "own-business":  { jobTitle: "What business opportunities are you interested in?", location: "Your desired location", industry: "Your desired industry", bio: "" },
   "retirement":    { jobTitle: "Any part-time role in mind", location: "Preferred location",        industry: "Area of interest",          bio: "Tell us about your vision for the next chapter and what you'd like to focus on" },
 };
 
@@ -190,8 +190,9 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
                   <h2 className="text-xl font-bold text-foreground">Getting to know you better.</h2>
                   <p className="text-sm text-muted-foreground mt-1">We&apos;ll use this info to customise your platform experience.</p>
                 </div>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-                  {/* Left column */}
+
+                {/* Own-business: simplified 3-field layout */}
+                {goal === "own-business" ? (
                   <div className="space-y-4">
                     <div>
                       <label className={labelCls}>{fields.jobTitle}</label>
@@ -199,7 +200,7 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
                         type="text"
                         value={about.jobTitle}
                         onChange={(e) => setAboutField("jobTitle", e.target.value)}
-                        placeholder="e.g. Marketing Manager"
+                        placeholder="e.g. E-commerce, Consulting, Freelance Design"
                         className={inputCls}
                       />
                     </div>
@@ -219,80 +220,116 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
                         type="text"
                         value={about.industry}
                         onChange={(e) => setAboutField("industry", e.target.value)}
-                        placeholder="e.g. Finance & Banking"
+                        placeholder="e.g. Technology, Retail, Professional Services"
                         className={inputCls}
                       />
                     </div>
-                    <div>
-                      <label className={labelCls}>Time zone</label>
-                      <select
-                        value={about.timezone}
-                        onChange={(e) => setAboutField("timezone", e.target.value)}
-                        className={cn(inputCls, "cursor-pointer")}
-                      >
-                        <option value="">Select time zone...</option>
-                        <option value="Asia/Dubai">Asia/Dubai (GST +4)</option>
-                        <option value="Asia/Riyadh">Asia/Riyadh (AST +3)</option>
-                        <option value="Europe/London">Europe/London (GMT)</option>
-                        <option value="Europe/Paris">Europe/Paris (CET +1)</option>
-                        <option value="America/New_York">America/New York (EST -5)</option>
-                        <option value="America/Los_Angeles">America/Los Angeles (PST -8)</option>
-                        <option value="Asia/Singapore">Asia/Singapore (SGT +8)</option>
-                        <option value="Australia/Sydney">Australia/Sydney (AEDT +11)</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className={labelCls}>Please upload your CV here</label>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Don&apos;t have one? No worries! We will help create one with you.
-                      </p>
-                      <input
-                        ref={cvInputRef}
-                        type="file"
-                        accept=".pdf,.doc,.docx"
-                        className="hidden"
-                        onChange={(e) => setAboutField("cvFileName", e.target.files?.[0]?.name ?? "")}
-                      />
-                      <button
-                        onClick={() => cvInputRef.current?.click()}
-                        className="flex items-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all"
-                      >
-                        <Paperclip className="h-4 w-4" />
-                        {about.cvFileName ? about.cvFileName : "Upload CV"}
-                      </button>
-                    </div>
                   </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                    {/* Left column */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className={labelCls}>{fields.jobTitle}</label>
+                        <input
+                          type="text"
+                          value={about.jobTitle}
+                          onChange={(e) => setAboutField("jobTitle", e.target.value)}
+                          placeholder="e.g. Marketing Manager"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>{fields.location}</label>
+                        <input
+                          type="text"
+                          value={about.location}
+                          onChange={(e) => setAboutField("location", e.target.value)}
+                          placeholder="e.g. Dubai, UAE"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>{fields.industry}</label>
+                        <input
+                          type="text"
+                          value={about.industry}
+                          onChange={(e) => setAboutField("industry", e.target.value)}
+                          placeholder="e.g. Finance & Banking"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div>
+                        <label className={labelCls}>Time zone</label>
+                        <select
+                          value={about.timezone}
+                          onChange={(e) => setAboutField("timezone", e.target.value)}
+                          className={cn(inputCls, "cursor-pointer")}
+                        >
+                          <option value="">Select time zone...</option>
+                          <option value="Asia/Dubai">Asia/Dubai (GST +4)</option>
+                          <option value="Asia/Riyadh">Asia/Riyadh (AST +3)</option>
+                          <option value="Europe/London">Europe/London (GMT)</option>
+                          <option value="Europe/Paris">Europe/Paris (CET +1)</option>
+                          <option value="America/New_York">America/New York (EST -5)</option>
+                          <option value="America/Los_Angeles">America/Los Angeles (PST -8)</option>
+                          <option value="Asia/Singapore">Asia/Singapore (SGT +8)</option>
+                          <option value="Australia/Sydney">Australia/Sydney (AEDT +11)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className={labelCls}>Please upload your CV here</label>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Don&apos;t have one? No worries! We will help create one with you.
+                        </p>
+                        <input
+                          ref={cvInputRef}
+                          type="file"
+                          accept=".pdf,.doc,.docx"
+                          className="hidden"
+                          onChange={(e) => setAboutField("cvFileName", e.target.files?.[0]?.name ?? "")}
+                        />
+                        <button
+                          onClick={() => cvInputRef.current?.click()}
+                          className="flex items-center gap-2 rounded-lg border border-primary bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-all"
+                        >
+                          <Paperclip className="h-4 w-4" />
+                          {about.cvFileName ? about.cvFileName : "Upload CV"}
+                        </button>
+                      </div>
+                    </div>
 
-                  {/* Right column */}
-                  <div className="space-y-4">
-                    <div>
-                      <label className={labelCls}>Please enter your LinkedIn URL</label>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Don&apos;t have one? We can help! If you&apos;re interested in setting up your LinkedIn profile, you&apos;ll find resources on your dashboard to get started.
-                      </p>
-                      <input
-                        type="url"
-                        value={about.linkedin}
-                        onChange={(e) => setAboutField("linkedin", e.target.value)}
-                        placeholder="https://linkedin.com/in/yourname"
-                        className={inputCls}
-                      />
-                    </div>
-                    <div className="flex flex-col">
-                      <label className={labelCls}>{fields.bio}</label>
-                      <textarea
-                        value={about.bio}
-                        onChange={(e) => setAboutField("bio", e.target.value.slice(0, bioMax))}
-                        placeholder="Share a bit about yourself..."
-                        rows={7}
-                        className={cn(inputCls, "resize-none")}
-                      />
-                      <p className="text-right text-xs text-muted-foreground mt-1">
-                        {bioMax - about.bio.length} characters remaining
-                      </p>
+                    {/* Right column */}
+                    <div className="space-y-4">
+                      <div>
+                        <label className={labelCls}>Please enter your LinkedIn URL</label>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Don&apos;t have one? We can help! If you&apos;re interested in setting up your LinkedIn profile, you&apos;ll find resources on your dashboard to get started.
+                        </p>
+                        <input
+                          type="url"
+                          value={about.linkedin}
+                          onChange={(e) => setAboutField("linkedin", e.target.value)}
+                          placeholder="https://linkedin.com/in/yourname"
+                          className={inputCls}
+                        />
+                      </div>
+                      <div className="flex flex-col">
+                        <label className={labelCls}>{fields.bio}</label>
+                        <textarea
+                          value={about.bio}
+                          onChange={(e) => setAboutField("bio", e.target.value.slice(0, bioMax))}
+                          placeholder="Share a bit about yourself..."
+                          rows={7}
+                          className={cn(inputCls, "resize-none")}
+                        />
+                        <p className="text-right text-xs text-muted-foreground mt-1">
+                          {bioMax - about.bio.length} characters remaining
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
 
