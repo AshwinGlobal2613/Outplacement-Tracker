@@ -36,7 +36,7 @@ const UPSKILLING_OPTIONS = [
 // Context-aware field labels for step 3 based on goal
 const GOAL_FIELDS: Record<string, { jobTitle: string; location: string; industry: string; bio: string }> = {
   "new-role":      { jobTitle: "Your desired job title",    location: "Your desired location",    industry: "Your desired industry",    bio: "Tell us about yourself, including your goals, what you are seeking from your next role, motivations, and more" },
-  "career-change": { jobTitle: "Target job title or field", location: "Preferred location",        industry: "Target industry",           bio: "Tell us about your background and what you're hoping to transition into" },
+  "career-change": { jobTitle: "Your desired job title",    location: "Your desired location",    industry: "Your desired industry",    bio: "Tell us about yourself, including your goals, what you are seeking from your next role, motivations, and more" },
   "own-business":  { jobTitle: "Type of business or role",  location: "Where you plan to operate", industry: "Your sector or niche",       bio: "Tell us about your business idea, goals, and what support would help most" },
   "retirement":    { jobTitle: "Any part-time role in mind", location: "Preferred location",        industry: "Area of interest",          bio: "Tell us about your vision for the next chapter and what you'd like to focus on" },
 };
@@ -268,7 +268,7 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
                     <div>
                       <label className={labelCls}>Please enter your LinkedIn URL</label>
                       <p className="text-xs text-muted-foreground mb-2">
-                        Don&apos;t have one? We can help! Resources are on your dashboard.
+                        Don&apos;t have one? We can help! If you&apos;re interested in setting up your LinkedIn profile, you&apos;ll find resources on your dashboard to get started.
                       </p>
                       <input
                         type="url"
