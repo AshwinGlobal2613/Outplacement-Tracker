@@ -18,3 +18,4 @@ elevate-vue-wordpress-template.php
 preview-server.js
 
 .vercel
+.env*
