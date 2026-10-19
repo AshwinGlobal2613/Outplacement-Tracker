@@ -153,8 +153,10 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                 options={lists.partners}
                 placeholder="Challenger Grey, Intoo US…"
                 canCreate={true}
+                canDelete={true}
                 onChange={(v) => set("partner", v)}
                 onNewOption={refreshLists}
+                onOptionDeleted={refreshLists}
               />
             </Field>
             <Field label="Client Name">
@@ -164,8 +166,10 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
                 options={lists.clients}
                 placeholder="Epic Games, Sprinklr…"
                 canCreate={true}
+                canDelete={true}
                 onChange={(v) => set("clientName", v)}
                 onNewOption={refreshLists}
+                onOptionDeleted={refreshLists}
               />
             </Field>
           </div>

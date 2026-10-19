@@ -175,7 +175,7 @@ export function MultiCreatableSelect({
                     <button
                       type="button"
                       onClick={(e) => handleDeleteOption(e, opt)}
-                      className="ml-2 shrink-0 text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive transition-all"
+                      className="ml-2 shrink-0 text-muted-foreground hover:text-destructive transition-colors"
                       title={`Remove "${opt}"`}
                     >
                       <X className="h-3.5 w-3.5" />
