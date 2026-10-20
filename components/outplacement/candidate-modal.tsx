@@ -38,6 +38,7 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [lists, setLists] = useState<Lists>({ partners: [], clients: [], coaches: [], supports: [] });
+  const [staffNames, setStaffNames] = useState<string[]>([]);
 
   const [form, setForm] = useState({
     candidateName: candidate?.candidateName ?? "",
@@ -73,6 +74,14 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
 
   useEffect(() => {
     fetch("/api/lists").then((r) => r.json()).then(setLists);
+    fetch("/api/users")
+      .then((r) => r.json())
+      .then((users: { name: string; role?: string }[]) => {
+        const staff = users
+          .filter((u) => !u.role || u.role === "admin" || u.role === "team_member")
+          .map((u) => u.name);
+        setStaffNames(staff);
+      });
   }, []);
 
   useEffect(() => {
@@ -174,32 +183,28 @@ export function CandidateModal({ candidate, isAdmin = false, onClose, onSaved }:
             </Field>
           </div>
 
-          {/* Coach + Support — creatable dropdowns */}
+          {/* Coach + Support — populated from system users */}
           <div className="grid grid-cols-2 gap-4">
             <Field label="Lead Coach">
               <MultiCreatableSelect
                 value={form.leadCoach}
                 listKey="coaches"
-                options={lists.coaches}
+                options={staffNames}
                 placeholder="Select coaches…"
-                canCreate={true}
-                canDelete={true}
+                canCreate={false}
+                canDelete={false}
                 onChange={(v) => set("leadCoach", v)}
-                onNewOption={refreshLists}
-                onOptionDeleted={refreshLists}
               />
             </Field>
             <Field label="Support">
               <MultiCreatableSelect
                 value={form.support}
                 listKey="supports"
-                options={lists.supports}
+                options={staffNames}
                 placeholder="Select support…"
-                canCreate={true}
-                canDelete={true}
+                canCreate={false}
+                canDelete={false}
                 onChange={(v) => set("support", v)}
-                onNewOption={refreshLists}
-                onOptionDeleted={refreshLists}
               />
             </Field>
           </div>
