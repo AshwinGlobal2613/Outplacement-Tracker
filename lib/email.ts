@@ -1,7 +1,7 @@
 import type { Session } from "./types";
 
 const FROM     = `"Global Management Consultants" <${process.env.SMTP_FROM || "team@global-dubai.com"}>`;
-const BASE_URL = process.env.NEXTAUTH_URL || "https://outplacement-tracker-drab.vercel.app";
+const BASE_URL = (process.env.NEXTAUTH_URL || "https://outplacement-tracker-drab.vercel.app").replace(/\/login$/, "");
 const YEAR     = new Date().getFullYear();
 
 // ─── Core sender ─────────────────────────────────────────────────────────────
