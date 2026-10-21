@@ -1,14 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import {
   LayoutDashboard, Compass, Briefcase, GraduationCap, UserCircle,
   FileText, Network, BookOpen, MessageSquare, CheckCircle2,
   Target, Lightbulb, Sunset, Heart, ChevronRight, ChevronDown,
-  Bell, LogOut, Zap, Plus, Headphones, ExternalLink, Search,
-  List, Sparkles, MapPin, Building2, Calendar, Volume2,
+  Bell, LogOut, Plus, ExternalLink, Search, List, Sparkles,
+  MapPin, Building2, Calendar, Volume2, Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,7 +38,6 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { id: "networking-online",   label: "Online" },
       { id: "networking-inperson", label: "In-Person" },
-      { id: "networking-strategy", label: "Strategy" },
     ] },
   { id: "research",          label: "Research & Learning",   Icon: BookOpen,
     children: [{ id: "research-articles", label: "Articles" }] },
@@ -69,15 +67,15 @@ function avatarColor(str: string) {
 }
 
 const PLACEHOLDER_JOBS = [
-  { id: "1", title: "Senior Marketing Manager",       company: "Accenture",            location: "Dubai, UAE" },
-  { id: "2", title: "Head of Business Development",   company: "KPMG Middle East",     location: "Abu Dhabi, UAE" },
-  { id: "3", title: "Strategy Consultant",             company: "McKinsey & Company",  location: "Riyadh, KSA" },
+  { id: "1", title: "Senior Marketing Manager",       company: "Accenture",           location: "Dubai, UAE" },
+  { id: "2", title: "Head of Business Development",   company: "KPMG Middle East",    location: "Abu Dhabi, UAE" },
+  { id: "3", title: "Strategy Consultant",             company: "McKinsey & Company", location: "Riyadh, KSA" },
 ];
 
 const PLACEHOLDER_INSIGHTS = [
-  { id: "1", title: "Read the Market, Shape Your Strategy",       author: "Emma Collins",  date: "15 Oct 2026" },
-  { id: "2", title: '"Killer Skills" That Can Drain Your Career', author: "James Wright",  date: "08 Oct 2026" },
-  { id: "3", title: "Transferable Skills You May Be Overlooking", author: "Sara Ahmed",    date: "01 Oct 2026" },
+  { id: "1", title: "Read the Market, Shape Your Strategy",       author: "Emma Collins", date: "15 Oct 2026" },
+  { id: "2", title: '"Killer Skills" That Can Drain Your Career', author: "James Wright", date: "08 Oct 2026" },
+  { id: "3", title: "Transferable Skills You May Be Overlooking", author: "Sara Ahmed",   date: "01 Oct 2026" },
 ];
 
 function ProgressRing({ pct }: { pct: number }) {
@@ -96,12 +94,8 @@ function ProgressRing({ pct }: { pct: number }) {
   );
 }
 
-function Sidebar({ activeId, onSelect, firstName }: {
-  activeId: string;
-  onSelect: (id: string) => void;
-  firstName: string;
-}) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({ dashboard: false });
+function Sidebar({ activeId, onSelect }: { activeId: string; onSelect: (id: string) => void }) {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   function toggle(id: string) {
     setExpanded((p) => ({ ...p, [id]: !p[id] }));
@@ -109,17 +103,6 @@ function Sidebar({ activeId, onSelect, firstName }: {
 
   return (
     <aside className="flex h-full w-56 shrink-0 flex-col border-r border-border bg-card">
-      {/* Logo */}
-      <div className="flex h-14 shrink-0 items-center gap-2.5 border-b border-border px-4">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/20 ring-1 ring-primary/30">
-          <Zap className="h-3.5 w-3.5 text-primary" />
-        </div>
-        <div className="leading-tight">
-          <p className="text-[13px] font-bold text-foreground">Global MC</p>
-          <p className="text-[9px] text-muted-foreground uppercase tracking-widest">Career Portal</p>
-        </div>
-      </div>
-
       {/* Goal card */}
       <div className="mx-3 mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
         <p className="text-[9px] font-semibold uppercase tracking-widest text-primary/70 mb-1">Your Goal</p>
@@ -197,252 +180,207 @@ function Sidebar({ activeId, onSelect, firstName }: {
 }
 
 export default function CandidateDashboard() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const { data: session } = useSession();
   const [activeNav, setActiveNav] = useState("dashboard");
 
-  useEffect(() => {
-    if (status === "unauthenticated") router.push("/login");
-  }, [status, router]);
-
-  if (status === "loading" || !session) {
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
-        <div className="h-7 w-7 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  const fullName = session.user?.name || "there";
+  const fullName = session?.user?.name || "there";
   const firstName = fullName.split(" ")[0];
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  const motivationalQuotes = [
-    "A robust professional network can open doors to mentorship, collaboration, and new career opportunities.",
-    "Your next opportunity is closer than you think. Let's make today count.",
-    "Every application is a step forward. Keep going.",
-  ];
-  const quote = motivationalQuotes[new Date().getDate() % motivationalQuotes.length];
+  const quote = "A robust professional network can open doors to mentorship, collaboration, and new career opportunities.";
 
   return (
-    <div className="fixed inset-0 z-30 flex flex-col bg-background overflow-hidden">
+    <div className="flex h-full overflow-hidden">
+      <Sidebar activeId={activeNav} onSelect={setActiveNav} />
 
-      {/* ── Top header ── */}
-      <header className="flex h-14 shrink-0 items-center justify-between border-b border-border bg-card/80 backdrop-blur px-6">
-        <div className="w-56 shrink-0" /> {/* spacer matching sidebar width */}
-        <div className="flex items-center gap-1">
-          {["Help Centre", "Got Hired? 🎉", "Got Feedback?"].map((label) => (
-            <button
-              key={label}
-              className="rounded-lg px-3 py-1.5 text-[13px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors"
-            >
-              {label}
-            </button>
-          ))}
-          <div className="ml-2 flex items-center gap-2 rounded-lg border border-border px-3 py-1.5">
-            <div className={cn("flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-bold text-white", avatarColor(firstName))}>
-              {firstName[0]?.toUpperCase()}
+      {/* ── Main scroll area ── */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="flex gap-5 p-6 min-h-full">
+
+          {/* ── Content column ── */}
+          <div className="flex-1 min-w-0 space-y-5">
+
+            {/* Greeting */}
+            <div>
+              <h1 className="text-xl font-bold text-foreground">My Dashboard</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">{greeting}, {firstName}!</p>
+              <p className="text-xs text-muted-foreground/70 mt-0.5">{quote}</p>
             </div>
-            <span className="text-[13px] font-medium text-foreground">{firstName}</span>
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </div>
-        </div>
-      </header>
 
-      {/* ── Body ── */}
-      <div className="flex flex-1 overflow-hidden">
+            {/* ── Hero cards ── */}
+            <div className="grid grid-cols-3 gap-4">
 
-        <Sidebar activeId={activeNav} onSelect={setActiveNav} firstName={firstName} />
-
-        {/* ── Main scroll area ── */}
-        <main className="flex-1 overflow-y-auto">
-          <div className="flex gap-5 p-6 min-h-full">
-
-            {/* ── Content column ── */}
-            <div className="flex-1 min-w-0 space-y-5">
-
-              {/* Greeting */}
-              <div>
-                <h1 className="text-xl font-bold text-foreground">My Dashboard</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">{greeting} {firstName}!</p>
-                <p className="text-xs text-muted-foreground/70 mt-0.5">{quote}</p>
+              {/* Action Plan */}
+              <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold text-foreground text-[15px]">Action Plan</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">You&apos;re on Day One.</p>
+                  </div>
+                  <Calendar className="h-4 w-4 text-muted-foreground/30 mt-0.5" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="relative flex items-center justify-center shrink-0">
+                    <ProgressRing pct={2} />
+                    <span className="absolute text-[13px] font-bold text-foreground">2%</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Not sure where to start?{" "}
+                    <span className="text-primary font-medium cursor-pointer hover:underline">Click here</span>
+                    {" "}and get started on the plan we created for you!
+                  </p>
+                </div>
+                <button className="mt-auto w-full rounded-xl bg-primary py-2.5 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
+                  View Your Weekly Actions
+                </button>
               </div>
 
-              {/* ── Hero cards ── */}
-              <div className="grid grid-cols-3 gap-4">
-
-                {/* Action Plan */}
-                <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold text-foreground text-[15px]">Action Plan</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">You&apos;re on Day One.</p>
-                    </div>
-                    <Calendar className="h-4 w-4 text-muted-foreground/30 mt-0.5" />
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="relative flex items-center justify-center shrink-0">
-                      <ProgressRing pct={2} />
-                      <span className="absolute text-[13px] font-bold text-foreground">2%</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Not sure where to start?{" "}
-                      <span className="text-primary font-medium cursor-pointer hover:underline">Click here</span>
-                      {" "}and get started on the plan we created for you!
-                    </p>
-                  </div>
-                  <button className="mt-auto w-full rounded-xl bg-primary py-2.5 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors">
-                    View Your Weekly Actions
+              {/* Target Jobs */}
+              <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between">
+                  <h3 className="font-semibold text-foreground text-[15px]">Target Jobs</h3>
+                  <Briefcase className="h-4 w-4 text-primary/50 mt-0.5" />
+                </div>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  With My Jobs you can easily track your job search progress. Get started by saving a few target jobs now.
+                </p>
+                <div className="mt-auto space-y-2">
+                  <button className="w-full rounded-xl border border-primary/30 py-2 text-[13px] font-medium text-primary hover:bg-primary/10 transition-colors flex items-center justify-center gap-1.5">
+                    <Search className="h-3.5 w-3.5" /> Search Job Postings
                   </button>
-                </div>
-
-                {/* Target Jobs */}
-                <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-3">
-                  <div className="flex items-start justify-between">
-                    <h3 className="font-semibold text-foreground text-[15px]">Target Jobs</h3>
-                    <Briefcase className="h-4 w-4 text-primary/50 mt-0.5" />
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    With My Jobs you can easily track your job search progress. Get started by saving a few target jobs now.
-                  </p>
-                  <div className="mt-auto space-y-2">
-                    <button className="w-full rounded-xl border border-primary/30 py-2 text-[13px] font-medium text-primary hover:bg-primary/10 transition-colors flex items-center justify-center gap-1.5">
-                      <Search className="h-3.5 w-3.5" /> Search Job Postings
-                    </button>
-                    <button className="w-full rounded-xl border border-border py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors flex items-center justify-center gap-1.5">
-                      <List className="h-3.5 w-3.5" /> Job Boards List
-                    </button>
-                  </div>
-                </div>
-
-                {/* Meet Ayla */}
-                <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-3">
-                  <div className="flex items-start justify-between">
-                    <h3 className="font-semibold text-foreground text-[15px]">Meet Ayla</h3>
-                    <Sparkles className="h-4 w-4 text-primary/50 mt-0.5" />
-                  </div>
-                  <p className="text-xs font-medium text-foreground">Meet Ayla, Your AI-Based Assistant</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Getting started can be hard but that&apos;s where Ayla comes in. Ask for career advice, CV feedback, interview prep, and more.
-                  </p>
-                  <button className="mt-auto w-full rounded-xl border border-primary py-2.5 text-[13px] font-semibold text-primary hover:bg-primary/10 transition-colors">
-                    Learn About Ayla
+                  <button className="w-full rounded-xl border border-border py-2 text-[13px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors flex items-center justify-center gap-1.5">
+                    <List className="h-3.5 w-3.5" /> Job Boards List
                   </button>
                 </div>
               </div>
 
-              {/* ── Lower row ── */}
-              <div className="grid grid-cols-2 gap-4">
+              {/* Meet Ayla */}
+              <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-3">
+                <div className="flex items-start justify-between">
+                  <h3 className="font-semibold text-foreground text-[15px]">Meet Ayla</h3>
+                  <Sparkles className="h-4 w-4 text-primary/50 mt-0.5" />
+                </div>
+                <p className="text-xs font-medium text-foreground">Meet Ayla, Your AI-Based Assistant</p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Getting started can be hard but that&apos;s where Ayla comes in. Ask for career advice, CV feedback, interview prep, and more.
+                </p>
+                <button className="mt-auto w-full rounded-xl border border-primary py-2.5 text-[13px] font-semibold text-primary hover:bg-primary/10 transition-colors">
+                  Learn About Ayla
+                </button>
+              </div>
+            </div>
 
-                {/* Job Search Tools */}
-                <div className="rounded-2xl border border-border bg-card overflow-hidden">
-                  <div className="border-b border-border px-5 py-4">
-                    <h3 className="font-semibold text-foreground text-[15px]">Job Search Tools</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Search for posted job opportunities or use our catalog of job boards to expand your search.
-                    </p>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {PLACEHOLDER_JOBS.map((job) => (
-                      <div key={job.id} className="flex items-center gap-3 px-5 py-3.5">
-                        <div className={cn(
-                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold text-white",
-                          avatarColor(job.company)
-                        )}>
-                          {job.company[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[13px] font-medium text-foreground truncate">{job.title}</p>
-                          <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
-                            <Building2 className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{job.company}</span>
-                            <span className="mx-0.5">·</span>
-                            <MapPin className="h-3 w-3 shrink-0" />
-                            <span>{job.location}</span>
-                          </p>
-                        </div>
-                        <button className="shrink-0 rounded-full border border-border px-3 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors">
-                          View
+            {/* ── Lower row ── */}
+            <div className="grid grid-cols-2 gap-4">
+
+              {/* Job Search Tools */}
+              <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="border-b border-border px-5 py-4">
+                  <h3 className="font-semibold text-foreground text-[15px]">Job Search Tools</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Search for posted opportunities or use our catalog of job boards.
+                  </p>
+                </div>
+                <div className="divide-y divide-border">
+                  {PLACEHOLDER_JOBS.map((job) => (
+                    <div key={job.id} className="flex items-center gap-3 px-5 py-3.5">
+                      <div className={cn(
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold text-white",
+                        avatarColor(job.company)
+                      )}>
+                        {job.company[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[13px] font-medium text-foreground truncate">{job.title}</p>
+                        <p className="text-[11px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                          <Building2 className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{job.company}</span>
+                          <span className="mx-0.5">·</span>
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span>{job.location}</span>
+                        </p>
+                      </div>
+                      <button className="shrink-0 rounded-full border border-border px-3 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors">
+                        View
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Coach Insights */}
+              <div className="rounded-2xl border border-border bg-card overflow-hidden">
+                <div className="border-b border-border px-5 py-4">
+                  <h3 className="font-semibold text-foreground text-[15px]">Most Recent Coach Insights</h3>
+                </div>
+                <div className="divide-y divide-border">
+                  {PLACEHOLDER_INSIGHTS.map((article) => (
+                    <div key={article.id} className="flex items-center gap-3 px-5 py-3.5">
+                      <div className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold text-white",
+                        avatarColor(article.author)
+                      )}>
+                        {article.author[0]}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[12.5px] font-medium text-foreground leading-snug line-clamp-2">{article.title}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{article.author} · {article.date}</p>
+                      </div>
+                      <div className="flex flex-col gap-1.5 shrink-0">
+                        <button className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors">
+                          <ExternalLink className="h-3 w-3" /> Read Now
+                        </button>
+                        <button className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors">
+                          <Volume2 className="h-3 w-3" /> Listen
                         </button>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Coach Insights */}
-                <div className="rounded-2xl border border-border bg-card overflow-hidden">
-                  <div className="border-b border-border px-5 py-4">
-                    <h3 className="font-semibold text-foreground text-[15px]">Most Recent Coach Insights</h3>
-                  </div>
-                  <div className="divide-y divide-border">
-                    {PLACEHOLDER_INSIGHTS.map((article) => (
-                      <div key={article.id} className="flex items-center gap-3 px-5 py-3.5">
-                        <div className={cn(
-                          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-[13px] font-bold text-white",
-                          avatarColor(article.author)
-                        )}>
-                          {article.author[0]}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[12.5px] font-medium text-foreground leading-snug line-clamp-2">{article.title}</p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">{article.author} · {article.date}</p>
-                        </div>
-                        <div className="flex flex-col gap-1.5 shrink-0">
-                          <button className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors">
-                            <ExternalLink className="h-3 w-3" /> Read Now
-                          </button>
-                          <button className="flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-medium text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors">
-                            <Volume2 className="h-3 w-3" /> Listen
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-
-            {/* ── Right panel: Reminders ── */}
-            <aside className="w-64 shrink-0 space-y-4">
-              <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
-                <div>
-                  <h3 className="font-semibold text-foreground text-[15px]">Reminders</h3>
-                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                    Job search can be a stressful experience. Let us help you get started on planning your day to day.
-                  </p>
-                </div>
-                <button className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-2.5 text-[13px] font-medium text-foreground hover:bg-sidebar-accent transition-colors">
-                  <Plus className="h-4 w-4" /> New Reminder
-                </button>
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <Bell className="h-7 w-7 text-muted-foreground/20 mb-2" />
-                  <p className="text-[13px] text-muted-foreground">No reminders yet</p>
-                  <p className="text-xs text-muted-foreground/60 mt-0.5">Add one to stay on track</p>
-                </div>
-                <button className="text-[12px] text-primary hover:underline w-full text-center">
-                  See All Reminders
-                </button>
-              </div>
-
-              {/* Quick links */}
-              <div className="rounded-2xl border border-border bg-card p-4 space-y-1">
-                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2 px-1">Quick Links</p>
-                {[
-                  { label: "See All Reminders", Icon: Bell },
-                  { label: "View Action Plan",  Icon: Target },
-                  { label: "My Sessions",       Icon: Calendar },
-                  { label: "My Coach",          Icon: UserCircle },
-                ].map(({ label, Icon }) => (
-                  <button key={label} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors">
-                    <Icon className="h-3.5 w-3.5 shrink-0" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </aside>
-
           </div>
-        </main>
+
+          {/* ── Right panel: Reminders ── */}
+          <aside className="w-64 shrink-0 space-y-4">
+            <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+              <div>
+                <h3 className="font-semibold text-foreground text-[15px]">Reminders</h3>
+                <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                  Job search can be stressful. Let us help you plan your day to day.
+                </p>
+              </div>
+              <button className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-border bg-card py-2.5 text-[13px] font-medium text-foreground hover:bg-sidebar-accent transition-colors">
+                <Plus className="h-4 w-4" /> New Reminder
+              </button>
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                <Bell className="h-7 w-7 text-muted-foreground/20 mb-2" />
+                <p className="text-[13px] text-muted-foreground">No reminders yet</p>
+                <p className="text-xs text-muted-foreground/60 mt-0.5">Add one to stay on track</p>
+              </div>
+              <button className="text-[12px] text-primary hover:underline w-full text-center">
+                See All Reminders
+              </button>
+            </div>
+
+            {/* Quick links */}
+            <div className="rounded-2xl border border-border bg-card p-4 space-y-1">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-2 px-1">Quick Links</p>
+              {[
+                { label: "See All Reminders", Icon: Bell },
+                { label: "View Action Plan",  Icon: Target },
+                { label: "My Sessions",       Icon: Calendar },
+                { label: "My Coach",          Icon: UserCircle },
+              ].map(({ label, Icon }) => (
+                <button key={label} className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[12.5px] text-muted-foreground hover:text-foreground hover:bg-sidebar-accent transition-colors">
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </aside>
+
+        </div>
       </div>
     </div>
   );

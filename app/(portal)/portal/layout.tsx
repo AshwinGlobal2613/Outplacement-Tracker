@@ -163,10 +163,10 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
       : (session.user.clientCompany ?? "Client Portal");
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="flex h-screen flex-col bg-background overflow-hidden">
       {/* Top nav */}
-      <header className="sticky top-0 z-40 border-b border-border bg-card/80 backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4 sm:px-6">
+      <header className="shrink-0 z-40 border-b border-border bg-card/80 backdrop-blur-md">
+        <div className="flex h-16 items-center justify-between px-6">
           {/* Logo + name */}
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/20 ring-1 ring-primary/30">
@@ -198,7 +198,7 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
+      <main className="flex-1 overflow-hidden">
         {children}
       </main>
     </div>
