@@ -21,7 +21,12 @@ type NavItem = {
 const NAV_ITEMS: NavItem[] = [
   { id: "dashboard",         label: "Dashboard",            Icon: LayoutDashboard },
   { id: "orientation",       label: "Orientation",          Icon: Compass,
-    children: [{ id: "orientation-overview", label: "Overview" }] },
+    children: [
+      { id: "orientation-welcome",  label: "Welcome Message" },
+      { id: "orientation-action",   label: "Action Plan" },
+      { id: "orientation-ayla",     label: "Meet Ayla" },
+      { id: "orientation-resource", label: "Resource Centre" },
+    ] },
   { id: "jobs",              label: "Jobs",                 Icon: Briefcase,
     children: [
       { id: "jobs-search",  label: "Search Jobs" },
