@@ -254,18 +254,18 @@ export default function CandidateDashboard() {
                 </div>
               </div>
 
-              {/* Meet Ayla */}
+              {/* Meet Vera */}
               <div className="rounded-2xl border border-border bg-card p-5 flex flex-col gap-3">
                 <div className="flex items-start justify-between">
-                  <h3 className="font-semibold text-foreground text-[15px]">Meet Ayla</h3>
+                  <h3 className="font-semibold text-foreground text-[15px]">Meet Vera</h3>
                   <Sparkles className="h-4 w-4 text-primary/50 mt-0.5" />
                 </div>
-                <p className="text-xs font-medium text-foreground">Meet Ayla, Your AI-Based Assistant</p>
+                <p className="text-xs font-medium text-foreground">Meet Vera, Your AI-Based Assistant</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Getting started can be hard but that&apos;s where Ayla comes in. Ask for career advice, CV feedback, interview prep, and more.
+                  Getting started can be hard but that&apos;s where Vera comes in. Ask for career advice, CV feedback, interview prep, and more.
                 </p>
                 <button className="mt-auto w-full rounded-xl border border-primary py-2.5 text-[13px] font-semibold text-primary hover:bg-primary/10 transition-colors">
-                  Learn About Ayla
+                  Learn About Vera
                 </button>
               </div>
             </div>
