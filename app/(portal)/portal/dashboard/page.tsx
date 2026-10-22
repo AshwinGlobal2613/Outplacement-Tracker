@@ -85,58 +85,53 @@ const PLACEHOLDER_INSIGHTS = [
 
 function WelcomeMessage({ fullName, goal }: { fullName: string; goal: string }) {
   return (
-    <div className="flex gap-6 items-start">
-      {/* ── Left column: Section 1 + 1.1 ── */}
-      <div className="flex-1 min-w-0 space-y-6">
-        {/* Hero greeting */}
-        <div className="rounded-2xl border border-primary/20 bg-primary/5 px-8 py-7">
-          <p className="text-xs font-semibold uppercase tracking-widest text-primary/60 mb-2">Welcome</p>
-          <h1 className="text-2xl font-bold text-foreground leading-snug">
-            Hello {fullName},
-          </h1>
-          <h2 className="text-xl font-semibold text-primary mt-1">Welcome to Altius</h2>
-        </div>
+    <div className="flex-1 min-w-0 max-w-3xl space-y-8 py-2">
+      {/* Hero greeting */}
+      <div className="rounded-2xl border border-primary/20 bg-primary/5 px-8 py-7">
+        <p className="text-xs font-semibold uppercase tracking-widest text-primary/60 mb-2">Welcome</p>
+        <h1 className="text-2xl font-bold text-foreground leading-snug">
+          Hello {fullName},
+        </h1>
+        <h2 className="text-xl font-semibold text-primary mt-1">Welcome to Altius</h2>
+      </div>
 
-        {/* Programme overview */}
-        <div className="rounded-2xl border border-border bg-card px-8 py-7 space-y-4">
-          <p className="text-[15px] text-foreground leading-relaxed">
-            Your Altius career transition programme includes access to our career management platform
-            with resources on CV development, developing your personal brand, interview preparation,
-            networking and more. We know career transitions can be stressful and knowing where you are
-            heading tricky.
+      {/* Programme overview */}
+      <div className="rounded-2xl border border-border bg-card px-8 py-7 space-y-4">
+        <p className="text-[15px] text-foreground leading-relaxed">
+          Your Altius career transition programme includes access to our career management platform
+          with resources on CV development, developing your personal brand, interview preparation,
+          networking and more. We know career transitions can be stressful and knowing where you are
+          heading tricky.
+        </p>
+        <p className="text-[15px] text-foreground leading-relaxed">
+          Successful career transitions are more than just crafting a great CV and applying for jobs;
+          it&apos;s acknowledging how a transition impacts other aspects of a person&apos;s life and
+          well-being. For this reason, we&apos;ve included wellness resources to support you on your
+          journey and to a range of tools and resources at your fingertips.
+        </p>
+        <p className="text-[15px] text-foreground leading-relaxed">
+          <span className="font-semibold text-primary">Altius</span> is your personal career
+          management tool designed to help you achieve your next move, whatever the situation.
+        </p>
+        <div className="rounded-xl border border-primary/20 bg-primary/5 px-5 py-4 mt-2">
+          <p className="text-[14px] text-foreground leading-relaxed">
+            Based on what you have shared with us during onboarding, you are interested in{" "}
+            <span className="font-semibold text-primary">{goal}</span>. We want to help you do that.
           </p>
-          <p className="text-[15px] text-foreground leading-relaxed">
-            Successful career transitions are more than just crafting a great CV and applying for jobs;
-            it&apos;s acknowledging how a transition impacts other aspects of a person&apos;s life and
-            well-being. For this reason, we&apos;ve included wellness resources to support you on your
-            journey and to a range of tools and resources at your fingertips.
-          </p>
-          <p className="text-[15px] text-foreground leading-relaxed">
-            <span className="font-semibold text-primary">Altius</span> is your personal career
-            management tool designed to help you achieve your next move, whatever the situation.
-          </p>
-          <div className="rounded-xl border border-primary/20 bg-primary/5 px-5 py-4">
-            <p className="text-[14px] text-foreground leading-relaxed">
-              Based on what you have shared with us during onboarding, you are interested in{" "}
-              <span className="font-semibold text-primary">{goal}</span>. We want to help you do that.
-            </p>
-          </div>
         </div>
       </div>
 
-      {/* ── Right column: Section 2 ── */}
-      <div className="w-72 shrink-0">
-        <div className="rounded-2xl border border-border bg-card px-6 py-6 space-y-4">
-          <h3 className="text-[14px] font-semibold text-foreground leading-snug">
-            Here are the other insights you shared with us about your goals and motivations:
-          </h3>
-          <div className="rounded-xl border border-border bg-sidebar-accent/40 px-4 py-4">
-            <p className="text-[13px] text-foreground leading-relaxed">
-              You indicated you are interested in{" "}
-              <span className="font-semibold text-primary">{goal}</span>. We are confident you can
-              achieve this goal, and we&apos;re here to support you.
-            </p>
-          </div>
+      {/* Goals & motivations */}
+      <div className="rounded-2xl border border-border bg-card px-8 py-7 space-y-4">
+        <h3 className="text-base font-semibold text-foreground">
+          Here are the other insights you shared with us about your goals and motivations:
+        </h3>
+        <div className="rounded-xl border border-border bg-sidebar-accent/40 px-5 py-4">
+          <p className="text-[14px] text-foreground leading-relaxed">
+            You indicated you are interested in{" "}
+            <span className="font-semibold text-primary">{goal}</span>. We are confident you can
+            achieve this goal, and we&apos;re here to support you.
+          </p>
         </div>
       </div>
     </div>
