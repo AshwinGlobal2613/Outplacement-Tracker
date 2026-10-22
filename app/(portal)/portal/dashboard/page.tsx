@@ -24,7 +24,7 @@ const NAV_ITEMS: NavItem[] = [
     children: [
       { id: "orientation-welcome",  label: "Welcome Message" },
       { id: "orientation-action",   label: "Action Plan" },
-      { id: "orientation-ayla",     label: "Meet Ayla" },
+      { id: "orientation-vera",     label: "Meet Vera" },
       { id: "orientation-resource", label: "Resource Centre" },
     ] },
   { id: "jobs",              label: "Jobs",                 Icon: Briefcase,
