@@ -103,6 +103,12 @@ export function OnboardingWizard({ candidateName, candidateId, onComplete }: Pro
 
   function finish() {
     localStorage.setItem(`elevate_onboarded_${candidateId}`, "1");
+    try {
+      localStorage.setItem(
+        `elevate_onboarding_${candidateId}`,
+        JSON.stringify({ goal, jobTitle: about.jobTitle, location: about.location, industry: about.industry, bio: about.bio }),
+      );
+    } catch { /* ignore storage errors */ }
     onComplete();
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import {
   LayoutDashboard, Compass, Briefcase, GraduationCap, UserCircle,
@@ -83,7 +83,7 @@ const PLACEHOLDER_INSIGHTS = [
   { id: "3", title: "Transferable Skills You May Be Overlooking", author: "Sara Ahmed",   date: "01 Oct 2026" },
 ];
 
-function WelcomeMessage({ fullName, goal }: { fullName: string; goal: string }) {
+function WelcomeMessage({ fullName, goal, bio, jobTitle }: { fullName: string; goal: string; bio?: string; jobTitle?: string }) {
   return (
     <div className="flex gap-5 items-start py-2">
 
@@ -131,12 +131,20 @@ function WelcomeMessage({ fullName, goal }: { fullName: string; goal: string }) 
           <h3 className="text-base font-semibold text-foreground">
             Here are the other insights you shared with us about your goals and motivations:
           </h3>
-          <div className="rounded-xl border border-border bg-sidebar-accent/40 px-5 py-4">
+          <div className="rounded-xl border border-border bg-sidebar-accent/40 px-5 py-4 space-y-3">
             <p className="text-[14px] text-foreground leading-relaxed">
               You indicated you are interested in{" "}
-              <span className="font-semibold text-primary">{goal}</span>. We are confident you can
-              achieve this goal, and we&apos;re here to support you.
+              <span className="font-semibold text-primary">{goal}</span>
+              {jobTitle ? (
+                <>, with a focus on{" "}<span className="font-semibold text-primary">{jobTitle}</span></>
+              ) : null}
+              . We are confident you can achieve this goal, and we&apos;re here to support you.
             </p>
+            {bio && (
+              <p className="text-[13px] text-muted-foreground leading-relaxed italic border-t border-border/60 pt-3">
+                &ldquo;{bio}&rdquo;
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -161,7 +169,7 @@ function ProgressRing({ pct }: { pct: number }) {
   );
 }
 
-function Sidebar({ activeId, onSelect }: { activeId: string; onSelect: (id: string) => void }) {
+function Sidebar({ activeId, onSelect, goalLabel }: { activeId: string; onSelect: (id: string) => void; goalLabel: string }) {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   function toggle(id: string) {
@@ -173,7 +181,7 @@ function Sidebar({ activeId, onSelect }: { activeId: string; onSelect: (id: stri
       {/* Goal card */}
       <div className="mx-3 mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
         <p className="text-[9px] font-semibold uppercase tracking-widest text-primary/70 mb-1">Your Goal</p>
-        <p className="text-xs font-semibold text-foreground leading-snug">Land a Similar Job</p>
+        <p className="text-xs font-semibold text-foreground leading-snug capitalize">{goalLabel}</p>
         <button className="mt-2 flex items-center gap-1 text-[11px] font-medium text-primary hover:underline">
           View Action Plan <ChevronRight className="h-3 w-3" />
         </button>
@@ -255,15 +263,34 @@ export default function CandidateDashboard() {
   const hour = new Date().getHours();
   const greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   const quote = "A robust professional network can open doors to mentorship, collaboration, and new career opportunities.";
-  const candidateGoal = "landing a similar job";
+
+  const GOAL_LABELS: Record<string, string> = {
+    "new-role":      "finding a new role",
+    "career-change": "changing careers",
+    "own-business":  "working for yourself",
+    "retirement":    "transitioning to retirement",
+  };
+
+  const [onboardingData, setOnboardingData] = useState<{ goal: string; jobTitle: string; bio: string } | null>(null);
+  useEffect(() => {
+    const candidateId = session?.user?.id;
+    if (!candidateId) return;
+    try {
+      const raw = localStorage.getItem(`elevate_onboarding_${candidateId}`);
+      if (raw) setOnboardingData(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, [session?.user?.id]);
+
+  const goalLabel = onboardingData?.goal ? (GOAL_LABELS[onboardingData.goal] ?? onboardingData.goal) : "landing a similar job";
+  const candidateGoal = goalLabel;
 
   if (activeNav === "orientation-welcome") {
     return (
       <div className="flex h-full overflow-hidden">
-        <Sidebar activeId={activeNav} onSelect={setActiveNav} />
+        <Sidebar activeId={activeNav} onSelect={setActiveNav} goalLabel={candidateGoal} />
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
-            <WelcomeMessage fullName={fullName} goal={candidateGoal} />
+            <WelcomeMessage fullName={fullName} goal={candidateGoal} bio={onboardingData?.bio} jobTitle={onboardingData?.jobTitle} />
           </div>
         </div>
       </div>
@@ -272,7 +299,7 @@ export default function CandidateDashboard() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      <Sidebar activeId={activeNav} onSelect={setActiveNav} />
+      <Sidebar activeId={activeNav} onSelect={setActiveNav} goalLabel={candidateGoal} />
 
       {/* ── Main scroll area ── */}
       <div className="flex-1 overflow-y-auto">
