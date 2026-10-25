@@ -149,6 +149,22 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
     }
   }, [status, session, router]);
 
+  // On every load, verify the account still exists and is not disabled
+  useEffect(() => {
+    if (status !== "authenticated") return;
+    fetch("/api/auth/check-access")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data.allowed) {
+          // Sign out and redirect with a reason the login page can display
+          import("next-auth/react").then(({ signOut }) =>
+            signOut({ callbackUrl: `/login?reason=${data.reason ?? "disabled"}` })
+          );
+        }
+      })
+      .catch(() => { /* network error — fail open */ });
+  }, [status]);
+
   if (status === "loading" || !session) {
     return (
       <div className="flex h-screen items-center justify-center bg-background">

@@ -16,10 +16,15 @@ function LoginContent() {
   const [loading, setLoading] = useState(false);
   const [justRegistered, setJustRegistered] = useState(false);
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [accessDeniedReason, setAccessDeniedReason] = useState("");
 
   useEffect(() => {
     if (searchParams.get("registered") === "1") setJustRegistered(true);
     if (searchParams.get("reset") === "1") setResetSuccess(true);
+    const reason = searchParams.get("reason");
+    if (reason === "disabled") setAccessDeniedReason("Your account has been disabled. Please contact your programme administrator.");
+    else if (reason === "deleted") setAccessDeniedReason("Your account no longer exists. Please contact your programme administrator.");
+    else if (reason) setAccessDeniedReason("Your session has ended. Please sign in again.");
   }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -68,6 +73,14 @@ function LoginContent() {
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
         <p className="text-sm text-muted-foreground">Sign in to your Global — Outplacement Management System account</p>
       </div>
+
+      {/* Access denied banner */}
+      {accessDeniedReason && (
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          <span className="mt-0.5 shrink-0">⚠</span>
+          {accessDeniedReason}
+        </div>
+      )}
 
       {/* Success banners */}
       {justRegistered && (
