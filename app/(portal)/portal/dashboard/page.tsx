@@ -275,25 +275,25 @@ export default function CandidateDashboard() {
   const [onboardingData, setOnboardingData] = useState<{ goal: string; jobTitle: string; bio: string } | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
+  // Stable key: prefer user id, fall back to email so the check works even if id is absent
+  const candidateKey = session?.user?.id || session?.user?.email || "";
+
   useEffect(() => {
-    const candidateId = session?.user?.id;
-    if (!candidateId) return;
+    if (!candidateKey) return;
     try {
-      const raw = localStorage.getItem(`elevate_onboarding_${candidateId}`);
+      const raw = localStorage.getItem(`elevate_onboarding_${candidateKey}`);
       if (raw) setOnboardingData(JSON.parse(raw));
-      // Show wizard if candidate has never completed onboarding
-      const done = localStorage.getItem(`elevate_onboarded_${candidateId}`);
+      // Show wizard if this candidate has never completed onboarding on this browser
+      const done = localStorage.getItem(`elevate_onboarded_${candidateKey}`);
       if (!done) setShowOnboarding(true);
     } catch { /* ignore */ }
-  }, [session?.user?.id]);
+  }, [candidateKey]);
 
   function handleOnboardingComplete() {
     setShowOnboarding(false);
     // Reload onboarding data so Welcome Message and sidebar reflect new answers
-    const candidateId = session?.user?.id;
-    if (!candidateId) return;
     try {
-      const raw = localStorage.getItem(`elevate_onboarding_${candidateId}`);
+      const raw = localStorage.getItem(`elevate_onboarding_${candidateKey}`);
       if (raw) setOnboardingData(JSON.parse(raw));
     } catch { /* ignore */ }
   }
@@ -302,11 +302,11 @@ export default function CandidateDashboard() {
   const candidateGoal = goalLabel;
 
   // Show onboarding wizard overlay for new candidates
-  if (showOnboarding && session?.user?.id) {
+  if (showOnboarding && candidateKey) {
     return (
       <OnboardingWizard
         candidateName={fullName}
-        candidateId={session.user.id}
+        candidateId={candidateKey}
         onComplete={handleOnboardingComplete}
       />
     );
