@@ -84,7 +84,7 @@ const PLACEHOLDER_INSIGHTS = [
   { id: "3", title: "Transferable Skills You May Be Overlooking", author: "Sara Ahmed",   date: "01 Oct 2026" },
 ];
 
-function WelcomeMessage({ fullName, goal, bio, jobTitle }: { fullName: string; goal: string; bio?: string; jobTitle?: string }) {
+function WelcomeMessage({ fullName, goal, bio, jobTitle, location }: { fullName: string; goal: string; bio?: string; jobTitle?: string; location?: string }) {
   return (
     <div className="flex gap-5 items-start py-2">
 
@@ -128,24 +128,72 @@ function WelcomeMessage({ fullName, goal, bio, jobTitle }: { fullName: string; g
 
       {/* Right column: Section 2 */}
       <div className="flex-1 min-w-0">
-        <div className="rounded-2xl border border-border bg-card px-8 py-7 space-y-4">
+        <div className="rounded-2xl border border-border bg-card px-8 py-7 space-y-5">
           <h3 className="text-base font-semibold text-foreground">
             Here are the other insights you shared with us about your goals and motivations:
           </h3>
-          <div className="rounded-xl border border-border bg-sidebar-accent/40 px-5 py-4 space-y-3">
-            <p className="text-[14px] text-foreground leading-relaxed">
-              You indicated you are interested in{" "}
-              <span className="font-semibold text-primary">{goal}</span>
-              {jobTitle ? (
-                <>, with a focus on{" "}<span className="font-semibold text-primary">{jobTitle}</span></>
-              ) : null}
-              . We are confident you can achieve this goal, and we&apos;re here to support you.
-            </p>
-            {bio && (
-              <p className="text-[13px] text-muted-foreground leading-relaxed italic border-t border-border/60 pt-3">
-                &ldquo;{bio}&rdquo;
-              </p>
-            )}
+
+          {/* 2×2 info cards */}
+          <div className="grid grid-cols-2 gap-3">
+
+            {/* Transition Goal */}
+            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary">Transition Goal:</p>
+                <p className="text-sm text-foreground font-medium capitalize leading-snug">
+                  {goal || "Not set"}
+                </p>
+                <button className="text-xs text-primary underline underline-offset-2 hover:text-primary/80 transition-colors text-left">
+                  Update Your Transition Goal
+                </button>
+              </div>
+              <Briefcase className="h-7 w-7 shrink-0 text-primary/50 mt-0.5" />
+            </div>
+
+            {/* Location */}
+            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary">Location:</p>
+                {location ? (
+                  <p className="text-sm text-foreground font-medium leading-snug">{location}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">Not specified</p>
+                )}
+                <button className="text-xs text-primary underline underline-offset-2 hover:text-primary/80 transition-colors text-left">
+                  Update Your Desired Location
+                </button>
+              </div>
+              <MapPin className="h-7 w-7 shrink-0 text-primary/50 mt-0.5" />
+            </div>
+
+            {/* Timeline */}
+            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary">Timeline:</p>
+                <p className="text-sm text-foreground font-medium leading-snug">No set timeline</p>
+                <button className="text-xs text-primary underline underline-offset-2 hover:text-primary/80 transition-colors text-left">
+                  Update Your Desired Timeline
+                </button>
+              </div>
+              <Calendar className="h-7 w-7 shrink-0 text-primary/50 mt-0.5" />
+            </div>
+
+            {/* Goals and Motivations */}
+            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex items-start justify-between gap-3">
+              <div className="min-w-0 space-y-1.5">
+                <p className="text-xs font-bold uppercase tracking-wide text-primary">Goals and Motivations:</p>
+                {bio ? (
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3">{bio}</p>
+                ) : (
+                  <p className="text-xs text-muted-foreground italic">Not provided</p>
+                )}
+                <button className="text-xs text-primary underline underline-offset-2 hover:text-primary/80 transition-colors text-left">
+                  View Your Goals
+                </button>
+              </div>
+              <UserCircle className="h-7 w-7 shrink-0 text-primary/50 mt-0.5" />
+            </div>
+
           </div>
         </div>
       </div>
@@ -272,7 +320,7 @@ export default function CandidateDashboard() {
     "retirement":    "transitioning to retirement",
   };
 
-  const [onboardingData, setOnboardingData] = useState<{ goal: string; jobTitle: string; bio: string } | null>(null);
+  const [onboardingData, setOnboardingData] = useState<{ goal: string; jobTitle: string; bio: string; location: string } | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Stable key: prefer user id, fall back to email so the check works even if id is absent
@@ -318,7 +366,7 @@ export default function CandidateDashboard() {
         <Sidebar activeId={activeNav} onSelect={setActiveNav} goalLabel={candidateGoal} />
         <div className="flex-1 overflow-y-auto">
           <div className="p-6">
-            <WelcomeMessage fullName={fullName} goal={candidateGoal} bio={onboardingData?.bio} jobTitle={onboardingData?.jobTitle} />
+            <WelcomeMessage fullName={fullName} goal={candidateGoal} bio={onboardingData?.bio} jobTitle={onboardingData?.jobTitle} location={onboardingData?.location} />
           </div>
         </div>
       </div>
