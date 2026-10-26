@@ -216,6 +216,74 @@ function WelcomeMessage({ fullName, goal, bio, jobTitle, location }: { fullName:
           </div>
         </div>
 
+        {/* Closing message card */}
+        <div className="rounded-2xl border border-border bg-card px-8 py-7 flex gap-8 items-start">
+          <div className="flex-1 min-w-0 space-y-4">
+            <p className="text-[14px] text-foreground leading-relaxed">
+              Thank you for sharing this important background with us. Whenever you want to change your
+              settings or update your preferences,{" "}
+              <span className="text-primary underline underline-offset-2 cursor-pointer hover:text-primary/80 transition-colors">
+                please visit your profile page
+              </span>{" "}
+              so that we can continue to offer you resources that align with and match your career goals.
+              We&apos;ve also prepared a{" "}
+              <span className="text-primary underline underline-offset-2 cursor-pointer hover:text-primary/80 transition-colors">
+                Help Centre
+              </span>{" "}
+              that can answer some frequently asked questions, and you can of course always{" "}
+              <span className="text-primary underline underline-offset-2 cursor-pointer hover:text-primary/80 transition-colors">
+                share feedback with us here
+              </span>
+              .
+            </p>
+            <p className="text-[14px] text-foreground leading-relaxed">
+              Additionally, to further help you achieve your goal, we&apos;ve built your custom{" "}
+              <span className="text-primary underline underline-offset-2 cursor-pointer hover:text-primary/80 transition-colors">
+                Action Plan
+              </span>{" "}
+              designed to give you the right guidance at the right time during your career transition. If
+              you find you want to skip a resource or mark it as completed, you can do that at any time
+              and your progress tracker will automatically advance.
+            </p>
+            <p className="text-[14px] text-foreground leading-relaxed">
+              Finally, before you dive into your career transition, we want to remind you that we
+              understand the challenges of finding yourself in an unexpected career transition. Stay
+              positive — we are here to support you, and we hope you see{" "}
+              <span className="font-semibold text-primary">Altius</span> as your career transition home.
+            </p>
+            <div className="pt-1 space-y-0.5">
+              <p className="text-[14px] text-foreground">Very Sincerely,</p>
+              <p className="text-[14px] font-semibold text-foreground">The Entire Altius Team</p>
+            </div>
+          </div>
+
+          {/* Decorative illustration */}
+          <div className="shrink-0 w-36 h-36 flex items-center justify-center opacity-70">
+            <svg viewBox="0 0 140 140" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+              {/* Ground */}
+              <ellipse cx="70" cy="118" rx="58" ry="16" fill="hsl(var(--primary)/0.12)" />
+              {/* Sand/path */}
+              <ellipse cx="70" cy="116" rx="42" ry="10" fill="hsl(var(--primary)/0.08)" />
+              {/* Tree left */}
+              <rect x="22" y="68" width="6" height="28" rx="2" fill="hsl(var(--primary)/0.35)" />
+              <polygon points="25,30 10,72 40,72" fill="hsl(var(--primary)/0.55)" />
+              <polygon points="25,18 12,52 38,52" fill="hsl(var(--primary)/0.7)" />
+              {/* Tree right */}
+              <rect x="102" y="60" width="8" height="36" rx="2" fill="hsl(var(--primary)/0.35)" />
+              <polygon points="106,22 88,66 124,66" fill="hsl(var(--primary)/0.55)" />
+              <polygon points="106,10 90,46 122,46" fill="hsl(var(--primary)/0.7)" />
+              {/* Person sitting */}
+              <circle cx="68" cy="78" r="7" fill="hsl(var(--foreground)/0.8)" />
+              <path d="M61 86 Q60 100 65 108 Q68 112 72 108 Q76 102 74 92" stroke="hsl(var(--foreground)/0.8)" strokeWidth="4" strokeLinecap="round" fill="none" />
+              {/* Arm reaching up */}
+              <path d="M64 90 Q55 78 60 68" stroke="hsl(var(--foreground)/0.8)" strokeWidth="3.5" strokeLinecap="round" fill="none" />
+              {/* Sun */}
+              <circle cx="108" cy="32" r="8" fill="hsl(var(--primary)/0.6)" />
+              <circle cx="108" cy="32" r="5" fill="hsl(var(--primary)/0.9)" />
+            </svg>
+          </div>
+        </div>
+
       </div>
 
     </div>
