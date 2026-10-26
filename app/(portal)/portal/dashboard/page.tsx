@@ -153,10 +153,10 @@ function WelcomeMessage({ fullName, goal, bio, jobTitle, location }: { fullName:
 
         {/* Info cards — Transition Goal, Location, Timeline, Goals & Motivations */}
         <div className="rounded-2xl border border-border bg-card px-8 py-7">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 grid-rows-2 gap-3">
 
             {/* Transition Goal */}
-            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex items-start justify-between gap-3">
+            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex h-full items-start justify-between gap-3">
               <div className="min-w-0 space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wide text-primary">Transition Goal:</p>
                 <p className="text-sm text-foreground font-medium capitalize leading-snug">
@@ -170,7 +170,7 @@ function WelcomeMessage({ fullName, goal, bio, jobTitle, location }: { fullName:
             </div>
 
             {/* Location */}
-            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex items-start justify-between gap-3">
+            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex h-full items-start justify-between gap-3">
               <div className="min-w-0 space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wide text-primary">Location:</p>
                 {location ? (
@@ -186,7 +186,7 @@ function WelcomeMessage({ fullName, goal, bio, jobTitle, location }: { fullName:
             </div>
 
             {/* Timeline */}
-            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex items-start justify-between gap-3">
+            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex h-full items-start justify-between gap-3">
               <div className="min-w-0 space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wide text-primary">Timeline:</p>
                 <p className="text-sm text-foreground font-medium leading-snug">No set timeline</p>
@@ -198,7 +198,7 @@ function WelcomeMessage({ fullName, goal, bio, jobTitle, location }: { fullName:
             </div>
 
             {/* Goals and Motivations */}
-            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex items-start justify-between gap-3">
+            <div className="rounded-xl border border-border bg-sidebar-accent/30 px-4 py-4 flex h-full items-start justify-between gap-3">
               <div className="min-w-0 space-y-1.5">
                 <p className="text-xs font-bold uppercase tracking-wide text-primary">Goals and Motivations:</p>
                 {bio ? (
