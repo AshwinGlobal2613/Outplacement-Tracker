@@ -126,14 +126,33 @@ function WelcomeMessage({ fullName, goal, bio, jobTitle, location }: { fullName:
         </div>
       </div>
 
-      {/* Right column: Section 2 */}
-      <div className="flex-1 min-w-0">
-        <div className="rounded-2xl border border-border bg-card px-8 py-7 space-y-5">
+      {/* Right column: Section 2 + info cards */}
+      <div className="flex-1 min-w-0 space-y-5">
+
+        {/* Section 2 — goals text (restored) */}
+        <div className="rounded-2xl border border-border bg-card px-8 py-7 space-y-4">
           <h3 className="text-base font-semibold text-foreground">
             Here are the other insights you shared with us about your goals and motivations:
           </h3>
+          <div className="rounded-xl border border-border bg-sidebar-accent/40 px-5 py-4 space-y-3">
+            <p className="text-[14px] text-foreground leading-relaxed">
+              You indicated you are interested in{" "}
+              <span className="font-semibold text-primary">{goal}</span>
+              {jobTitle ? (
+                <>, with a focus on{" "}<span className="font-semibold text-primary">{jobTitle}</span></>
+              ) : null}
+              . We are confident you can achieve this goal, and we&apos;re here to support you.
+            </p>
+            {bio && (
+              <p className="text-[13px] text-muted-foreground leading-relaxed italic border-t border-border/60 pt-3">
+                &ldquo;{bio}&rdquo;
+              </p>
+            )}
+          </div>
+        </div>
 
-          {/* 2×2 info cards */}
+        {/* Info cards — Transition Goal, Location, Timeline, Goals & Motivations */}
+        <div className="rounded-2xl border border-border bg-card px-8 py-7">
           <div className="grid grid-cols-2 gap-3">
 
             {/* Transition Goal */}
@@ -196,6 +215,7 @@ function WelcomeMessage({ fullName, goal, bio, jobTitle, location }: { fullName:
 
           </div>
         </div>
+
       </div>
 
     </div>
